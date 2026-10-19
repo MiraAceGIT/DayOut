@@ -1,0 +1,51 @@
+# ──────────────── OS ────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ─────────────── Éditeurs ───────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─────────────── Secrets / env ───────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─────────────── Node / Front ───────────────
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+.cache/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─────────────── Back (PHP / Python / autres) ───────────────
+vendor/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ─────────────── Docker ───────────────
+# Données persistées des volumes locaux si bind-mount
+infra/docker/mysql/data/
+*.sqlite
+*.sqlite3
+
+# ─────────────── Divers ───────────────
+tmp/
+*.bak
+*.tmp

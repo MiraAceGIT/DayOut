@@ -1,0 +1,51 @@
+# ─────────────────────────────────────────────────────────────
+# Base de données MySQL du projet
+#
+# Lancer      : docker compose up -d
+# Arrêter     : docker compose down
+# Console SQL : docker compose exec mysql mysql -u root -p
+# Reset total : docker compose down -v   (⚠ supprime les données)
+#
+# Les valeurs viennent du fichier .env (copier .env.example → .env).
+# Sans .env, les valeurs par défaut après ":-" sont utilisées.
+# ─────────────────────────────────────────────────────────────
+
+services:
+  mysql:
+    image: mysql:8.4                         # version figée → même MySQL pour tout le monde
+    container_name: ${COMPOSE_PROJECT_NAME:-projet}-mysql
+    restart: unless-stopped                  # redémarre avec Docker, sauf si stoppé à la main
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-app}         # base créée au 1er démarrage
+      MYSQL_USER: ${MYSQL_USER:-app}                 # user applicatif (droits sur MYSQL_DATABASE)
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-app}
+      TZ: Europe/Paris
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"           # changer MYSQL_PORT si 3306 est déjà pris sur ta machine
+    volumes:
+      - mysql_data:/var/lib/mysql            # persistance des données
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+        # ↑ les .sql de ce dossier sont exécutés AU 1er DÉMARRAGE uniquement
+        #   (ordre alphabétique : 01_schema.sql, 02_seed.sql…)
+        #   pour les rejouer : docker compose down -v && docker compose up -d
+    healthcheck:                             # "healthy" quand MySQL accepte les connexions
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  adminer:                                   # interface web légère → http://localhost:8080
+    image: adminer:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-projet}-adminer
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql          # serveur = nom du service, pas localhost
+    depends_on:
+      mysql:
+        condition: service_healthy           # attend que MySQL soit prêt
+
+volumes:
+  mysql_data:
