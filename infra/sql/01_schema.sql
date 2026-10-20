@@ -75,6 +75,10 @@ CREATE TABLE categories (
 CREATE TABLE users (
   id                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   email              VARCHAR(190) NOT NULL,
+  -- DENORMALISATION VOLONTAIRE : email_domain = SUBSTRING_INDEX(email,'@',-1).
+  -- Maintenu par trg_users_bi_whitelist / trg_users_bu_whitelist.
+  -- Justification : index direct pour la whitelist ecoles, evite SUBSTRING_INDEX
+  -- a chaque lookup. Risque : divergence si on bypass les triggers.
   email_domain       VARCHAR(120) NOT NULL,
   password_hash      VARCHAR(255) NOT NULL,
   first_name         VARCHAR(80)  NOT NULL,
@@ -174,11 +178,17 @@ CREATE TABLE events (
   latitude             DECIMAL(9,6) NULL,
   longitude            DECIMAL(9,6) NULL,
   capacity             INT UNSIGNED NULL,
+  -- DENORMALISATION VOLONTAIRE : derivable via COUNT(registrations WHERE status='registered').
+  -- Justification : affiche partout dans le feed, evite un COUNT a chaque rendu de carte.
+  -- Maintenu par les triggers trg_registrations_ai/au/ad.
   registered_count     INT UNSIGNED NOT NULL DEFAULT 0,
   price_cents          INT UNSIGNED NOT NULL DEFAULT 0,
   currency             CHAR(3)      NOT NULL DEFAULT 'EUR',
   is_paid              TINYINT(1)   NOT NULL DEFAULT 0,
   external_ticket_url  VARCHAR(255) NULL,
+  -- DENORMALISATION VOLONTAIRE : equivalent a (restricted_school_id IS NOT NULL).
+  -- Justification : filtre explicite dans les requetes et formulaires (lisibilite).
+  -- Coherence imposee par trg_events_bi / trg_events_bu.
   school_restricted    TINYINT(1)   NOT NULL DEFAULT 0,
   restricted_school_id INT UNSIGNED NULL,
   status               ENUM('draft','published','cancelled','archived') NOT NULL DEFAULT 'draft',
@@ -199,7 +209,8 @@ CREATE TABLE events (
     FOREIGN KEY (restricted_school_id) REFERENCES schools(id)
     ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT chk_events_dates    CHECK (end_at > start_at),
-  CONSTRAINT chk_events_price    CHECK ( (is_paid = 0 AND price_cents = 0) OR (is_paid = 1 AND price_cents >= 0) ),
+  -- is_paid=1 impose un prix strictement positif (sinon utiliser is_paid=0).
+  CONSTRAINT chk_events_price    CHECK ( (is_paid = 0 AND price_cents = 0) OR (is_paid = 1 AND price_cents > 0) ),
   CONSTRAINT chk_events_capacity CHECK (capacity IS NULL OR capacity > 0),
   CONSTRAINT chk_events_regcount CHECK (capacity IS NULL OR registered_count <= capacity)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -282,10 +293,11 @@ CREATE TABLE attendance_events (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- user_id supprime : il se deduit de registration_id -> registrations.user_id.
+-- Pour retrouver le proprietaire : JOIN registrations ON registrations.id = absence_corrections.registration_id.
 CREATE TABLE absence_corrections (
   id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   registration_id BIGINT UNSIGNED NOT NULL,
-  user_id         BIGINT UNSIGNED NOT NULL,
   reason          TEXT         NOT NULL,
   proof_url       VARCHAR(255) NULL,
   status          ENUM('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
@@ -295,13 +307,9 @@ CREATE TABLE absence_corrections (
   created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_absence_registration (registration_id),
-  KEY idx_absence_user (user_id),
   KEY idx_absence_reviewer (reviewed_by),
   CONSTRAINT fk_absence_registration
     FOREIGN KEY (registration_id) REFERENCES registrations(id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_absence_user
-    FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_absence_reviewer
     FOREIGN KEY (reviewed_by) REFERENCES users(id)
@@ -703,6 +711,175 @@ BEGIN
   IF OLD.status IN ('registered','attended') THEN
     UPDATE events SET registered_count = GREATEST(registered_count - 1, 0)
     WHERE id = OLD.event_id;
+  END IF;
+END $$
+
+-- 9.9 Blocage reinscription non controlee (cancelled -> registered via UPDATE)
+--     Rejoue les memes checks que trg_registrations_bi pour empecher le contournement.
+DROP TRIGGER IF EXISTS trg_registrations_bu $$
+CREATE TRIGGER trg_registrations_bu
+BEFORE UPDATE ON registrations
+FOR EACH ROW
+BEGIN
+  DECLARE v_score   TINYINT UNSIGNED;
+  DECLARE v_banned  TINYINT(1);
+  DECLARE v_status  VARCHAR(16);
+  DECLARE v_cap     INT UNSIGNED;
+  DECLARE v_count   INT UNSIGNED;
+
+  IF OLD.status = 'cancelled' AND NEW.status = 'registered' THEN
+    SELECT reliability_score, banned INTO v_score, v_banned
+    FROM users WHERE id = NEW.user_id;
+
+    IF v_banned = 1 THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'User is banned';
+    END IF;
+
+    IF v_score < 40 THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Reliability score too low (<40) to re-register';
+    END IF;
+
+    SELECT status, capacity, registered_count
+      INTO v_status, v_cap, v_count
+    FROM events WHERE id = NEW.event_id;
+
+    IF v_status <> 'published' THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Event is not open for registration';
+    END IF;
+
+    IF v_cap IS NOT NULL AND v_count >= v_cap THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Event is full';
+    END IF;
+  END IF;
+END $$
+
+-- 9.10 Garantie "role admin" pour les colonnes FK pointant arbitrairement vers users.
+--      Le CHECK ne peut pas interroger une autre table : triggers obligatoires.
+
+-- 9.10.a report_actions.admin_id doit referencer un admin
+DROP TRIGGER IF EXISTS trg_report_actions_bi $$
+CREATE TRIGGER trg_report_actions_bi
+BEFORE INSERT ON report_actions
+FOR EACH ROW
+BEGIN
+  DECLARE v_role VARCHAR(16);
+  SELECT role INTO v_role FROM users WHERE id = NEW.admin_id;
+  IF v_role IS NULL OR v_role <> 'admin' THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'report_actions.admin_id must reference a user with role=admin';
+  END IF;
+END $$
+
+DROP TRIGGER IF EXISTS trg_report_actions_bu $$
+CREATE TRIGGER trg_report_actions_bu
+BEFORE UPDATE ON report_actions
+FOR EACH ROW
+BEGIN
+  DECLARE v_role VARCHAR(16);
+  IF NEW.admin_id <> OLD.admin_id THEN
+    SELECT role INTO v_role FROM users WHERE id = NEW.admin_id;
+    IF v_role IS NULL OR v_role <> 'admin' THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'report_actions.admin_id must reference a user with role=admin';
+    END IF;
+  END IF;
+END $$
+
+-- 9.10.b absence_corrections.reviewed_by doit etre admin (si renseigne)
+DROP TRIGGER IF EXISTS trg_absence_corr_bi $$
+CREATE TRIGGER trg_absence_corr_bi
+BEFORE INSERT ON absence_corrections
+FOR EACH ROW
+BEGIN
+  DECLARE v_role VARCHAR(16);
+  IF NEW.reviewed_by IS NOT NULL THEN
+    SELECT role INTO v_role FROM users WHERE id = NEW.reviewed_by;
+    IF v_role IS NULL OR v_role <> 'admin' THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'absence_corrections.reviewed_by must reference a user with role=admin';
+    END IF;
+  END IF;
+END $$
+
+DROP TRIGGER IF EXISTS trg_absence_corr_bu $$
+CREATE TRIGGER trg_absence_corr_bu
+BEFORE UPDATE ON absence_corrections
+FOR EACH ROW
+BEGIN
+  DECLARE v_role VARCHAR(16);
+  IF NEW.reviewed_by IS NOT NULL
+     AND (OLD.reviewed_by IS NULL OR NEW.reviewed_by <> OLD.reviewed_by) THEN
+    SELECT role INTO v_role FROM users WHERE id = NEW.reviewed_by;
+    IF v_role IS NULL OR v_role <> 'admin' THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'absence_corrections.reviewed_by must reference a user with role=admin';
+    END IF;
+  END IF;
+END $$
+
+-- 9.10.c creator_profiles.reviewed_by doit etre admin (si renseigne)
+DROP TRIGGER IF EXISTS trg_creator_profiles_bi $$
+CREATE TRIGGER trg_creator_profiles_bi
+BEFORE INSERT ON creator_profiles
+FOR EACH ROW
+BEGIN
+  DECLARE v_role VARCHAR(16);
+  IF NEW.reviewed_by IS NOT NULL THEN
+    SELECT role INTO v_role FROM users WHERE id = NEW.reviewed_by;
+    IF v_role IS NULL OR v_role <> 'admin' THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'creator_profiles.reviewed_by must reference a user with role=admin';
+    END IF;
+  END IF;
+END $$
+
+DROP TRIGGER IF EXISTS trg_creator_profiles_bu $$
+CREATE TRIGGER trg_creator_profiles_bu
+BEFORE UPDATE ON creator_profiles
+FOR EACH ROW
+BEGIN
+  DECLARE v_role VARCHAR(16);
+  IF NEW.reviewed_by IS NOT NULL
+     AND (OLD.reviewed_by IS NULL OR NEW.reviewed_by <> OLD.reviewed_by) THEN
+    SELECT role INTO v_role FROM users WHERE id = NEW.reviewed_by;
+    IF v_role IS NULL OR v_role <> 'admin' THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'creator_profiles.reviewed_by must reference a user with role=admin';
+    END IF;
+  END IF;
+END $$
+
+-- 9.10.d contact_messages.handled_by doit etre admin (si renseigne)
+DROP TRIGGER IF EXISTS trg_contact_msg_bi $$
+CREATE TRIGGER trg_contact_msg_bi
+BEFORE INSERT ON contact_messages
+FOR EACH ROW
+BEGIN
+  DECLARE v_role VARCHAR(16);
+  IF NEW.handled_by IS NOT NULL THEN
+    SELECT role INTO v_role FROM users WHERE id = NEW.handled_by;
+    IF v_role IS NULL OR v_role <> 'admin' THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'contact_messages.handled_by must reference a user with role=admin';
+    END IF;
+  END IF;
+END $$
+
+DROP TRIGGER IF EXISTS trg_contact_msg_bu $$
+CREATE TRIGGER trg_contact_msg_bu
+BEFORE UPDATE ON contact_messages
+FOR EACH ROW
+BEGIN
+  DECLARE v_role VARCHAR(16);
+  IF NEW.handled_by IS NOT NULL
+     AND (OLD.handled_by IS NULL OR NEW.handled_by <> OLD.handled_by) THEN
+    SELECT role INTO v_role FROM users WHERE id = NEW.handled_by;
+    IF v_role IS NULL OR v_role <> 'admin' THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'contact_messages.handled_by must reference a user with role=admin';
+    END IF;
   END IF;
 END $$
 

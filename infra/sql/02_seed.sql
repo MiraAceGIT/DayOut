@@ -330,9 +330,9 @@ INSERT INTO attendance_events (user_id, event_id, kind, score_delta, weight, not
 -- 11. ABSENCE CORRECTIONS (1 demande, acceptee)
 -- -----------------------------------------------------------------------------
 INSERT INTO absence_corrections
-  (registration_id, user_id, reason, proof_url, status, reviewed_by, reviewed_at, review_notes)
+  (registration_id, reason, proof_url, status, reviewed_by, reviewed_at, review_notes)
 VALUES
-  (16, 7, 'Urgence familiale, j''ai un justificatif medical.',
+  (16, 'Urgence familiale, j''ai un justificatif medical.',
       'https://files.example.com/leo-justif.pdf',
       'accepted', 1, '2026-10-12 09:00:00', 'Justificatif valide');
 
