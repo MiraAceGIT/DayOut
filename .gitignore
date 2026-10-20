@@ -49,3 +49,5 @@ infra/docker/mysql/data/
 tmp/
 *.bak
 *.tmp
+
+docs/*
