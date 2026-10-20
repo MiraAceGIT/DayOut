@@ -1,0 +1,30 @@
+/* ============================================================================
+   Reset minimal (base Josh Comeau, allege)
+   ============================================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Reset de marges sur les elements de contenu uniquement (pas sur tous les *) */
+body, h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, ul, ol {
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+input, button, textarea, select { font: inherit; }
+
+p, h1, h2, h3, h4, h5, h6 { overflow-wrap: break-word; }
+
+a { color: inherit; text-decoration: none; }
+
+ul, ol { list-style: none; }

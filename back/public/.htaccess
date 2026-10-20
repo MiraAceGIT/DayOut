@@ -1,0 +1,38 @@
+# =============================================================================
+# Front controller + hardening Apache
+# =============================================================================
+
+Options -Indexes
+Options -MultiViews
+
+RewriteEngine On
+RewriteBase /
+
+# Si le fichier/dossier existe, servir directement (fichiers statiques).
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L,QSA]
+
+# -----------------------------------------------------------------------------
+# Headers de securite au niveau Apache (double securite avec PHP).
+# Si mod_headers n'est pas charge, PHP les envoie quand meme.
+# -----------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    # L'API ne sert pas de HTML : CSP tres restrictive.
+    Header always set Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# Fichiers sensibles / dotfiles : refuser l'acces direct.
+# -----------------------------------------------------------------------------
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(env|ini|log|md|sql|yml|yaml|lock|dist|example)$">
+    Require all denied
+</FilesMatch>
