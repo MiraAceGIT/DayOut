@@ -1,0 +1,29 @@
+#!/bin/sh
+# Vérifie que le message de commit respecte le format :
+#   type(scope optionnel): description
+# Exemples : "feat: add login page", "fix(api): handle null user", "feat!: drop v1 routes"
+
+TYPES="feat|fix|refacto|refactor|docs|style|test|chore|perf|build|ci|revert"
+PATTERN="^($TYPES)(\([a-zA-Z0-9_./-]+\))?!?: .+"
+
+MSG_FILE="$1"
+FIRST_LINE=$(grep -v '^#' "$MSG_FILE" | head -n 1)
+
+# Laisse passer les messages générés automatiquement par git
+case "$FIRST_LINE" in
+  "Merge "*|"Revert \""*|"fixup! "*|"squash! "*) exit 0 ;;
+esac
+
+if ! printf '%s\n' "$FIRST_LINE" | grep -Eq "$PATTERN"; then
+  echo "ERREUR : message de commit invalide."
+  echo ""
+  echo "  Reçu   : $FIRST_LINE"
+  echo "  Format : type(scope optionnel): description"
+  echo "  Types  : $(echo "$TYPES" | sed 's/|/, /g')"
+  echo ""
+  echo "  Exemples :"
+  echo "    feat: add login page"
+  echo "    fix(api): handle null user"
+  echo "    refacto(front): split header component"
+  exit 1
+fi

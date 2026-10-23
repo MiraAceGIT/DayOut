@@ -1,0 +1,70 @@
+-- =============================================================================
+-- DayOut — Schema : événements
+-- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
+-- =============================================================================
+
+CREATE TABLE events (
+  id                   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  creator_id           BIGINT UNSIGNED NOT NULL,
+  title                VARCHAR(180) NOT NULL,
+  slug                 VARCHAR(200) NOT NULL,
+  description          TEXT         NOT NULL,
+  cover_image_url      VARCHAR(255) NULL,
+  start_at             DATETIME     NOT NULL,
+  end_at               DATETIME     NOT NULL,
+  venue_name           VARCHAR(160) NULL,
+  address_line         VARCHAR(200) NULL,
+  city                 VARCHAR(80)  NULL,
+  postal_code          VARCHAR(20)  NULL,
+  latitude             DECIMAL(9,6) NULL,
+  longitude            DECIMAL(9,6) NULL,
+  capacity             INT UNSIGNED NULL,
+  -- DENORMALISATION VOLONTAIRE : derivable via COUNT(registrations WHERE status='registered').
+  -- Justification : affiche partout dans le feed, evite un COUNT a chaque rendu de carte.
+  -- Maintenu par les triggers trg_registrations_ai/au/ad.
+  registered_count     INT UNSIGNED NOT NULL DEFAULT 0,
+  price_cents          INT UNSIGNED NOT NULL DEFAULT 0,
+  currency             CHAR(3)      NOT NULL DEFAULT 'EUR',
+  is_paid              TINYINT(1)   NOT NULL DEFAULT 0,
+  external_ticket_url  VARCHAR(255) NULL,
+  -- DENORMALISATION VOLONTAIRE : equivalent a (restricted_school_id IS NOT NULL).
+  -- Justification : filtre explicite dans les requetes et formulaires (lisibilite).
+  -- Coherence imposee par trg_events_bi / trg_events_bu.
+  school_restricted    TINYINT(1)   NOT NULL DEFAULT 0,
+  restricted_school_id INT UNSIGNED NULL,
+  status               ENUM('draft','published','cancelled','archived') NOT NULL DEFAULT 'draft',
+  published_at         DATETIME     NULL,
+  created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_events_slug (slug),
+  KEY idx_events_creator (creator_id),
+  KEY idx_events_start (start_at),
+  KEY idx_events_status (status),
+  KEY idx_events_school (restricted_school_id),
+  KEY idx_events_city (city),
+  CONSTRAINT fk_events_creator
+    FOREIGN KEY (creator_id) REFERENCES users(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_events_school
+    FOREIGN KEY (restricted_school_id) REFERENCES schools(id)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT chk_events_dates    CHECK (end_at > start_at),
+  -- is_paid=1 impose un prix strictement positif (sinon utiliser is_paid=0).
+  CONSTRAINT chk_events_price    CHECK ( (is_paid = 0 AND price_cents = 0) OR (is_paid = 1 AND price_cents > 0) ),
+  CONSTRAINT chk_events_capacity CHECK (capacity IS NULL OR capacity > 0),
+  CONSTRAINT chk_events_regcount CHECK (capacity IS NULL OR registered_count <= capacity)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE event_categories (
+  event_id    BIGINT UNSIGNED NOT NULL,
+  category_id INT    UNSIGNED NOT NULL,
+  PRIMARY KEY (event_id, category_id),
+  KEY idx_ec_category (category_id),
+  CONSTRAINT fk_ec_event
+    FOREIGN KEY (event_id) REFERENCES events(id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_ec_category
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

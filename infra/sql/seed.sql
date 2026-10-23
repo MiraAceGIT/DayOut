@@ -436,6 +436,6 @@ UPDATE events SET status = 'archived' WHERE id IN (8, 9);
 COMMIT;
 
 -- =============================================================================
--- Fin de 02_seed.sql
+-- Fin de seed.sql
 -- Resume : 15 schools, 10 categories, 14 users, 10 events, 16 registrations
 -- =============================================================================
