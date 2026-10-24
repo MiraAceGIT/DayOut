@@ -1,8 +1,7 @@
 CREATE TABLE users (
   id                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   email              VARCHAR(190) NOT NULL,
-  -- Denormalisation volontaire : = SUBSTRING_INDEX(email,'@',-1), indexe pour la whitelist ecoles.
-  -- Maintenu par trg_users_bi_whitelist / trg_users_bu_whitelist ; diverge si on contourne les triggers.
+  -- Denormalise (domaine de email, indexe pour la whitelist) ; maintenu par trg_users_b*_whitelist.
   email_domain       VARCHAR(120) NOT NULL,
   password_hash      VARCHAR(255) NOT NULL,
   first_name         VARCHAR(80)  NOT NULL,
@@ -27,8 +26,7 @@ CREATE TABLE users (
   KEY idx_users_school (school_id),
   KEY idx_users_role (role),
   KEY idx_users_domain (email_domain),
-  -- RESTRICT : une ecole se desactive (schools.active=0), elle ne se supprime pas tant que
-  -- des users la referencent (cf. infra/README.md).
+  -- RESTRICT : une ecole se desactive (active=0), elle ne se supprime pas.
   CONSTRAINT fk_users_school
     FOREIGN KEY (school_id) REFERENCES schools(id)
     ON DELETE RESTRICT ON UPDATE CASCADE,

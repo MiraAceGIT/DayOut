@@ -7,11 +7,6 @@ use App\Core\Orm\Connection;
 use Closure;
 use LogicException;
 
-/**
- * Valeurs toujours en placeholders `?`, identifiants valides par Grammar.
- * Seules les methodes *Raw() acceptent du SQL brut : ne JAMAIS y concatener
- * d'entree utilisateur.
- */
 final class QueryBuilder
 {
     use BuildsWhereClauses;

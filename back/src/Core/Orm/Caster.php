@@ -11,10 +11,7 @@ use LogicException;
 /** Casts a la lecture : PDO MySQL renvoie 0/1 et des chaines, l'API expose bool/int/ISO 8601 UTC. */
 final class Caster
 {
-    /**
-     * @param array<string, string> $casts colonne => int | float | bool | datetime | json
-     * @param string $owner classe declarante, pour les messages d'erreur
-     */
+    /** @param array<string, string> $casts colonne => int | float | bool | datetime | json */
     public static function apply(array $row, array $casts, string $owner): array
     {
         foreach ($casts as $column => $type) {
@@ -32,7 +29,6 @@ final class Caster
             'int'      => (int) $value,
             'float'    => (float) $value,
             'bool'     => (bool) $value,
-            // Session MySQL en UTC (cf. Database::connection()).
             'datetime' => (new DateTimeImmutable((string) $value, new DateTimeZone('UTC')))
                 ->format(DateTimeInterface::ATOM),
             'json'     => json_decode((string) $value, true),

@@ -7,13 +7,9 @@ use App\Core\HttpException;
 use PDOException;
 
 /**
- * Traduit en HttpException les erreurs SQL causees par le client :
- *   - regles metier des triggers (SIGNAL SQLSTATE '45000' SET MYSQL_ERRNO = 50xxx,
- *     cf. infra/README.md "Codes d'erreur des triggers") : leur MESSAGE_TEXT
- *     (anglais, sans donnee sensible) est renvoye tel quel ;
- *   - contraintes natives (doublon, cle etrangere, CHECK) : message generique, car
- *     le message MariaDB cite des noms de tables et de contraintes.
- * Le numero est dans errorInfo[1] : getCode() vaut '45000' pour tous les triggers.
+ * MESSAGE_TEXT des triggers (anglais, sans donnee sensible) renvoye tel quel ; contraintes
+ * natives : message generique, car celui de MariaDB cite des noms de tables et de contraintes.
+ * L'errno est dans errorInfo[1] : getCode() vaut '45000' pour tous les triggers.
  */
 final class DbErrorMapper
 {
@@ -45,7 +41,6 @@ final class DbErrorMapper
     /** Plage reservee aux triggers : un errno inconnu de cette plage reste une regle metier. */
     private const TRIGGER_RANGE = [50000, 50999];
 
-    /** null si l'erreur n'est pas imputable au client : elle reste un 500. */
     public static function toHttpException(PDOException $e): ?HttpException
     {
         $errno   = (int) ($e->errorInfo[1] ?? 0);

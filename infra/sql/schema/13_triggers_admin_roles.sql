@@ -1,8 +1,6 @@
 DELIMITER $$
 
--- Les FK vers users reservees aux admins sont verifiees par trigger (un CHECK ne peut pas lire une autre table).
--- Regle unique : sp_assert_admin (09_routines.sql), qui ignore une valeur NULL. En UPDATE, on ne
--- revalide que si la colonne change.
+-- FK reservees aux admins : trigger, car un CHECK ne peut pas lire une autre table.
 
 DROP TRIGGER IF EXISTS trg_report_actions_bi $$
 CREATE TRIGGER trg_report_actions_bi

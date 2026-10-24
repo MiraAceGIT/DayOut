@@ -5,7 +5,6 @@ namespace App\Core\Orm\Query;
 
 use LogicException;
 
-/** Assemble des fragments deja valides par Grammar ; les valeurs restent en `?`. */
 final class Compiler
 {
     public static function select(QueryParts $q): string

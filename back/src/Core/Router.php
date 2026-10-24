@@ -6,15 +6,7 @@ namespace App\Core;
 use App\Core\Http\Middleware;
 use LogicException;
 
-/**
- * Routes : chemin avec {param} ou {param:regex}, handler [Controller::class, 'action'].
- * Une action recoit la Request (parametres via $request->param()) et renvoie une Response.
- * Middlewares : instances de Middleware, ou noms de classe instancies sans argument.
- *
- *   $router->group('/api/events', [Authenticate::class], function (Router $r) {
- *       $r->post('', [EventController::class, 'create'], [new RequireRole('organizer')]);
- *   });
- */
+/** Controllers et middlewares donnes par nom de classe sont instancies sans argument. */
 final class Router
 {
     /**
@@ -38,7 +30,6 @@ final class Router
     public function patch(string $path, array $handler, array $middlewares = []): void  { $this->add('PATCH', $path, $handler, $middlewares); }
     public function delete(string $path, array $handler, array $middlewares = []): void { $this->add('DELETE', $path, $handler, $middlewares); }
 
-    /** Prefixe et middlewares appliques a toutes les routes declarees dans $routes (imbricable). */
     public function group(string $prefix, array $middlewares, callable $routes): void
     {
         [$previousPrefix, $previousMiddlewares] = [$this->prefix, $this->groupMiddlewares];
@@ -51,7 +42,6 @@ final class Router
         }
     }
 
-    /** 404 / 405 levees en HttpException, comme toute autre erreur client. */
     public function dispatch(Request $request): Response
     {
         // HEAD = GET sans body (RFC 7231 §4.3.2) : le serveur web retire le body.

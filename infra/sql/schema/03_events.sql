@@ -14,16 +14,13 @@ CREATE TABLE events (
   latitude             DECIMAL(9,6) NULL,
   longitude            DECIMAL(9,6) NULL,
   capacity             INT UNSIGNED NULL,
-  -- Denormalisation volontaire : = COUNT(registrations actives), evite un COUNT par carte du feed.
-  -- Active = status <> 'cancelled' (fn_registration_is_active). Maintenu par trg_registrations_ai/au/ad
-  -- et trg_users_bd_registrations.
+  -- Denormalise (nb d'inscriptions actives, cf. fn_registration_is_active) : evite un COUNT par carte du feed.
   registered_count     INT UNSIGNED NOT NULL DEFAULT 0,
   price_cents          INT UNSIGNED NOT NULL DEFAULT 0,
   currency             CHAR(3)      NOT NULL DEFAULT 'EUR',
   is_paid              TINYINT(1)   NOT NULL DEFAULT 0,
   external_ticket_url  VARCHAR(255) NULL,
-  -- Denormalisation volontaire : = (restricted_school_id IS NOT NULL), pour des filtres lisibles.
-  -- Coherence imposee par trg_events_bi / trg_events_bu.
+  -- Denormalise (= restricted_school_id IS NOT NULL) ; coherence imposee par trg_events_bi/bu.
   school_restricted    TINYINT(1)   NOT NULL DEFAULT 0,
   restricted_school_id INT UNSIGNED NULL,
   status               ENUM('draft','published','cancelled','archived') NOT NULL DEFAULT 'draft',
@@ -34,20 +31,18 @@ CREATE TABLE events (
   UNIQUE KEY uk_events_slug (slug),
   KEY idx_events_creator (creator_id),
   KEY idx_events_start (start_at),
-  -- Feed public : WHERE status='published' ORDER BY start_at, id : filtre + tri par l'index, sans filesort.
+  -- Feed public (status='published' ORDER BY start_at, id) sans filesort.
   KEY idx_events_status_start (status, start_at, id),
   KEY idx_events_school (restricted_school_id),
   KEY idx_events_city (city),
   CONSTRAINT fk_events_creator
     FOREIGN KEY (creator_id) REFERENCES users(id)
     ON DELETE RESTRICT ON UPDATE CASCADE,
-  -- RESTRICT : un event restreint ne doit jamais redevenir public en silence (SET NULL
-  -- laissait school_restricted=1 sans ecole). Ecoles : desactiver, ne pas supprimer.
+  -- RESTRICT et non SET NULL : un event restreint ne doit jamais redevenir public en silence.
   CONSTRAINT fk_events_school
     FOREIGN KEY (restricted_school_id) REFERENCES schools(id)
     ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT chk_events_dates    CHECK (end_at > start_at),
-  -- is_paid=1 impose un prix strictement positif (sinon utiliser is_paid=0).
   CONSTRAINT chk_events_price    CHECK ( (is_paid = 0 AND price_cents = 0) OR (is_paid = 1 AND price_cents > 0) ),
   CONSTRAINT chk_events_capacity CHECK (capacity IS NULL OR capacity > 0),
   CONSTRAINT chk_events_regcount CHECK (capacity IS NULL OR registered_count <= capacity)

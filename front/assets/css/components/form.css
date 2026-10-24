@@ -1,4 +1,4 @@
-/* Champs de formulaire et erreurs (lib/forms.js : showFieldErrors / clearFieldErrors) */
+/* Classes et attributs poses par lib/forms.js (showFieldErrors) */
 [aria-invalid="true"] {
   border-color: var(--color-error-fg);
 }

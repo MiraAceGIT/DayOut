@@ -3,10 +3,9 @@ declare(strict_types=1);
 
 namespace App\Core\Log;
 
-/** Une ligne info.log par requete HTTP : methode, chemin, statut, duree. */
 final class AccessLog
 {
-    /** Au shutdown car Response::send() termine par exit : le dispatch ne rend jamais la main. */
+    /** Au shutdown, apres ErrorHandler : le statut inclut ainsi les 500 de secours (fatale, exception hors Kernel). */
     public static function register(): void
     {
         register_shutdown_function(static function (): void {

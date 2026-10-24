@@ -30,7 +30,7 @@ CREATE TABLE planning_items (
   CONSTRAINT fk_plan_item_event
     FOREIGN KEY (event_id) REFERENCES events(id)
     ON DELETE SET NULL ON UPDATE CASCADE,
-  -- event_id OU title requis : trigger trg_planning_items_* (CHECK interdit sur une FK SET NULL)
+  -- event_id OU title requis : cf. 14_triggers_fk_checks.sql
   CONSTRAINT chk_plan_item_dates CHECK (end_at > start_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

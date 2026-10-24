@@ -7,12 +7,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Throwable;
 
-/**
- * Point d'entree unique de la journalisation :
- *   warning et plus grave -> error.log ; notice, info, debug -> info.log ; audit() -> audit.log.
- * Facade statique configuree une fois au demarrage par configure() (valeurs de Config).
- * Sans configure() (erreur avant le chargement de la config) : niveau info, storage/logs.
- */
+/** Utilisable sans configure() (erreur avant le chargement de la config) : niveau info, storage/logs. */
 final class Log
 {
     private const AUDIT_CHANNEL = 'audit';
@@ -61,10 +56,7 @@ final class Log
         }
     }
 
-    /**
-     * Action metier sensible, toujours ecrite quel que soit LOG_LEVEL.
-     * $outcome : success | failure | denied.
-     */
+    /** Toujours ecrit, quel que soit LOG_LEVEL. $outcome : success | failure | denied. */
     public static function audit(
         string $action,
         string $resourceType,

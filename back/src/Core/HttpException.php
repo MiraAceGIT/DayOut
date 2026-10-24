@@ -6,14 +6,10 @@ namespace App\Core;
 use RuntimeException;
 use Throwable;
 
-/**
- * Erreur destinee au client : ExceptionRenderer la renvoie telle quelle
- * ({ "error": { code, message, details? } }) avec le statut HTTP et les en-tetes fournis.
- * Toute autre exception devient un 500 generique.
- */
+/** Seule exception dont le message est renvoye au client : jamais de donnee interne dedans. */
 final class HttpException extends RuntimeException
 {
-    /** @param array<string, string> $headers ex. ['Allow' => 'GET'] pour un 405 */
+    /** @param array<string, string> $headers */
     public function __construct(
         public readonly int $status,
         public readonly string $errorCode,
@@ -35,7 +31,7 @@ final class HttpException extends RuntimeException
         return new self(404, 'NOT_FOUND', $message, $details);
     }
 
-    /** @param array<int, string> $allowed methodes acceptees par la route */
+    /** @param array<int, string> $allowed */
     public static function methodNotAllowed(array $allowed): self
     {
         return new self(405, 'METHOD_NOT_ALLOWED', 'Method not allowed on this route', [], null,

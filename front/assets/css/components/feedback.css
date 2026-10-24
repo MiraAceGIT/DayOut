@@ -1,5 +1,4 @@
-/* Messages dynamiques : regions live permanentes, stylees uniquement quand non vides
-   (pas de display:none, sinon certains lecteurs d'ecran n'annoncent pas le changement). */
+/* Regions live permanentes : :not(:empty) plutot que display:none, sinon certains lecteurs d'ecran n'annoncent pas le changement. */
 .status-message:not(:empty) {
   color: var(--color-muted);
   font-style: italic;

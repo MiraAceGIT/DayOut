@@ -5,7 +5,7 @@ namespace App\Core\Http;
 
 use App\Core\Response;
 
-/** En-tetes de securite de toutes les reponses (seule source : plus de doublon dans .htaccess). */
+/** Seule source des en-tetes de securite : ne pas les dupliquer dans .htaccess. */
 final class SecurityHeaders
 {
     private const HEADERS = [

@@ -6,11 +6,7 @@ namespace App\Core\Http;
 use App\Core\Request;
 use App\Core\Response;
 
-/**
- * En-tetes CORS pour les origines de CORS_ORIGIN uniquement (jamais `*` : credentials).
- * Applique par Kernel a toutes les reponses, erreurs comprises : sans ces en-tetes,
- * le navigateur masquerait le body d'erreur au front.
- */
+/** Origines de CORS_ORIGIN uniquement, jamais `*` (incompatible avec les credentials). */
 final class Cors
 {
     /** @param array<int, string> $allowedOrigins */

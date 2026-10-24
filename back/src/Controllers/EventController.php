@@ -18,7 +18,6 @@ final class EventController extends Controller
         $this->events = $events ?? new Event();
     }
 
-    /** GET /api/events?limit=20&offset=0 */
     public function index(Request $request): Response
     {
         $limit  = $request->queryInt('limit',  20, 1, 100);
@@ -31,7 +30,6 @@ final class EventController extends Controller
         ]);
     }
 
-    /** GET /api/events/{id:\d+} */
     public function show(Request $request): Response
     {
         $id = (int) $request->param('id');

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Core\Orm\Query;
 
-/** Fragments deja valides/quotes, enchaines sans parentheses : AND prime sur OR (precedence SQL). */
+/** Conditions enchainees sans parentheses : AND prime sur OR (precedence SQL). */
 final class WhereClause
 {
     /** @var array<int, array{bool: string, sql: string}> */
@@ -19,7 +19,6 @@ final class WhereClause
         return $this;
     }
 
-    /** Groupe vide = no-op. */
     public function addGroup(WhereClause $group, string $boolean = 'AND'): self
     {
         if ($group->isEmpty()) {

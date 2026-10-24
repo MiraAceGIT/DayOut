@@ -59,7 +59,7 @@ CREATE TABLE attendance_events (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Pas de user_id : il se deduit via registration_id -> registrations.user_id (JOIN registrations).
+-- Pas de user_id : il se deduit de registration_id.
 CREATE TABLE absence_corrections (
   id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   registration_id BIGINT UNSIGNED NOT NULL,

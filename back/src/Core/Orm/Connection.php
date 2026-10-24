@@ -42,16 +42,12 @@ final class Connection
         return (int) $this->pdo->lastInsertId();
     }
 
-    /** UPDATE / DELETE : nombre de lignes touchees. */
     public function affecting(string $sql, array $bindings): int
     {
         return $this->run($sql, $bindings)->rowCount();
     }
 
-    /**
-     * $fn recoit la Connection ; sa valeur de retour est renvoyee apres commit.
-     * Pas d'imbrication : appeler transaction() dans $fn leve une PDOException.
-     */
+    /** Pas d'imbrication : appeler transaction() dans $fn leve une PDOException. */
     public function transaction(callable $fn): mixed
     {
         $this->pdo->beginTransaction();

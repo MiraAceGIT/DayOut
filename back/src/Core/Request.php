@@ -6,11 +6,7 @@ namespace App\Core;
 use JsonException;
 use LogicException;
 
-/**
- * Requete HTTP immuable. fromGlobals() est le seul endroit qui lit $_SERVER,
- * $_GET et php://input ; les middlewares enrichissent la requete via withAttribute()
- * (ex. l'utilisateur connecte) et le routeur y ajoute les parametres de route.
- */
+/** Immuable ; fromGlobals() est le seul endroit qui lit $_SERVER, $_GET et php://input. */
 final class Request
 {
     private ?array $json = null;
@@ -58,7 +54,6 @@ final class Request
         );
     }
 
-    /** Body vide -> [] ; JSON invalide ou scalaire -> HttpException 400. */
     public function json(): array
     {
         if ($this->json !== null) {
@@ -78,7 +73,7 @@ final class Request
         return $this->json = $data;
     }
 
-    /** @return array<string, mixed> toute la query string, a valider avec Validator */
+    /** @return array<string, mixed> */
     public function query(): array
     {
         return $this->query;
@@ -98,7 +93,6 @@ final class Request
         return $this->headers[strtolower($name)] ?? null;
     }
 
-    /** Parametre de route : toujours present si la route le declare. */
     public function param(string $name): string
     {
         return $this->params[$name] ?? throw new LogicException("Unknown route parameter '$name'");
@@ -121,11 +115,7 @@ final class Request
             [$name => $value] + $this->attributes);
     }
 
-    /**
-     * Prefixe d'installation retire du chemin : sous Apache dans un sous-dossier
-     * (http://localhost/dayout/back/public/api/health), SCRIPT_NAME vaut
-     * /dayout/back/public/index.php. Sous `php -S`, il vaut /index.php : prefixe vide.
-     */
+    /** Prefixe d'installation : /dayout/back/public sous Apache en sous-dossier, vide sous `php -S`. */
     private static function basePath(string $scriptName): string
     {
         $dir = str_replace('\\', '/', dirname($scriptName));

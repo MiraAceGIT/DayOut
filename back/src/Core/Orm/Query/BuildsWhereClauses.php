@@ -9,13 +9,6 @@ use InvalidArgumentException;
 /** Reserve a QueryBuilder : s'appuie sur sa propriete privee $parts. */
 trait BuildsWhereClauses
 {
-    /**
-     * where('col', $value)            -> col = ?
-     * where('col', '>=', $value)      -> col >= ?
-     * where('col', null)              -> col IS NULL
-     * where(fn ($q) => $q->where(...)->orWhere(...))  -> ( ... ) groupe
-     * where('col', '>', null)         -> InvalidArgumentException (toujours faux en SQL)
-     */
     public function where(Closure|string $column, mixed $operator = null, mixed $value = null, string $boolean = 'AND'): self
     {
         if ($column instanceof Closure) {
@@ -26,8 +19,7 @@ trait BuildsWhereClauses
             return $this;
         }
 
-        // func_num_args et non `$value === null` : where('c', '>', null) doit
-        // rester une comparaison a 3 arguments.
+        // func_num_args et non `$value === null` : where('c', '>', null) reste une comparaison a 3 arguments.
         if (func_num_args() === 2) {
             [$operator, $value] = ['=', $operator];
         }

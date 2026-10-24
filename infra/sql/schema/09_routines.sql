@@ -1,28 +1,15 @@
--- Fonctions et procedures partagees par les triggers (10_ a 14_).
--- Chaque regle metier n'est ecrite qu'une fois ici ; les triggers ne font que les appeler.
--- Erreurs metier : SIGNAL SQLSTATE '45000' + MYSQL_ERRNO dedie (plages par domaine,
--- table complete dans infra/README.md, section "Codes d'erreur des triggers") :
---   501xx users, 502xx events, 503xx registrations, 504xx roles admin, 505xx planning/moderation.
--- A chaque nouvelle routine : ajouter son DROP dans 00_reset.sql.
+-- MYSQL_ERRNO (table dans infra/README.md) : 501xx users, 502xx events, 503xx registrations,
+-- 504xx roles admin, 505xx planning/moderation. Toute nouvelle routine : son DROP dans 00_reset.sql.
 
 DELIMITER $$
 
--- ---------------------------------------------------------------------------
--- Generique
--- ---------------------------------------------------------------------------
-
--- Leve une erreur metier. MYSQL_ERRNO accepte une variable (MariaDB 10.4+ / MySQL 8.0) ;
--- les codes restent des litteraux aux points d'appel pour pouvoir les retrouver par grep.
+-- MYSQL_ERRNO accepte une variable depuis MariaDB 10.4 ; ailleurs, codes en litteraux (grep).
 DROP PROCEDURE IF EXISTS sp_raise $$
 CREATE PROCEDURE sp_raise(IN p_errno SMALLINT UNSIGNED, IN p_message VARCHAR(128))
   DETERMINISTIC NO SQL
 BEGIN
   SIGNAL SQLSTATE '45000' SET MYSQL_ERRNO = p_errno, MESSAGE_TEXT = p_message;
 END $$
-
--- ---------------------------------------------------------------------------
--- Users / whitelist ecoles (501xx)
--- ---------------------------------------------------------------------------
 
 DROP FUNCTION IF EXISTS fn_email_domain $$
 CREATE FUNCTION fn_email_domain(p_email VARCHAR(190)) RETURNS VARCHAR(120)
@@ -31,7 +18,7 @@ BEGIN
   RETURN LOWER(SUBSTRING_INDEX(p_email, '@', -1));
 END $$
 
--- Ecole (active ou non) correspondant au domaine, NULL sinon.
+-- Ecole active ou non. COLLATE : evite "Illegal mix of collations" si la connexion differe.
 DROP FUNCTION IF EXISTS fn_school_id_for_domain $$
 CREATE FUNCTION fn_school_id_for_domain(p_domain VARCHAR(120)) RETURNS INT UNSIGNED
   NOT DETERMINISTIC READS SQL DATA
@@ -41,7 +28,6 @@ BEGIN
           LIMIT 1);
 END $$
 
--- Le domaine doit etre celui d'une ecole active.
 DROP PROCEDURE IF EXISTS sp_assert_domain_whitelisted $$
 CREATE PROCEDURE sp_assert_domain_whitelisted(IN p_domain VARCHAR(120))
   NOT DETERMINISTIC READS SQL DATA
@@ -54,11 +40,6 @@ BEGIN
   END IF;
 END $$
 
--- ---------------------------------------------------------------------------
--- Events (502xx)
--- ---------------------------------------------------------------------------
-
--- Coherence school_restricted <=> restricted_school_id.
 DROP PROCEDURE IF EXISTS sp_assert_event_restriction $$
 CREATE PROCEDURE sp_assert_event_restriction(IN p_restricted TINYINT, IN p_school_id INT UNSIGNED)
   DETERMINISTIC NO SQL
@@ -73,12 +54,7 @@ BEGIN
   END IF;
 END $$
 
--- ---------------------------------------------------------------------------
--- Registrations (503xx)
--- ---------------------------------------------------------------------------
-
--- Definition unique d'une inscription "active" (comptee dans events.registered_count) :
--- tout sauf 'cancelled' (registered, attended, no_show). Retourne 0 ou 1.
+-- Seule definition d'une inscription active (comptee dans registered_count) : tout sauf 'cancelled'.
 DROP FUNCTION IF EXISTS fn_registration_is_active $$
 CREATE FUNCTION fn_registration_is_active(p_status VARCHAR(16)) RETURNS TINYINT
   DETERMINISTIC NO SQL
@@ -86,7 +62,6 @@ BEGIN
   RETURN IF(p_status IS NOT NULL AND p_status <> 'cancelled', 1, 0);
 END $$
 
--- Controles cote utilisateur : non banni, score de fiabilite >= 40.
 DROP PROCEDURE IF EXISTS sp_assert_user_can_register $$
 CREATE PROCEDURE sp_assert_user_can_register(IN p_user_id BIGINT UNSIGNED)
   NOT DETERMINISTIC READS SQL DATA
@@ -106,10 +81,8 @@ BEGIN
   END IF;
 END $$
 
--- Reserve une place : verrouille la ligne events (FOR UPDATE) puis verifie statut et capacite.
--- Le verrou est garde jusqu'a la fin de la transaction : deux inscriptions concurrentes
--- sont serialisees et la seconde voit le registered_count mis a jour par la premiere.
--- p_require_open = 0 : seule la capacite est controlee (correction admin, changement d'event).
+-- FOR UPDATE : verrou garde jusqu'a la fin de la transaction, la 2e inscription concurrente
+-- voit le registered_count a jour. p_require_open = 0 : capacite seule (correction admin).
 DROP PROCEDURE IF EXISTS sp_lock_event_seat $$
 CREATE PROCEDURE sp_lock_event_seat(IN p_event_id BIGINT UNSIGNED, IN p_require_open TINYINT)
   NOT DETERMINISTIC READS SQL DATA
@@ -132,8 +105,7 @@ BEGIN
   END IF;
 END $$
 
--- registered_count += p_delta. Pas de GREATEST(...,0) : la logique est exacte, un passage
--- sous 0 leverait une erreur "out of range" (colonne UNSIGNED) au lieu d'etre masque.
+-- Pas de GREATEST(...,0) : un passage sous 0 doit lever "out of range" (UNSIGNED), pas etre masque.
 DROP PROCEDURE IF EXISTS sp_registered_count_add $$
 CREATE PROCEDURE sp_registered_count_add(IN p_event_id BIGINT UNSIGNED, IN p_delta INT)
   NOT DETERMINISTIC MODIFIES SQL DATA
@@ -145,10 +117,6 @@ BEGIN
   END IF;
 END $$
 
--- ---------------------------------------------------------------------------
--- Roles admin (504xx)
--- ---------------------------------------------------------------------------
-
 DROP FUNCTION IF EXISTS fn_is_admin $$
 CREATE FUNCTION fn_is_admin(p_user_id BIGINT UNSIGNED) RETURNS TINYINT
   NOT DETERMINISTIC READS SQL DATA
@@ -156,7 +124,7 @@ BEGIN
   RETURN EXISTS (SELECT 1 FROM users WHERE id = p_user_id AND role = 'admin');
 END $$
 
--- p_user_id NULL = pas de valeur a controler (colonnes nullables) ; sinon doit etre un admin.
+-- p_user_id NULL accepte (colonnes nullables).
 DROP PROCEDURE IF EXISTS sp_assert_admin $$
 CREATE PROCEDURE sp_assert_admin(IN p_user_id BIGINT UNSIGNED,
                                  IN p_errno SMALLINT UNSIGNED, IN p_message VARCHAR(128))
@@ -166,10 +134,6 @@ BEGIN
     CALL sp_raise(p_errno, p_message);
   END IF;
 END $$
-
--- ---------------------------------------------------------------------------
--- Planning / moderation (505xx)
--- ---------------------------------------------------------------------------
 
 DROP PROCEDURE IF EXISTS sp_assert_planning_item $$
 CREATE PROCEDURE sp_assert_planning_item(IN p_event_id BIGINT UNSIGNED, IN p_title VARCHAR(180))

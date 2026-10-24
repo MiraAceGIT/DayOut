@@ -6,10 +6,7 @@ namespace App\Core;
 use App\Core\Log\Level;
 use RuntimeException;
 
-/**
- * Configuration typee, lue une seule fois au demarrage (config/config.php).
- * Seul endroit du code qui lit getenv() : les autres classes recoivent leurs valeurs.
- */
+/** Seul endroit du code qui lit getenv() : les autres classes recoivent leurs valeurs. */
 final class Config
 {
     /** @param array<int, string> $corsOrigins */
@@ -59,7 +56,6 @@ final class Config
         );
     }
 
-    /** null si absente ou vide. */
     private static function env(string $key): ?string
     {
         $value = getenv($key);

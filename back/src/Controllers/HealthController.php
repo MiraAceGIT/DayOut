@@ -12,7 +12,6 @@ use Throwable;
 
 final class HealthController extends Controller
 {
-    /** GET /api/health : smoke test (API + BDD joignables). */
     public function index(Request $request): Response
     {
         $db = 'down';

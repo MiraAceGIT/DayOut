@@ -6,24 +6,7 @@ namespace App\Core;
 use DateTimeImmutable;
 use LogicException;
 
-/**
- * Valide un tableau d'entree contre des regles, leve HttpException 422 sinon.
- *
- *   $data = Validator::check($input, [
- *       'title'    => 'required|string|max:150',
- *       'capacity' => 'nullable|int|min:1',
- *       'currency' => 'in:EUR,USD',
- *   ]);
- *
- * Renvoie uniquement les champs declares (les autres sont ignores), avec
- * `int` et `bool` castes. Champ absent et non `required` : absent du resultat.
- * Une seule erreur par champ : la premiere regle qui echoue.
- *
- * Regles : required, nullable, string, int, bool, array, email, url,
- * date (AAAA-MM-JJ), datetime (ISO 8601 avec fuseau), min:n, max:n, in:a,b.
- * min / max portent sur la longueur d'une chaine, la valeur d'un int ou la taille d'un tableau :
- * placer la regle de type avant (`int|min:1`, pas `min:1|int`).
- */
+/** min / max dependent du type deja caste : placer la regle de type avant (`int|min:1`, pas `min:1|int`). */
 final class Validator
 {
     private const DATETIME_FORMATS = ['Y-m-d\TH:i:sP', 'Y-m-d\TH:i:s.vP'];
@@ -41,8 +24,7 @@ final class Validator
      */
     public static function check(array $data, array $rules): array
     {
-        // Toutes les regles sont verifiees d'abord : une faute de frappe leve une
-        // LogicException tout de suite, meme si le champ n'est pas envoye.
+        // Regles verifiees d'abord : une faute de frappe leve une LogicException meme si le champ est absent.
         $parsed = array_map(self::parseRules(...), $rules, array_keys($rules));
         $parsed = array_combine(array_keys($rules), $parsed);
 
@@ -87,8 +69,6 @@ final class Validator
     }
 
     /**
-     * 'required | int|min:1' -> [['required', null], ['int', null], ['min', '1']].
-     *
      * @param string|array<int, string> $rules
      * @return array<int, array{0: string, 1: ?string}>
      */
@@ -113,7 +93,7 @@ final class Validator
         return $parsed;
     }
 
-    /** Renvoie le message d'erreur, ou null si la regle passe ($value peut etre caste). */
+    /** Message d'erreur ou null ; peut caster $value (par reference). */
     private static function apply(string $rule, ?string $arg, mixed &$value): ?string
     {
         return match ($rule) {
@@ -158,7 +138,6 @@ final class Validator
         return false;
     }
 
-    /** Accepte true/false, 1/0, "true"/"false", "1"/"0". */
     private static function toBool(mixed &$value): bool
     {
         $bool = match (true) {

@@ -21,7 +21,6 @@ final class ValueBinder
         }
     }
 
-    /** DateTime converti en UTC (fuseau de la session MySQL). */
     public static function normalize(mixed $value): mixed
     {
         if (is_bool($value)) {

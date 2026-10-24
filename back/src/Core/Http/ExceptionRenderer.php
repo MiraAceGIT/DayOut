@@ -9,12 +9,7 @@ use App\Core\Response;
 use PDOException;
 use Throwable;
 
-/**
- * Transforme toute exception en Response : aucun try/catch n'est necessaire dans les controllers.
- *   HttpException                  -> son statut, son code, son message, ses en-tetes ;
- *   regle metier d'un trigger SQL  -> traduite par DbErrorMapper (409 / 403 / 422) ;
- *   tout le reste                  -> journalise, 500 generique (jamais de message ni de trace).
- */
+/** Hors HttpException : 500 generique, jamais de message ni de trace au client. */
 final class ExceptionRenderer
 {
     public static function render(Throwable $e): Response

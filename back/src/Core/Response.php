@@ -6,11 +6,6 @@ namespace App\Core;
 use App\Core\Log\Log;
 use JsonException;
 
-/**
- * Reponse HTTP immuable, renvoyee par les actions et les middlewares puis envoyee
- * une seule fois par public/index.php (send()). Format unique du body :
- * { "data": ... } ou { "error": { "code", "message", "details"? } }.
- */
 final class Response
 {
     /** @param array<string, string> $headers */
@@ -55,7 +50,6 @@ final class Response
         return null;
     }
 
-    /** Body decode (null pour 204) : utile aux tests. */
     public function payload(): ?array
     {
         return $this->payload;

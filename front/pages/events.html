@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Liste des evenements etudiants DayOut.">
-  <!-- Meme valeur que --color-primary (tokens.css) : les variables CSS ne sont pas lues ici. -->
+  <!-- Litteral = --color-primary (tokens.css) : les variables CSS ne sont pas lues ici. -->
   <meta name="theme-color" content="#4f46e5">
   <title>DayOut — Evenements</title>
   <link rel="icon" href="data:,">
@@ -30,7 +30,7 @@
     <section id="events-list" class="card-grid" aria-label="Liste des evenements" aria-busy="false"></section>
   </main>
 
-  <!-- Surcharge locale optionnelle (ignoree par git), avant les modules. -->
+  <!-- Script classique optionnel (ignore par git), doit preceder les modules. -->
   <script src="../assets/js/config.local.js"></script>
   <script type="module" src="../assets/js/pages/events.js"></script>
 </body>

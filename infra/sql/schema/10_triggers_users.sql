@@ -1,10 +1,5 @@
--- NOTE MariaDB : `COLLATE utf8mb4_unicode_ci` dans les comparaisons sur schools.email_domain
--- evite "Illegal mix of collations" quand la collation de connexion differe (cf. 09_routines.sql).
-
 DELIMITER $$
 
--- Renseigne email_domain ; hors admin, le domaine doit etre une ecole active et school_id
--- est deduit du domaine s'il n'est pas fourni.
 DROP TRIGGER IF EXISTS trg_users_bi_whitelist $$
 CREATE TRIGGER trg_users_bi_whitelist
 BEFORE INSERT ON users
@@ -19,8 +14,7 @@ BEGIN
   END IF;
 END $$
 
--- Revalide si l'email OU le role change (un admin hors whitelist retrograde participant doit
--- etre controle). Si le domaine change, school_id est recalcule depuis le nouveau domaine.
+-- Le role compte aussi : un admin hors whitelist retrograde doit etre revalide.
 DROP TRIGGER IF EXISTS trg_users_bu_whitelist $$
 CREATE TRIGGER trg_users_bu_whitelist
 BEFORE UPDATE ON users

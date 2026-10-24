@@ -45,7 +45,6 @@ trait ExecutesQueries
         return $this->connection()->scalar(Compiler::exists($this->parts), $this->getBindings()) !== false;
     }
 
-    /** Id auto-increment, 0 si cle composite. */
     public function insert(array $data): int
     {
         if ($data === []) {

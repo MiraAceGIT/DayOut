@@ -1,13 +1,11 @@
 import { h } from "../lib/dom.js";
 import { frontUrl } from "./config.js";
 
-/** Entrees de navigation. `path` est relatif a `front/` ; l'URL finale est resolue depuis ce module. */
 export const NAV_ITEMS = [
   { id: "home",   label: "Accueil",    path: "index.html" },
   { id: "events", label: "Evenements", path: "pages/events.html" },
 ];
 
-/** Injecte l'en-tete du site dans le `<header data-layout>` de la page. */
 export function renderHeader({ current } = {}) {
   const host = document.querySelector("header[data-layout]");
   if (!host) return;

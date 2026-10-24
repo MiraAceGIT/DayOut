@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
 # Recree une base vide, joue schema/*.sql puis seed.sql.
-#   ./infra/sql/reset_db.sh               -> base DB_NAME de back/.env (demande confirmation)
-#   ./infra/sql/reset_db.sh dayout_test   -> autre base (ex. tests)
-#   options : --yes (pas de confirmation), --no-seed (schema seul)
-# Connexion : DB_HOST / DB_PORT / DB_USER / DB_PASSWORD de back/.env, surchargeables par l'environnement.
-#   ENV_FILE=/chemin/.env : lit un autre fichier que back/.env (chemin absolu, ou relatif a infra/sql/).
-#   Fichier ou cle absents : valeurs par defaut (127.0.0.1, 3306, root sans mot de passe, dayout).
-# Client : $MYSQL, sinon `mysql` du PATH, sinon celui de XAMPP.
+#   ./infra/sql/reset_db.sh [--yes] [--no-seed] [base]   (defaut : DB_NAME de back/.env)
+# Connexion : DB_* de $ENV_FILE (defaut back/.env, relatif a infra/sql/), surchargeables par l'environnement.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -22,9 +17,7 @@ for arg in "$@"; do
     esac
 done
 
-# Lit KEY dans $ENV_FILE (defaut back/.env) sans l'executer (meme format que config/config.php).
-# Fichier absent ou cle absente -> chaine vide (la valeur par defaut s'applique ensuite) :
-# grep sort en 1 sans correspondance, `|| true` evite l'arret silencieux sous set -e + pipefail.
+# Lit KEY sans sourcer le fichier. `|| true` : grep sort en 1 sans correspondance (set -e + pipefail).
 ENV_FILE="${ENV_FILE:-../../back/.env}"
 env_value() {
     [ -f "$ENV_FILE" ] || return 0

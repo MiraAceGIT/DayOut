@@ -1,6 +1,4 @@
--- DayOut — schéma pour MariaDB 10.4+ (XAMPP) / MySQL 8.0. La base `dayout` doit exister.
--- Fichiers schema/*.sql à jouer dans l'ordre (cf. infra/README.md).
--- Rejouable : FOREIGN_KEY_CHECKS=0 + DROP IF EXISTS, dans l'ordre inverse des dépendances.
+-- DayOut — schéma MariaDB 10.4+ / MySQL 8.0 ; schema/*.sql à jouer dans l'ordre, la base doit exister.
 
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
@@ -31,7 +29,7 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS schools;
 
--- Routines de 09_routines.sql (les triggers partent avec leurs tables).
+-- Les triggers partent avec leurs tables ; pas les routines.
 DROP PROCEDURE IF EXISTS sp_raise;
 DROP FUNCTION  IF EXISTS fn_email_domain;
 DROP FUNCTION  IF EXISTS fn_school_id_for_domain;

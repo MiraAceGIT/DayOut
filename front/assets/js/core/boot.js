@@ -2,13 +2,10 @@ import { setUnauthorizedHandler } from "./api.js";
 import { frontUrl } from "./config.js";
 import { renderHeader } from "./layout.js";
 
-/** Page de connexion (pas encore creee). Seul endroit ou ce chemin est defini. */
+/** Page de connexion (pas encore creee). */
 export const LOGIN_PATH = "pages/login.html";
 
-/**
- * URL de connexion avec `next` = page courante (chemin same-origin, pas d'URL absolue).
- * La future page login devra quand meme verifier que `next` reste sur le meme origin.
- */
+/** `next` est un chemin same-origin, mais la future page login devra quand meme le verifier. */
 export function loginUrl(next = location.pathname + location.search + location.hash) {
   const url = frontUrl(LOGIN_PATH);
   url.searchParams.set("next", next);

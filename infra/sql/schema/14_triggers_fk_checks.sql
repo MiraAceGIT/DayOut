@@ -1,8 +1,5 @@
--- Contraintes qui seraient des CHECK, mais MariaDB interdit un CHECK sur une colonne
--- FK avec ON DELETE SET NULL / ON UPDATE CASCADE.
--- Les actions FK ne declenchent pas de trigger : apres suppression de la cible, la ligne
--- garde un id NULL. On ne revalide donc en UPDATE que si les colonnes concernees changent.
--- Regles : sp_assert_planning_item / sp_assert_report_target (09_routines.sql).
+-- Triggers car MariaDB refuse un CHECK sur une colonne FK ON DELETE SET NULL / ON UPDATE CASCADE (erreur 1901).
+-- Les actions FK ne declenchent pas de trigger (id laisse a NULL) : en UPDATE, revalider seulement si ces colonnes changent.
 
 DELIMITER $$
 
@@ -24,7 +21,6 @@ BEGIN
   END IF;
 END $$
 
--- Exactement une cible renseignee, celle correspondant a target_type.
 DROP TRIGGER IF EXISTS trg_reports_bi $$
 CREATE TRIGGER trg_reports_bi
 BEFORE INSERT ON reports

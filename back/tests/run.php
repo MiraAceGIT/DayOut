@@ -1,13 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Runner de tests sans dependance.
- *   php tests/run.php --unit        tests unitaires seuls (pas de BDD)
- *   tests/run.sh [filtre]           unitaires + integration (remet la base de test a zero)
- * Filtre : sous-chaine de "Classe::methode", ex. Validator ou EventsTest::testShow.
- * Les tests d'integration ne tournent que si TEST_DB_NAME est defini (fait par run.sh).
- */
+// Les tests d'integration ne tournent que si TEST_DB_NAME est defini (fait par run.sh).
 
 use Tests\TestCase;
 use Tests\TestServer;

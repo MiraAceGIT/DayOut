@@ -1,21 +1,11 @@
-/**
- * Construction de DOM sans innerHTML.
- *
- *   h("a", { class: "btn", href: url, onClick: fn }, "Texte ", h("strong", {}, nom))
- *
- * - Les enfants de type string/number deviennent des noeuds texte (append) :
- *   aucune donnee n'est jamais interpretee comme du HTML.
- * - props : `class` (string ou tableau), `dataset` (objet), `on<Event>` (fonction
- *   -> addEventListener), sinon attribut. true -> attribut vide, false/null/undefined -> ignore.
- * - Refuses : innerHTML / outerHTML / srcdoc et les handlers `on*` en string.
- * - Attributs URL (href, src...) : seuls http(s) et les URL relatives passent.
- */
+// Securite : enfants string -> noeuds texte (jamais de HTML) ; innerHTML/outerHTML/srcdoc, handlers `on*`
+// en string et URL non http(s) dans href/src... (javascript:, data:) sont refuses.
 
 const FORBIDDEN_PROPS = new Set(["innerhtml", "outerhtml", "srcdoc"]);
 const URL_ATTRS = new Set(["href", "src", "action", "formaction", "poster", "cite", "xlink:href"]);
 const SAFE_PROTOCOLS = new Set(["http:", "https:"]);
 
-/** true si `value` est une URL relative ou http(s). Le parseur URL applique la meme normalisation que le navigateur. */
+/** new URL() normalise comme le navigateur : `java\tscript:` ou ` javascript:` sont donc bien bloques. */
 export function isSafeUrl(value) {
   try {
     return SAFE_PROTOCOLS.has(new URL(String(value), document.baseURI).protocol);
@@ -65,11 +55,12 @@ function appendChildren(el, children) {
     } else if (child instanceof Node) {
       el.append(child);
     } else {
-      el.append(String(child)); // string -> Text node
+      el.append(String(child));
     }
   }
 }
 
+/** props : `class` (string|tableau), `dataset` (objet), `on<Event>` (fonction) ; true -> attribut vide, false/null -> ignore. */
 export function h(tag, props = {}, ...children) {
   const el = document.createElement(tag);
   for (const [name, value] of Object.entries(props ?? {})) setProp(el, name, value);

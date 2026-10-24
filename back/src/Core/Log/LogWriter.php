@@ -5,7 +5,6 @@ namespace App\Core\Log;
 
 use RuntimeException;
 
-/** Un fichier par canal et par jour (UTC) : <canal>-AAAA-MM-JJ.log, ecrit en ajout seul. */
 final class LogWriter
 {
     /** @param array<string, int> $retentionDays canal => jours de conservation */

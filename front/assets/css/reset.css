@@ -1,4 +1,3 @@
-/* Reset minimal inspire de Josh Comeau */
 *, *::before, *::after { box-sizing: border-box; }
 
 /* Reset de marges sur les elements de contenu uniquement (pas sur tous les *) */
@@ -28,7 +27,6 @@ a { color: inherit; }
 
 ul, ol { list-style: none; }
 
-/* Mouvements reduits a la demande de l'utilisateur */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;

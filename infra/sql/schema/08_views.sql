@@ -1,5 +1,4 @@
--- Score de fiabilite, approche hybride : users.reliability_score = valeur courante (denormalisee),
--- attendance_events = journal detaille (audit), v_user_reliability = agregat temps reel pour l'admin.
+-- Agregat temps reel du journal attendance_events (users.reliability_score = valeur courante).
 
 CREATE OR REPLACE VIEW v_user_reliability AS
 SELECT

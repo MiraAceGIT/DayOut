@@ -1,5 +1,4 @@
-/* Point d'entree unique des styles. Ordre : reset -> tokens -> base -> layout -> composants.
-   Une feuille par composant dans components/ (nommage BEM leger, voir front/README.md). */
+/* Ordre significatif : reset -> tokens -> base -> layout -> composants. */
 @import url("reset.css");
 @import url("tokens.css");
 @import url("base.css");

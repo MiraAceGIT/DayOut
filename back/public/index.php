@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// Front controller : toutes les requetes y arrivent (.htaccess sous Apache, `php -S` en dev).
-
 define('APP_ROOT', dirname(__DIR__));
 
 require APP_ROOT . '/autoload.php';

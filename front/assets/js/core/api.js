@@ -7,11 +7,7 @@ const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 let csrfTokenProvider = () => null;
 let unauthorizedHandler = null;
 
-/**
- * Fournisseur du jeton CSRF envoye en `X-CSRF-Token` sur POST/PUT/PATCH/DELETE.
- * `fn` peut etre synchrone ou async ; s'il renvoie null/"" l'en-tete est omis.
- * Par defaut : null (le back n'expose pas encore d'endpoint CSRF).
- */
+/** Jeton envoye en `X-CSRF-Token` sur POST/PUT/PATCH/DELETE ; `fn` sync ou async, null/"" = en-tete omis. */
 export function setCsrfTokenProvider(fn) {
   csrfTokenProvider = typeof fn === "function" ? fn : () => null;
 }
@@ -22,13 +18,9 @@ export function setUnauthorizedHandler(fn) {
 }
 
 /**
- * .type :
- *  - "network" : serveur injoignable (panne reseau, CORS, DNS...)
- *  - "timeout" : pas de reponse dans le delai imparti
- *  - "abort"   : requete annulee par l'appelant (signal)
- *  - "parse"   : reponse 2xx dont le corps JSON est invalide ou null
- *  - "http"    : status non 2xx (code/details issus de l'enveloppe { error })
- * .requestId : valeur de l'en-tete X-Request-Id (a communiquer au support).
+ * .type : "network" (injoignable, CORS, DNS) | "timeout" | "abort" (signal de l'appelant)
+ *       | "parse" (2xx au JSON invalide ou null) | "http" (non 2xx, code/details de l'enveloppe { error }).
+ * .requestId : en-tete X-Request-Id (a communiquer au support).
  */
 export class ApiError extends Error {
   constructor(message, {
@@ -54,7 +46,6 @@ export class ApiError extends Error {
   }
 }
 
-/** Combine le signal de l'appelant et le timeout (AbortSignal.any si dispo, sinon repli manuel). */
 function buildSignal(callerSignal, timeoutMs) {
   const signals = [];
   if (callerSignal) signals.push(callerSignal);
@@ -81,7 +72,6 @@ function buildSignal(callerSignal, timeoutMs) {
   return ctrl.signal;
 }
 
-/** Traduit une exception de fetch()/lecture du corps en ApiError typee. */
 function transportError(cause, signal, requestId = null) {
   const reason = signal?.aborted ? signal.reason : cause;
   if (reason?.name === "TimeoutError") {
@@ -126,7 +116,7 @@ async function apiFetch(path, {
   try {
     res = await fetch(API_BASE_URL + path, options);
   } catch (cause) {
-    // fetch() ne rejette qu'en cas de panne reseau / CORS / abort / timeout.
+    // fetch() ne rejette pas sur un status HTTP d'erreur : seulement reseau / CORS / abort / timeout.
     throw transportError(cause, finalSignal);
   }
 
@@ -188,7 +178,6 @@ async function apiFetch(path, {
     });
   }
 
-  // Succes : l'API renvoie { data: ... }, on retourne data directement.
   return Object.prototype.hasOwnProperty.call(payload, "data") ? payload.data : payload;
 }
 

@@ -1,4 +1,3 @@
-/* Grille de cartes reutilisable (liste d'evenements, etc.) */
 .card-grid {
   display: grid;
   gap: var(--space-4);

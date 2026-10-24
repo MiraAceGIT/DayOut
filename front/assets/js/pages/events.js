@@ -10,7 +10,6 @@ const listEl   = document.querySelector("#events-list");
 const errorEl  = document.querySelector("#events-error");
 const statusEl = document.querySelector("#events-status");
 
-// Rendu via h() : les donnees API passent en noeuds texte, jamais en HTML.
 function renderEvent(ev) {
   const when = formatDate(ev.start_at);
 

@@ -5,10 +5,7 @@ namespace Tests;
 
 use Throwable;
 
-/**
- * Base des tests : chaque methode publique `test*` est executee sur une
- * instance neuve par tests/run.php. setUp() est appele avant chacune.
- */
+/** Chaque methode publique `test*` tourne sur une instance neuve ; setUp() avant chacune. */
 abstract class TestCase
 {
     public int $assertions = 0;

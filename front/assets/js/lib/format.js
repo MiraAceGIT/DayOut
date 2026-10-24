@@ -1,9 +1,6 @@
 const LOCALE = "fr-FR";
 
-/**
- * Formate une date (ISO 8601, timestamp ou Date) pour l'affichage.
- * Valeur vide ou invalide -> `fallback` (jamais "Invalid Date").
- */
+/** Valeur vide ou invalide -> `fallback` (jamais "Invalid Date"). */
 export function formatDate(value, {
   fallback = "",
   locale = LOCALE,
@@ -15,10 +12,7 @@ export function formatDate(value, {
   return date.toLocaleString(locale, options);
 }
 
-/**
- * Formate un prix stocke en centimes. `isPaid: false` -> `freeLabel`.
- * Montant non numerique -> `fallback`.
- */
+/** `cents` en centimes ; `isPaid: false` -> `freeLabel`, montant non numerique -> `fallback`. */
 export function formatPrice(cents, {
   isPaid = true,
   currency = "EUR",

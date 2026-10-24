@@ -8,10 +8,7 @@ use PDO;
 use PDOException;
 use RuntimeException;
 
-/**
- * Facade statique configuree une fois au demarrage (configure()), connexion ouverte
- * a la premiere requete. Point d'acces unique : orm(), jamais le PDO brut.
- */
+/** Point d'acces unique a la BDD : orm(), jamais le PDO brut. */
 final class Database
 {
     private static ?Config $config = null;
@@ -40,13 +37,10 @@ final class Database
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
-            // Les casts/bindings supposent une BDD en UTC : DEFAULT CURRENT_TIMESTAMP
-            // doit l'etre aussi, quel que soit le fuseau du serveur.
+            // Casts et bindings supposent une session UTC (DEFAULT CURRENT_TIMESTAMP compris).
             $pdo->exec("SET time_zone = '+00:00'");
         } catch (PDOException $e) {
-            // Ne JAMAIS concatener $e->getMessage() a l'exception : il peut
-            // exposer host/user au client. Il reste dans `previous`, journalise
-            // par l'appelant (ExceptionRenderer ou /health).
+            // Jamais $e->getMessage() ici : il peut exposer host/user. Il reste journalise via `previous`.
             throw new RuntimeException('Database connection failed', 0, $e);
         }
         return $pdo;

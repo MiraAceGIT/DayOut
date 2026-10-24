@@ -5,13 +5,7 @@ namespace App\Core\Log;
 
 use Throwable;
 
-/**
- * Filets de securite hors du Kernel (qui rend lui-meme les exceptions des routes) :
- *   - warnings / notices PHP -> journalises ;
- *   - exception non rattrapee (ex. config invalide au demarrage) -> journalisee + 500 JSON ;
- *   - erreur fatale (memoire, timeout) -> journalisee + 500 JSON si rien n'a ete envoye.
- * Ne depend pas de la couche HTTP : la reponse de secours est ecrite a la main.
- */
+/** Filets hors Kernel ; ne depend pas de la couche HTTP : la reponse de secours est ecrite a la main. */
 final class ErrorHandler
 {
     /** Types que set_error_handler() ne recoit jamais : visibles seulement au shutdown. */
@@ -54,7 +48,6 @@ final class ErrorHandler
         self::sendInternalError();
     }
 
-    /** Garde l'enveloppe JSON promise au client, meme sans Response. */
     private static function sendInternalError(): void
     {
         if (headers_sent()) {

@@ -5,10 +5,7 @@ namespace Tests;
 
 use RuntimeException;
 
-/**
- * Tests d'integration : vraies requetes HTTP sur le serveur demarre par
- * tests/run.php, branche sur la base de test remise a zero (seed.sql).
- */
+/** Vraies requetes HTTP sur le serveur demarre par tests/run.php (base de test, seed.sql). */
 abstract class HttpTestCase extends TestCase
 {
     /** Origine autorisee par le serveur de test (CORS_ORIGIN). */
@@ -58,7 +55,6 @@ abstract class HttpTestCase extends TestCase
         $this->assertSame($expected, $response->status, 'HTTP status, body: ' . substr($response->body, 0, 300));
     }
 
-    /** Verifie l'enveloppe { error: { code, message } } ; renvoie error pour d'autres assertions. */
     protected function assertError(int $status, string $code, TestResponse $response): array
     {
         $this->assertStatus($status, $response);

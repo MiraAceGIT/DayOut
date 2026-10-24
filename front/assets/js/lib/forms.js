@@ -1,7 +1,4 @@
-/**
- * Erreurs de formulaire et messages utilisateur.
- * lib/ ne depend de rien : ApiError est reconnue par son `name` (pas d'import de core/).
- */
+// lib/ ne depend pas de core/ : ApiError est reconnue par son `name`, pas par instanceof.
 
 const ERROR_CLASS = "field-error";
 
@@ -28,7 +25,6 @@ function controlsFor(form, field) {
   return item instanceof Element ? [item] : Array.from(item);
 }
 
-/** Retire les erreurs posees par showFieldErrors. */
 export function clearFieldErrors(form) {
   if (!form) return;
   for (const p of form.querySelectorAll(`p.${ERROR_CLASS}[data-field-error]`)) {
@@ -39,12 +35,7 @@ export function clearFieldErrors(form) {
   for (const el of form.querySelectorAll('[aria-invalid="true"]')) el.removeAttribute("aria-invalid");
 }
 
-/**
- * Affiche les erreurs `details` = { champ: message } (422 VALIDATION_ERROR).
- * Pour chaque champ : aria-invalid="true", <p id="<champ>-error" class="field-error">
- * relie par aria-describedby. Focus sur le premier champ invalide.
- * Renvoie les entrees sans champ correspondant (a afficher dans un message global).
- */
+/** `details` = { champ: message } (422). Renvoie les entrees sans champ correspondant, a afficher en message global. */
 export function showFieldErrors(form, details, { focus = true } = {}) {
   clearFieldErrors(form);
   const unmatched = {};
@@ -101,7 +92,6 @@ function baseMessage(err) {
   return "La requête n'a pas pu aboutir. Réessayez plus tard.";
 }
 
-/** Message utilisateur (francais) pour une erreur quelconque, avec la reference X-Request-Id si connue. */
 export function messageFor(err) {
   if (!(err instanceof Error) || err.name !== "ApiError") {
     return "Une erreur inattendue est survenue. Réessayez plus tard.";

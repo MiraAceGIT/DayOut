@@ -11,11 +11,7 @@ use App\Core\Orm\Query\QueryBuilder;
 use App\Core\Orm\Rows;
 use LogicException;
 
-/**
- * Base des models MVC : une sous-classe par table, une methode par besoin metier.
- * Lignes renvoyees en tableaux deja castes ; query() reste protected pour que
- * les controllers ne construisent pas de SQL.
- */
+/** query() reste protected : les controllers ne construisent pas de SQL. */
 abstract class Model
 {
     protected const TABLE = '';
@@ -33,7 +29,6 @@ abstract class Model
 
     private Connection $connection;
 
-    /** Sans argument : connexion partagee Database::orm(). Le parametre sert aux tests. */
     public function __construct(?Connection $connection = null)
     {
         if (static::TABLE === '') {
@@ -42,11 +37,7 @@ abstract class Model
         $this->connection = $connection ?? Database::orm();
     }
 
-    /*
-     * find / findMany / all sont protected : ils ignorent les regles de visibilite
-     * (ex. seuls les events `published`). Chaque model expose ses propres methodes
-     * nommees (findPublishedById...) qui les appliquent.
-     */
+    // find / findMany / all ignorent la visibilite (ex. `published`) : exposer des methodes nommees.
     protected function find(int|string $id): ?array
     {
         return $this->query()->where(static::PRIMARY_KEY, $id)->first();
@@ -68,17 +59,11 @@ abstract class Model
         return $this->query()->get();
     }
 
-    /**
-     * $input (saisie client) est filtre par FILLABLE ; $server (creator_id,
-     * status, password_hash...) est fixe par le code et n'est pas filtre.
-     * Erreurs SQL (contraintes, triggers SIGNAL 45000) -> PDOException.
-     */
     public function create(array $input, array $server = []): int
     {
         return $this->table()->insert($this->row($input, $server));
     }
 
-    /** Meme separation $input / $server que create(). */
     public function updateById(int|string $id, array $input, array $server = []): int
     {
         return $this->table()
@@ -91,7 +76,6 @@ abstract class Model
         return $this->table()->where(static::PRIMARY_KEY, $id)->delete();
     }
 
-    /** Lecture : COLUMNS + casts appliques. */
     protected function query(): QueryBuilder
     {
         return $this->table()
@@ -105,10 +89,7 @@ abstract class Model
         return $this->connection->table(static::TABLE);
     }
 
-    /**
-     * $input vide accepte si $server suffit. Rien a ecrire (body vide ou sans champ
-     * FILLABLE) : erreur du client -> 400, pas un 500.
-     */
+    /** Rien a ecrire (body vide ou sans champ FILLABLE) : erreur du client, 400 et non 500. */
     private function row(array $input, array $server): array
     {
         if (static::FILLABLE === [] && $input !== []) {

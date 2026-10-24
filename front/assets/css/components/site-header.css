@@ -1,4 +1,4 @@
-/* En-tete + navigation (injectes par core/layout.js) */
+/* Markup injecte par core/layout.js */
 .site-header {
   min-height: var(--header-min-height);
   background: var(--color-surface);

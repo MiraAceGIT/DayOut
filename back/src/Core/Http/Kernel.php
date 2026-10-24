@@ -10,10 +10,7 @@ use App\Core\Response;
 use App\Core\Router;
 use Throwable;
 
-/**
- * Cycle d'une requete : Request -> Response, sans effet de bord (pas d'envoi, pas d'exit),
- * donc testable en unitaire. public/index.php appelle handle() puis send().
- */
+/** Request -> Response sans effet de bord (ni envoi ni exit) : testable en unitaire. */
 final class Kernel
 {
     private readonly Cors $cors;
@@ -34,7 +31,7 @@ final class Kernel
             $response = ExceptionRenderer::render($e);
         }
 
-        // Apres le rendu des erreurs : CORS et securite sur toutes les reponses.
+        // Apres le rendu des erreurs : sans CORS, le navigateur masquerait le body d'erreur au front.
         return $this->cors
             ->apply($request, SecurityHeaders::apply($response))
             ->withHeader('X-Request-Id', Log::requestId());

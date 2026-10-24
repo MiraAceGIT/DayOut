@@ -7,7 +7,6 @@ use DateTimeInterface;
 use JsonSerializable;
 use Throwable;
 
-/** Rend le contexte serialisable en JSON et masque les donnees sensibles. */
 final class ContextSanitizer
 {
     public const MASK = '[REDACTED]';
@@ -22,10 +21,8 @@ final class ContextSanitizer
     }
 
     /**
-     * Filet de securite : un secret connu ne doit jamais sortir, meme cite dans un message libre.
-     * $line est du JSON : le secret y est cherche sous sa forme encodee.
-     * Les secrets de moins de 4 caracteres sont ignores (trop de faux positifs).
-     *
+     * Filet de securite, meme pour un secret cite dans un message libre. $line est du JSON :
+     * recherche sous forme encodee. Moins de 4 caracteres : ignore (trop de faux positifs).
      * @param array<int, string> $secrets
      */
     public static function scrubSecrets(string $line, array $secrets): string
