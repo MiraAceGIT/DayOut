@@ -23,7 +23,7 @@ back/
 │   ├── Models/         ← M : Model.php (base) + une classe par table
 │   └── Controllers/    ← C : logique HTTP (une classe par ressource)
 ├── config/config.php   ← charge le .env
-├── routes/api.php      ← table de routage
+├── routes/            ← un fichier de routes par ressource (charges par api.php)
 ├── .env.example
 └── README.md
 ```
@@ -117,8 +117,15 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
 1. Ecrire le `Model` dans `src/Models/` (herite de `App\Models\Model`, voir *ORM* ci-dessous).
 2. Ecrire le `Controller` dans `src/Controllers/` (herite de `App\Core\Controller`) ;
    il instancie ses models dans son constructeur (`new User()`).
-3. Declarer la route dans `routes/api.php` :
+3. Declarer les routes dans `routes/<ressource>.php` (ex. `routes/users.php`),
+   charge automatiquement par `routes/api.php` :
    ```php
+   <?php
+   declare(strict_types=1);
+
+   use App\Controllers\UserController;
+
+   /** @var \App\Core\Router $router */
    $router->get('/api/users/{id:\d+}', [UserController::class, 'show']);
    ```
 4. Pour une route protegee (futur) :
@@ -272,7 +279,7 @@ une entree utilisateur (passer par les bindings de `whereRaw`). Les erreurs SQL
 ```
 HTTP -> public/.htaccess -> public/index.php
      -> autoload + CORS + headers securite
-     -> routes/api.php (declarations)
+     -> routes/api.php -> routes/<ressource>.php (declarations)
      -> Router::dispatch (match {param}, middlewares)
      -> Controller::action
      -> Model (methode nommee)
