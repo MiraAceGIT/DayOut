@@ -1,8 +1,9 @@
 # Back — API REST DayOut (PHP + MariaDB)
 
-API REST en PHP vanilla (pas de framework ni Composer). Architecture MVC :
-`Models` lisent la BDD, `Controllers` orchestrent, `Core` fournit routeur /
-BDD / request / response / password.
+API REST en PHP vanilla (pas de framework ni Composer). `Controllers`
+orchestrent, `Repositories` exposent l'acces aux donnees par methodes nommees,
+`Mappers` decrivent les tables, `Orm` fournit le query builder, `Core` fournit
+routeur / BDD / request / response / password.
 
 ## Structure
 
@@ -13,8 +14,15 @@ back/
 │   └── .htaccess       ← rewrite + headers de securite
 ├── src/
 │   ├── Core/           ← Router, Database, Request, Response, Controller, Password
-│   ├── Controllers/    ← logique HTTP (une classe par ressource)
-│   └── Models/         ← acces BDD (requetes SQL)
+│   ├── Orm/            ← ORM maison
+│   │   ├── Connection.php, ValueBinder.php     ← execution PDO + bindings
+│   │   ├── TableMapper.php, Caster.php         ← definition de table + casts
+│   │   ├── Repository.php, Rows.php            ← repository de base + batch anti N+1
+│   │   └── Query/      ← QueryBuilder (+ traits), WhereClause, QueryParts,
+│   │                     Compiler, Grammar
+│   ├── Mappers/        ← une classe par table (herite de App\Orm\TableMapper)
+│   ├── Repositories/   ← acces aux donnees (herite de App\Orm\Repository)
+│   └── Controllers/    ← logique HTTP (une classe par ressource)
 ├── config/config.php   ← charge le .env
 ├── routes/api.php      ← table de routage
 ├── .env.example
@@ -107,8 +115,10 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
 
 ## Ajouter une route
 
-1. Ecrire le `Model` (requetes SQL) dans `src/Models/`.
-2. Ecrire le `Controller` dans `src/Controllers/` (hereite de `App\Core\Controller`).
+1. Ecrire le `Mapper` dans `src/Mappers/` et le `Repository` dans
+   `src/Repositories/` (voir *ORM* ci-dessous).
+2. Ecrire le `Controller` dans `src/Controllers/` (herite de `App\Core\Controller`) ;
+   il instancie ses repositories dans son constructeur (`new UserRepository(Database::orm())`).
 3. Declarer la route dans `routes/api.php` :
    ```php
    $router->get('/api/users/{id:\d+}', [UserController::class, 'show']);
@@ -118,9 +128,147 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
    $router->post('/api/events', [EventController::class, 'create'], [AuthMiddleware::class]);
    ```
 
+## ORM
+
+ORM maison minimal dans `src/Orm/`, en couches a responsabilite unique :
+
+| Classe                  | Role                                                                  |
+| ----------------------- | --------------------------------------------------------------------- |
+| `TableMapper`           | definition d'une table (constantes) + `hydrate()` / `extract()`       |
+| `Repository`            | acces aux donnees d'une table, methodes nommees (`find`, `create`...) |
+| `Query\QueryBuilder`    | requetes fluentes (`where`, `join`, `orderBy`, `get`, `count`...)     |
+| `Query\Compiler`        | assemble le SQL ; `Query\Grammar` valide et quote les identifiants    |
+| `Connection`            | execute le SQL via PDO (bindings, transactions)                       |
+| `Rows`                  | `keyBy` / `groupBy` pour assembler des chargements batch              |
+
+Les entites sont des tableaux associatifs deja castes, directement passables
+a `$this->ok()`. `Database::orm()` renvoie la `Connection` partagee : c'est le
+seul appel au singleton, fait dans le constructeur du controller.
+
+**Declarer un mapper + un repository :**
+```php
+// src/Mappers/UserMapper.php
+final class UserMapper extends TableMapper
+{
+    protected const TABLE    = 'users';
+    protected const COLUMNS  = ['id', 'email', 'first_name', 'last_name', 'role', 'banned', 'created_at'];  // jamais password_hash
+    protected const FILLABLE = ['email', 'first_name', 'last_name'];  // saisie client uniquement
+    protected const CASTS    = ['banned' => 'bool', 'created_at' => 'datetime'];  // colonnes presentes dans COLUMNS
+}
+
+// src/Repositories/UserRepository.php
+final class UserRepository extends Repository
+{
+    public function __construct(Connection $connection)
+    {
+        parent::__construct($connection, new UserMapper());
+    }
+
+    /** Une methode par besoin metier ; query() est protected. */
+    public function listAdmins(): array
+    {
+        return $this->query()->where('role', 'admin')->orderBy('last_name')->get();
+    }
+}
+
+// src/Controllers/UserController.php
+public function __construct(?UserRepository $users = null)
+{
+    $this->users = $users ?? new UserRepository(Database::orm());
+}
+```
+
+| Constante     | Role                                                                 |
+| ------------- | -------------------------------------------------------------------- |
+| `TABLE`       | nom de la table (obligatoire)                                        |
+| `PRIMARY_KEY` | `id` par defaut                                                      |
+| `COLUMNS`     | colonnes lues par defaut (contrat API) — `*` par defaut              |
+| `FILLABLE`    | colonnes de la saisie client acceptees par `create()` / `updateById()`, le reste est ignore |
+| `CASTS`       | `int`, `float`, `bool`, `datetime` (ISO 8601 UTC), `json`            |
+
+**Lire** (methodes publiques heritees + `$this->query()` dans le repository) :
+```php
+$users->find(3);                                 // ?array
+$users->findMany([1, 2, 2, 3]);                  // [1 => [...], 2 => [...], 3 => [...]] (1 requete)
+$users->all();
+
+// dans UserRepository :
+$this->query()->where('school_id', 1)->orderBy('last_name')->limit(20)->get();
+$this->query()->where('reliability_score', '<', 40)->count();
+$this->query()->whereIn('id', [1, 2, 3])->pluck('email');
+$this->query()
+    ->where(fn ($q) => $q->where('role', 'admin')->orWhere('banned', true))  // ( ... OR ... )
+    ->whereNotNull('last_login_at')
+    ->forPage(2, 20)                             // LIMIT 20 OFFSET 20
+    ->get();
+$this->query()->where('role', 'admin')->exists();
+```
+
+**Ecrire :**
+```php
+// 1er argument : saisie client (filtree par FILLABLE)
+// 2e argument  : champs fixes par le serveur (non filtres)
+$id = $users->create($this->body(), ['password_hash' => Password::hash($password)]);  // id insere
+$users->updateById($id, ['first_name' => 'B']);                                       // nb lignes
+$users->deleteById($id);
+
+// Requete libre (pas de filtre FILLABLE ni de casts) : $this->table() dans un
+// repository, ou Database::orm()->table(...) ailleurs.
+$this->table()->where('event_id', 4)->where('status', 'no_show')->update(['status' => 'cancelled']);
+
+// Transaction : la Connection est partagee, donc tous les repositories
+// construits avec Database::orm() participent a la meme transaction.
+Database::orm()->transaction(function (Connection $db) use ($events, $registrations) {
+    // tout ou rien ; la valeur retournee est renvoyee par transaction()
+});
+```
+
+**Jointures / agregats** (`$this->table()` : builder brut, sans COLUMNS ni casts) :
+```php
+$this->table()
+    ->select('events.id', 'events.title', 'u.email AS creator_email')
+    ->selectRaw('COUNT(r.id) AS nb_registrations')
+    ->join('users AS u', 'u.id', '=', 'events.creator_id')
+    ->leftJoin('registrations AS r', 'r.event_id', '=', 'events.id')
+    ->groupBy('events.id', 'events.title', 'u.email')
+    ->orderByDesc('nb_registrations')
+    ->get();
+```
+`->toSql()` / `->getBindings()` affichent la requete generee pour debugger.
+
+**Regle anti N+1 :** ne jamais appeler `find()` ou une requete dans une boucle.
+Charger les relations en une requete (`findMany` ou `whereIn`), puis les
+rattacher en PHP avec `Rows::keyBy` / `Rows::groupBy` :
+```php
+// RegistrationRepository
+public function listForEvents(array $eventIds): array
+{
+    if ($eventIds === []) {
+        return [];
+    }
+    $rows = $this->query()->whereIn('event_id', $eventIds)->get();
+    return Rows::groupBy($rows, 'event_id');      // [event_id => [registration, ...]]
+}
+
+// Controller : 2 requetes au total, quel que soit le nombre d'events
+$items  = $this->events->listPublished($limit, $offset);
+$byEvent = $this->registrations->listForEvents(array_column($items, 'id'));
+foreach ($items as &$event) {
+    $event['registrations'] = $byEvent[$event['id']] ?? [];
+}
+unset($event);
+```
+
+Garde-fous : valeurs toujours bindees (`?`), noms de colonnes valides par regex
+au moment de l'appel et entoures de backticks, operateurs, sens de tri et types
+de jointure en whitelist, `update()` / `delete()` refuses sans `WHERE`.
+`selectRaw()` / `whereRaw()` acceptent du SQL brut : n'y concatener **jamais**
+une entree utilisateur (passer par les bindings de `whereRaw`). Les erreurs SQL
+(contraintes, triggers `SIGNAL 45000`) remontent en `PDOException`.
+
 ## Securite — ce qui est en place
 
-- PDO `ERRMODE_EXCEPTION` + `EMULATE_PREPARES=false` + bindings nommes (anti-SQLi)
+- PDO `ERRMODE_EXCEPTION` + `EMULATE_PREPARES=false` + placeholders `?` bindes (anti-SQLi)
 - CORS whitelist via `CORS_ORIGIN` (plus `*` avec credentials)
 - Headers : `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
   `Permissions-Policy`, `CSP` (API-only)
@@ -137,6 +285,8 @@ HTTP -> public/.htaccess -> public/index.php
      -> routes/api.php (declarations)
      -> Router::dispatch (match {param}, middlewares)
      -> Controller::action
-     -> Model::query  -> PDO -> MariaDB
+     -> Repository (methode nommee)
+     -> QueryBuilder -> Compiler (SQL) -> Connection (bindings) -> PDO -> MariaDB
+     -> TableMapper::hydrate (casts de chaque ligne)
      -> Response::json / Response::error
 ```

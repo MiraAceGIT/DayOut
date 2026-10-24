@@ -64,9 +64,14 @@ try {
         $_SERVER['REQUEST_METHOD'] ?? 'GET',
         parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'
     );
+} catch (\PDOException $e) {
+    // A traiter avant RuntimeException (classe parente) : getCode() y est un
+    // SQLSTATE string ('42S22'), qui passerait le test 4xx ci-dessous.
+    error_log('[dispatch] ' . $e);
+    Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
 } catch (\RuntimeException $e) {
     // Les RuntimeException avec code 4xx proviennent de la validation d'entree.
-    $code = $e->getCode();
+    $code = (int) $e->getCode();
     if ($code >= 400 && $code < 500) {
         Response::error('BAD_REQUEST', $e->getMessage(), $code);
     }

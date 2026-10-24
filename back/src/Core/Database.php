@@ -3,17 +3,19 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Orm\Connection;
 use PDO;
 use PDOException;
 use RuntimeException;
 
 /**
- * Singleton PDO. Lit la config depuis les variables d'environnement (.env).
- * Usage : Database::connection()->prepare(...)
+ * Point de composition de l'acces BDD. Lit la config depuis l'env (.env).
+ * Usage : Database::connection() (PDO brut) ou Database::orm() (ORM).
  */
 final class Database
 {
     private static ?PDO $pdo = null;
+    private static ?Connection $orm = null;
 
     public static function connection(): PDO
     {
@@ -43,6 +45,9 @@ final class Database
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
+            // Les casts/bindings supposent une BDD en UTC : DEFAULT CURRENT_TIMESTAMP
+            // doit l'etre aussi, quel que soit le fuseau du serveur.
+            self::$pdo->exec("SET time_zone = '+00:00'");
         } catch (PDOException $e) {
             // Ne JAMAIS concatener $e->getMessage() : il peut exposer
             // host/user/password dans la trace client. Log serveur uniquement.
@@ -51,5 +56,14 @@ final class Database
         }
 
         return self::$pdo;
+    }
+
+    /**
+     * Connection ORM partagee. Une seule instance par requete HTTP : une
+     * transaction ouverte dessus couvre donc tous les repositories.
+     */
+    public static function orm(): Connection
+    {
+        return self::$orm ??= new Connection(self::connection());
     }
 }

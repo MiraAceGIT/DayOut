@@ -4,11 +4,20 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Database;
 use App\Core\Request;
-use App\Models\Event;
+use App\Repositories\EventRepository;
 
 final class EventController extends Controller
 {
+    private EventRepository $events;
+
+    /** Le Router instancie sans argument ; le parametre sert aux tests. */
+    public function __construct(?EventRepository $events = null)
+    {
+        $this->events = $events ?? new EventRepository(Database::orm());
+    }
+
     /** GET /api/events?limit=20&offset=0 */
     public function index(array $params): void
     {
@@ -16,7 +25,7 @@ final class EventController extends Controller
         $offset = Request::queryInt('offset',  0, 0, 10_000);
 
         $this->ok([
-            'items'  => Event::listPublished($limit, $offset),
+            'items'  => $this->events->listPublished($limit, $offset),
             'limit'  => $limit,
             'offset' => $offset,
         ]);
@@ -26,7 +35,7 @@ final class EventController extends Controller
     public function show(array $params): void
     {
         $id = (int) $params['id'];
-        $event = Event::findPublishedById($id);
+        $event = $this->events->findPublishedById($id);
         if ($event === null) {
             $this->error('NOT_FOUND', 'Event not found', 404, ['id' => $id]);
         }
