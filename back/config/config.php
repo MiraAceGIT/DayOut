@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 // .env minimal (KEY=VALUE, pas d'interpolation) pousse dans getenv()/$_ENV.
+// Une variable deja definie dans l'environnement l'emporte (ex. DB_NAME=dayout_test pour les tests).
 
 $envFile = APP_ROOT . '/.env';
 if (is_file($envFile)) {
@@ -13,6 +14,9 @@ if (is_file($envFile)) {
         [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
         $k = trim($k);
         $v = trim($v, " \t\"'");
+        if (getenv($k) !== false) {
+            continue;
+        }
         putenv("$k=$v");
         $_ENV[$k] = $v;
     }

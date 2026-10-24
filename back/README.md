@@ -14,7 +14,8 @@ back/
 │   ├── index.php       ← point d'entree unique (front controller)
 │   └── .htaccess       ← rewrite + headers de securite
 ├── src/
-│   ├── Core/           ← Router, Database, Request, Response, Controller, Password
+│   ├── Core/           ← Router, Database, Request, Response, Controller, Password,
+│   │                     Validator, HttpException
 │   │   ├── Log/        ← journalisation (error / info / audit)
 │   │   └── Orm/        ← moteur ORM maison
 │   │       ├── Connection.php, ValueBinder.php  ← execution PDO + bindings
@@ -26,6 +27,8 @@ back/
 ├── config/config.php   ← charge le .env
 ├── routes/            ← un fichier de routes par ressource (charges par api.php)
 ├── storage/logs/       ← fichiers de logs (crees a la volee, ignores par git)
+├── tests/              ← runner maison : Unit/ (sans BDD), Http/ (integration)
+├── autoload.php        ← autoload PSR-4 App\ -> src/
 ├── .env.example
 └── README.md
 ```
@@ -60,7 +63,7 @@ Toutes les reponses sont en JSON et suivent une enveloppe standard.
 ```
 
 Codes d'erreur emis : `BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`,
-`INTERNAL_ERROR`, `ENCODING_ERROR`.
+`VALIDATION_ERROR` (422, `details` = champ -> message), `INTERNAL_ERROR`, `ENCODING_ERROR`.
 
 ## Endpoints
 
@@ -104,6 +107,44 @@ dates en ISO 8601 UTC (`DateTime::ATOM`). Seuls les events `status='published'`
 sont exposes.
 
 ## Tester
+
+### Tests automatiques
+
+Runner maison sans dependance (pas de Composer), depuis Git Bash :
+
+```bash
+back/tests/run.sh               # tout : unitaires + integration
+back/tests/run.sh EventsTest    # filtre sur "Classe::methode"
+back/tests/run.sh --unit        # unitaires seuls, sans BDD
+```
+
+- `tests/Unit/` : classes testees directement (Validator, ContextSanitizer, ErrorHandler).
+- `tests/Http/` : vraies requetes HTTP. `run.sh` remet a zero la base **`dayout_test`**
+  (`infra/sql/reset_db.sh`, schema + seed), puis lance `php -S` sur un port libre
+  branche sur cette base, avec des logs dans un dossier temporaire. La base de dev
+  et `storage/logs/` ne sont jamais touches. Autre base : `TEST_DB_NAME=... back/tests/run.sh`.
+- PHP : `php` du PATH, sinon `C:\xampp\php\php.exe` (ou `PHP=/chemin/php`).
+
+Ajouter un test : une classe `*Test` dans `tests/Unit/` (herite de `Tests\TestCase`)
+ou `tests/Http/` (herite de `Tests\HttpTestCase`), une methode publique `test*` par cas.
+Les tests HTTP s'appuient sur les donnees de `infra/sql/seed.sql`.
+
+```php
+final class EventsTest extends HttpTestCase
+{
+    public function testShowUnknownEventReturns404(): void
+    {
+        $error = $this->assertError(404, 'NOT_FOUND', $this->get('/api/events/99999'));
+        $this->assertSame(['id' => 99999], $error['details']);
+    }
+}
+```
+
+Assertions : `assertSame`, `assertTrue` / `assertFalse`, `assertCount`, `assertArrayHasKey`,
+`assertStringContains`, `assertThrows` ; en HTTP `assertStatus`, `assertError`, et
+`get` / `post` / `request` qui renvoient un `TestResponse` (`status`, `header()`, `json()`).
+
+### A la main
 
 ```bash
 curl http://localhost:8000/api/health
@@ -351,3 +392,50 @@ au gestionnaire global `App\Core\Log\ErrorHandler`.
 
 Un `try/catch` ne se justifie que pour reagir a une erreur precise
 (ex. `/health` qui repond `db: down` au lieu d'echouer).
+
+## Validation des entrees
+
+`App\Core\Validator` verifie les donnees recues et leve une `HttpException` 422 si
+elles sont invalides. Dans un controller, `$this->validate()` valide le body JSON :
+
+```php
+public function create(array $params): void
+{
+    $data = $this->validate([
+        'title'       => 'required|string|min:3|max:150',
+        'start_at'    => 'required|datetime',
+        'capacity'    => 'nullable|int|min:1',
+        'is_paid'     => 'bool',
+        'currency'    => 'in:EUR',
+        'contact_url' => 'nullable|url',
+    ]);
+    // $data ne contient que les champs declares, `int` et `bool` deja castes.
+}
+```
+
+Reponse en cas d'erreur (une erreur par champ, la premiere regle qui echoue) :
+```json
+{ "error": { "code": "VALIDATION_ERROR", "message": "Invalid input",
+  "details": { "title": "This field is required", "capacity": "Must be at least 1" } } }
+```
+
+| Regle      | Accepte                                                              |
+| ---------- | -------------------------------------------------------------------- |
+| `required` | present, non `null`, ni chaine vide (apres trim), ni tableau vide    |
+| `nullable` | `null` autorise (les autres regles sont alors ignorees)              |
+| `string`   | chaine                                                               |
+| `int`      | entier ou chaine d'entier (`"12"`, utile pour la query), caste en int |
+| `bool`     | `true`/`false`, `1`/`0`, `"true"`/`"false"`, `"1"`/`"0"`, caste en bool |
+| `array`    | tableau                                                              |
+| `email`    | adresse email valide                                                 |
+| `url`      | URL `http://` ou `https://` (refuse `javascript:`...)                |
+| `date`     | `AAAA-MM-JJ`, date reelle (refuse `2026-02-31`)                      |
+| `datetime` | ISO 8601 avec fuseau : `2026-11-07T20:00:00Z`, `...+01:00`           |
+| `min:n`    | longueur d'une chaine (en caracteres), valeur d'un int, taille d'un tableau |
+| `max:n`    | idem                                                                 |
+| `in:a,b`   | une des valeurs listees (sensible a la casse)                        |
+
+Un champ absent et non `required` est simplement absent du resultat. Placer la
+regle de type avant `min` / `max` (`int|min:1`). Une regle inconnue leve une
+`LogicException` (erreur de dev, donc 500). Pour valider la query string :
+`Validator::check($_GET, [...])`.

@@ -26,4 +26,10 @@ abstract class Controller
     {
         return Request::json();
     }
+
+    /** Valide le body JSON (ou $data) : voir Validator pour les regles. */
+    protected function validate(array $rules, ?array $data = null): array
+    {
+        return Validator::check($data ?? $this->body(), $rules);
+    }
 }

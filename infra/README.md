@@ -73,9 +73,21 @@ Le binaire `mysql` est fourni par XAMPP dans `C:\xampp\mysql\bin\mysql.exe`.
 
 ## Reset complet
 
-Pour repartir d'une base vide (après avoir modifié un script par exemple) :
+Pour repartir d'une base propre (après avoir modifié un script par exemple), depuis Git Bash :
 
-Dans phpMyAdmin → base `dayout` → **Opérations** → *Supprimer la base de données* → recommencer les étapes 1 à 3.
+```bash
+./infra/sql/reset_db.sh                # base de back/.env (dayout), demande confirmation
+./infra/sql/reset_db.sh dayout_test    # une autre base (utilisée par back/tests/run.sh)
+./infra/sql/reset_db.sh --yes          # sans confirmation
+./infra/sql/reset_db.sh --no-seed      # schéma seul
+```
+
+Le script supprime et recrée la base, joue `schema/*.sql` dans l'ordre puis `seed.sql`, et
+affiche les comptages attendus. Connexion lue dans `back/.env` (`DB_HOST`, `DB_PORT`,
+`DB_USER`, `DB_PASSWORD`). Client : `mysql` du PATH, sinon `C:\xampp\mysql\bin\mysql.exe`
+(ou `MYSQL=/chemin/mysql`). MySQL doit être démarré dans XAMPP.
+
+À la main, dans phpMyAdmin → base `dayout` → **Opérations** → *Supprimer la base de données* → recommencer les étapes 1 à 3.
 
 Ou en ligne de commande :
 
@@ -150,6 +162,7 @@ infra/
     │   ├── 13_triggers_admin_roles.sql   ← FK vers users réservées aux admins
     │   └── 14_triggers_fk_checks.sql     ← règles impossibles en CHECK sur une FK (MariaDB #1901)
     ├── build_schema.sh   ← concatène schema/*.sql → dist/schema.sql
+    ├── reset_db.sh       ← recrée une base + schéma + seed en une commande
     └── seed.sql          ← données de test (écoles, users, events…)
 
 Ajouter une table : la placer dans le fichier de son domaine (en respectant l'ordre des FK) et ajouter son `DROP TABLE IF EXISTS` dans `00_reset.sql`.

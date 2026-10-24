@@ -32,4 +32,10 @@ final class HttpException extends RuntimeException
     {
         return new self(404, 'NOT_FOUND', $message, $details);
     }
+
+    /** @param array<string, string> $errors champ => message */
+    public static function validation(array $errors): self
+    {
+        return new self(422, 'VALIDATION_ERROR', 'Invalid input', $errors);
+    }
 }
