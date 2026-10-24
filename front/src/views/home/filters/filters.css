@@ -1,0 +1,18 @@
+/* Puces de filtres et de categories, pilotees par FilterChips.js (meme dossier). */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Puces de categorie : style "pastille" de la charte, a bascule. */
+.chip--category {
+  min-height: 32px;
+  padding-inline: var(--space-3);
+  border-color: var(--color-border-light);
+  background: var(--color-surface);
+  font-size: var(--font-size-pill);
+  letter-spacing: var(--letter-spacing-pill);
+  text-transform: uppercase;
+}
+.chip--category[aria-pressed="true"] .cat-dot { box-shadow: 0 0 0 2px var(--color-on-brand); }

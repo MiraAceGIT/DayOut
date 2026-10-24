@@ -1,0 +1,42 @@
+import { formatCoordinates } from "../../../lib/format.js";
+
+const SOURCE_LABELS = {
+  default: "ISEP – Notre-Dame-des-Champs",
+  device: "Ta position",
+};
+
+/** Carte "Point choisi" : libelle du point, bouton "Changer", curseur de rayon. */
+export class PointCard {
+  constructor({ labelEl, changeBtn, radiusEl, radiusOut }) {
+    this.labelEl = labelEl;
+    this.changeBtn = changeBtn;
+    this.radiusEl = radiusEl;
+    this.radiusOut = radiusOut;
+  }
+
+  get isReady() {
+    return Boolean(this.labelEl && this.radiusEl && this.radiusOut);
+  }
+
+  /** `handlers` : onRadius(km), onChangePoint(). */
+  bind({ onRadius, onChangePoint }) {
+    this.radiusEl.addEventListener("input", () => onRadius(Number(this.radiusEl.value)));
+    this.changeBtn?.addEventListener("click", () => onChangePoint());
+  }
+
+  /** `point` = { lat, lng, label?, source? } : sans libelle, selon `source`, sinon les coordonnees. */
+  setOrigin(point) {
+    this.labelEl.textContent = point.label
+      || SOURCE_LABELS[point.source]
+      || `Point sur la carte (${formatCoordinates(point)})`;
+  }
+
+  setRadius(km) {
+    const min = Number(this.radiusEl.min) || 0;
+    const max = Number(this.radiusEl.max) || 100;
+    this.radiusEl.value = String(km);
+    this.radiusEl.setAttribute("aria-valuetext", `${km} km`);
+    this.radiusEl.style.setProperty("--range-progress", `${((km - min) / (max - min)) * 100}%`);
+    this.radiusOut.textContent = `${km} km`;
+  }
+}

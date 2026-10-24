@@ -1,0 +1,7 @@
+/* Liste des resultats, pilotee par ResultsList.js (meme dossier). */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.event-list[aria-busy="true"] { opacity: .5; }

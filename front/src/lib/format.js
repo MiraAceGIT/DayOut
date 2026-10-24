@@ -73,3 +73,14 @@ export function formatPrice(cents, {
     return `${amount.toLocaleString(locale, { minimumFractionDigits: digits })} ${currency}`;
   }
 }
+
+/** "1 place", "3 places" : pluriel regulier en "s". */
+export function pluralize(n, word) {
+  return `${n} ${word}${n > 1 ? "s" : ""}`;
+}
+
+/** { lat, lng } -> "48,8455 ; 2,3275" (4 decimales au plus). */
+export function formatCoordinates({ lat, lng }, { locale = LOCALE } = {}) {
+  const coord = (n) => n.toLocaleString(locale, { maximumFractionDigits: 4 });
+  return `${coord(lat)} ; ${coord(lng)}`;
+}

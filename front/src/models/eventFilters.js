@@ -1,8 +1,5 @@
-import { distanceKm, isLatLng } from "../lib/geo.js";
-import { remainingPlaces } from "./Event.js";
-
 /** Minuscules sans accents : "Soirée" et "soiree" se trouvent mutuellement. */
-function normalize(text) {
+export function normalize(text) {
   return String(text ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
 
@@ -17,54 +14,37 @@ export function weekendRange(now = new Date()) {
   return { start, end };
 }
 
-/**
- * Filtres de la carte, appliques cote client aux evenements deja charges.
- * Les evenements termines (fin, ou debut a defaut, avant `now`) sont toujours exclus : l'API ne filtre pas par date.
- * `criteria` : { origin {lat,lng}, radiusKm, weekend, free, available, categories (Set de slugs), query, now }.
- * Renvoie { items: [{ event, distanceKm }], inCircle, withoutPosition } :
- * les evenements sans coordonnees passent les autres filtres mais ne comptent pas dans le cercle.
- */
-export function filterEvents(events, {
-  origin,
-  radiusKm,
-  weekend = false,
-  free = false,
-  available = false,
-  categories = new Set(), // slugs
-  query = "",
-  now = new Date(),
-} = {}) {
+export const isFree = (event) => event.isPaid === false;
+
+export const hasPlacesLeft = (event) => event.availability !== "full";
+
+/** Au moins une des categories (OU). */
+export const inCategories = (slugs) => (event) => event.categories.some((c) => slugs.has(c.slug));
+
+export const startsWithin = ({ start, end }) => (event) => {
+  const date = new Date(event.startAt);
+  return date >= start && date < end;
+};
+
+export const matchesText = (query) => {
   const needle = normalize(query);
-  const range = weekend ? weekendRange(now) : null;
-  const items = [];
-  let inCircle = 0;
-  let withoutPosition = 0;
+  return (event) => [event.title, event.venueName, event.city].some((v) => normalize(v).includes(needle));
+};
 
-  const nowTime = now.getTime();
-  for (const event of events) {
-    const last = Date.parse(event.endAt ?? event.startAt);
-    if (Number.isFinite(last) && last < nowTime) continue;
-    if (free && event.isPaid !== false) continue;
-    if (available && remainingPlaces(event) === 0) continue;
-    if (categories.size > 0 && !event.categories.some((c) => categories.has(c.slug))) continue;
-    if (range) {
-      const start = new Date(event.startAt);
-      if (!(start >= range.start && start < range.end)) continue;
-    }
-    if (needle && ![event.title, event.venueName, event.city].some((v) => normalize(v).includes(needle))) continue;
+/**
+ * Criteres choisis par l'utilisateur : chacun recoit les criteres et renvoie un predicat, ou null s'il est inactif.
+ * Ajouter un filtre = ajouter une entree (ou passer sa propre liste a matchesCriteria).
+ */
+export const USER_FILTERS = [
+  ({ free }) => (free ? isFree : null),
+  ({ available }) => (available ? hasPlacesLeft : null),
+  ({ categories }) => (categories?.size > 0 ? inCategories(categories) : null),
+  ({ weekend, now = new Date() }) => (weekend ? startsWithin(weekendRange(now)) : null),
+  ({ query }) => (normalize(query) ? matchesText(query) : null),
+];
 
-    if (isLatLng(event.position) && isLatLng(origin)) {
-      const km = distanceKm(origin, event.position);
-      if (km > radiusKm) continue;
-      inCircle += 1;
-      items.push({ event, distanceKm: km });
-    } else {
-      withoutPosition += 1;
-      items.push({ event, distanceKm: null });
-    }
-  }
-
-  const time = (item) => Date.parse(item.event.startAt) || 0;
-  items.sort((a, b) => time(a) - time(b));
-  return { items, inCircle, withoutPosition };
+/** `criteria` : { weekend, free, available, categories (Set de slugs), query, now } -> predicat (ET des actifs). */
+export function matchesCriteria(criteria, filters = USER_FILTERS) {
+  const predicates = filters.map((toPredicate) => toPredicate(criteria)).filter(Boolean);
+  return (event) => predicates.every((test) => test(event));
 }

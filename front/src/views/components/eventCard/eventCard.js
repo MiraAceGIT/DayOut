@@ -1,13 +1,14 @@
 import { h } from "../../../lib/dom.js";
 import { formatEventWhen } from "../../../lib/format.js";
+import { categoryClass, colorCategoryOf } from "../category/category.js";
+import { joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/pill.js";
 
-/** `event` : objet normalise par `toEvent()` ; `remaining` : places restantes (remainingPlaces()). */
-export function renderEventCard(event, { remaining = null } = {}) {
-  const when = formatEventWhen(event.startAt, event.endAt, { withEnd: true });
-  const details = [when, event.venueName, event.city].filter(Boolean).join(" · ");
+/** `event` : objet normalise par `toEvent()`. */
+export function renderEventCard(event) {
+  const details = joinMeta(formatEventWhen(event.startAt, event.endAt, { withEnd: true }), event.venueName, event.city);
 
-  return h("article", { class: ["event-card", event.category?.key && `cat--${event.category.key}`] },
+  return h("article", { class: ["event-card", categoryClass(colorCategoryOf(event))] },
     h("div", { class: "event-card__body" },
       event.categories.length
         ? h("div", { class: "pill-row" }, event.categories.map(renderCategoryPill))
@@ -20,7 +21,7 @@ export function renderEventCard(event, { remaining = null } = {}) {
       event.description ? h("p", { class: "event-card__desc" }, event.description) : null,
       h("div", { class: "pill-row event-card__status" },
         renderPricePill(event),
-        renderPlacesPill(remaining, { showPlenty: true }),
+        renderPlacesPill(event, { showPlenty: true }),
       ),
     ),
   );

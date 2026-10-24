@@ -20,7 +20,6 @@ front/
 │       ├── layout.css            ← .container
 │       └── components/           ← composants purement HTML/CSS
 │           ├── button.css        ← .button (--primary/--secondary/--dark/--on-dark/--small), .link-button, .chip
-│           ├── category.css      ← .cat--<cle> -> --cat-color, .cat-dot (seul lien categorie -> couleur)
 │           ├── skip-link.css, card-grid.css
 │           └── feedback.css (alertes / statut), form.css (.input, erreurs de champ)
 ├── src/
@@ -28,7 +27,7 @@ front/
 │   ├── config.local.js           ← surcharge locale optionnelle (ignore par git)
 │   ├── core/
 │   │   ├── config.js             ← configuration unique (API_BASE_URL, racine du front)
-│   │   ├── routes.js             ← LOGIN_PATH, loginUrl(next) (boot, header, bulle de la carte)
+│   │   ├── routes.js             ← LOGIN_PATH, loginUrl(next) (liens) ; replaceSearchParam (?q=, controleurs)
 │   │   ├── geolocation.js        ← currentPosition() : API navigateur, sur clic uniquement
 │   │   ├── api.js                ← wrapper fetch() : enveloppe, erreurs, CSRF, 401, timeout
 │   │   └── errors.js             ← messageFor(err), isApiError(err) : messages utilisateur
@@ -36,30 +35,49 @@ front/
 │   │   └── boot.js               ← boot({ page }) : header + footer + handler 401
 │   ├── lib/
 │   │   ├── dom.js                ← h(tag, props, ...children) : DOM sans innerHTML
-│   │   ├── format.js             ← formatDate, formatDay, formatHour, formatEventWhen, formatDistance, formatPrice
+│   │   ├── format.js             ← formatDate/Day/Hour, formatEventWhen, formatDistance, formatPrice,
+│   │   │                            formatCoordinates, pluralize
 │   │   ├── geo.js                ← distanceKm (haversine), isLatLng (calcul pur)
 │   │   └── forms.js              ← showFieldErrors, clearFieldErrors
-│   ├── models/
-│   │   ├── Event.js              ← fetchUpcomingEvents, toEvent(raw), remainingPlaces, MAX_EVENTS_LIMIT
-│   │   ├── category.js           ← toCategory, categoriesIn : slug API -> couleur de la charte
-│   │   └── eventFilters.js       ← filterEvents (rayon, week-end, gratuit, places, categories, recherche)
+│   ├── models/                   ← sans DOM : donnees, regles metier, etat
+│   │   ├── Event.js              ← fetchUpcomingEvents, toEvent (remainingPlaces, availability), isUpcoming
+│   │   ├── category.js           ← toCategory, categoriesIn (aucune notion de couleur)
+│   │   ├── eventFilters.js       ← un predicat par critere (gratuit, places, categories, week-end, texte),
+│   │   │                            USER_FILTERS, matchesCriteria, weekendRange
+│   │   ├── eventSearch.js        ← searchEvents : a venir + criteres + distance/rayon + tri + comptes
+│   │   └── MapSearch.js          ← etat de la page carte (criteres, chargement, selection), DEFAULT_ORIGIN
 │   ├── views/                    ← un dossier par composant : son JS + sa feuille CSS
-│   │   ├── layout/header/        ← renderHeader({ current }), NAV_ITEMS, SEARCH_INPUT_ID
+│   │   ├── layout/header/        ← renderHeader({ current }), NAV_ITEMS
+│   │   │   └── searchBox.js      ← renderSearchBox(), SearchBox (setQuery, bindLive) : seul a connaitre l'id du champ
 │   │   ├── layout/footer/        ← renderFooter() dans footer[data-layout]
 │   │   ├── components/
+│   │   │   ├── category/         ← slug -> .cat--<cle> (categoryClass, colorCategoryOf, hasCharterColor,
+│   │   │   │                        renderCategoryDot) + category.css : seul lien categorie -> couleur
 │   │   │   ├── logo/             ← renderLogo() : seul endroit qui connait le fichier du logo
 │   │   │   ├── icon/icon.js      ← icon(name), pinIcon() : SVG Lucide via createElementNS
 │   │   │   ├── pill/             ← renderCategoryPill, renderPricePill, renderPlacesPill (+ .pill)
+│   │   │   ├── eventMeta/        ← joinMeta, placeOf, distanceText (lignes de details)
 │   │   │   ├── eventCard/        ← carte complete (page evenements)
 │   │   │   ├── eventRow/         ← carte compacte de la liste de la carte (selection synchronisee)
-│   │   │   └── eventPopup/       ← bulle du marqueur selectionne
+│   │   │   ├── eventPopup/       ← bulle du marqueur selectionne
+│   │   │   ├── tabs/             ← bindTabs(tabs) : onglets ARIA sur markup existant (+ .tabs)
+│   │   │   └── liveStatus/       ← LiveStatus : region role=status, texte immediat ou differe
 │   │   ├── home/
-│   │   │   ├── HomeView.js       ← panneau gauche : onglets, point, rayon, filtres, liste, statut
-│   │   │   ├── MapView.js        ← seul fichier qui touche Leaflet (carte, cercle, marqueurs, legende)
-│   │   │   └── home.css, map.css
+│   │   │   ├── HomeView.js       ← panneau gauche : seul a connaitre ses ids, compose les sous-vues
+│   │   │   ├── resultsMessage.js ← texte du statut des resultats (pur)
+│   │   │   ├── pointCard/        ← PointCard : point choisi, "Changer", curseur de rayon
+│   │   │   ├── filters/          ← FilterChips : puces fixes + puces de categories
+│   │   │   ├── resultsList/      ← ResultsList : liste, aria-busy, selection
+│   │   │   ├── map/
+│   │   │   │   ├── MapView.js    ← zone carte : ids, compose LeafletMap + MapLegend + MapStatus
+│   │   │   │   ├── LeafletMap.js ← seul fichier qui touche Leaflet (carte, cercle, marqueurs, bulle)
+│   │   │   │   ├── MapLegend.js  ← legende "Categories" (DOM simple)
+│   │   │   │   ├── MapStatus.js  ← textes de #home-map-status (localisation, carte indisponible)
+│   │   │   │   └── map.css, mapLegend.css
+│   │   │   └── home.css          ← mise en page de la page carte
 │   │   └── EventsView.js         ← #events-list / -error / -status
-│   ├── controllers/
-│   │   ├── HomeController.js     ← etat des filtres, chargement, synchro liste <-> carte, geolocalisation
+│   ├── controllers/              ← mediateurs minces
+│   │   ├── HomeController.js     ← views -> MapSearch -> rendu ; chargement, geolocalisation, ?q=
 │   │   └── EventsController.js
 │   └── pages/
 │       ├── home.js               ← point d'entree de index.html (lit ?q=)
@@ -70,26 +88,32 @@ front/
 
 ### Architecture MVC
 
-- **models/** : acces cote client a l'API REST (appels via `core/api.js`) et normalisation
-  des reponses (snake_case -> camelCase). Aucun DOM. A ne pas confondre avec
-  `back/src/Models` (acces base de donnees cote serveur).
-- **views/** : construisent et mettent a jour le DOM (`h()`, `textContent`). Aucun appel API,
-  aucune regle metier : elles recoivent des donnees deja pretes (objets normalises, messages).
+- **models/** : acces cote client a l'API REST (appels via `core/api.js`), normalisation
+  des reponses (snake_case -> camelCase), regles metier (a venir, places restantes, "dernieres places",
+  filtres) et etat d'une page (`MapSearch`). Aucun DOM, aucun texte affiche, aucune couleur.
+  A ne pas confondre avec `back/src/Models` (acces base de donnees cote serveur).
+- **views/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes
+  et choix d'affichage (messages, couleurs de categorie). Aucun appel API, aucune regle metier : elles
+  recoivent des objets normalises. Une view de page (`HomeView`, `MapView`, `EventsView`) est seule a
+  connaitre ses ids et les passe a des sous-vues sans id (`PointCard`, `ResultsList`...), reutilisables.
+  Une view ne pilote jamais le DOM d'une autre : elle passe par son API (ex. `SearchBox` du header).
   Chaque composant a son dossier, avec son JS et sa feuille CSS cote a cote.
-- **controllers/** : orchestrent model + view (chargement, succes, erreur). Ne touchent
-  jamais le DOM directement.
+- **controllers/** : mediateurs minces : relaient les evenements des views vers le model, puis
+  redessinent. Ne touchent jamais le DOM, ne contiennent ni texte affiche ni regle metier.
+  Dependances injectables par le constructeur (views, `loadEvents`, `getPosition`...) avec valeurs par defaut :
+  pas de conteneur d'injection.
 - **pages/** : points d'entree minces, un par page HTML : `boot({ page })` **en premier**,
   puis demarrage du controleur.
 - Fonctions pour ce qui est sans etat (models, composants) ; petite classe pour ce qui garde
-  des references (une view et ses elements, le controleur qui la pilote).
+  des references (une view et ses elements, l'etat d'une page, le controleur qui les relie).
 
 ### Regle de dependances
 
 ```
 pages/        -> app/boot.js, controllers/
-controllers/  -> models/, views/, core/errors.js, core/geolocation.js
+controllers/  -> models/, views/, core/errors.js, core/geolocation.js, core/routes.js (replaceSearchParam)
 models/       -> core/api.js, models/, lib/geo.js (calcul pur)
-views/        -> views/, lib/, core/config.js (frontUrl), core/routes.js (loginUrl)
+views/        -> views/, lib/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
 app/boot.js   -> core/, views/layout/
 core/         -> core/ uniquement
 lib/          -> rien (utilitaires purs)
@@ -98,19 +122,22 @@ lib/          -> rien (utilitaires purs)
 - Rien n'importe `pages/` ; pas de dependance circulaire (`loginUrl` vit dans `core/routes.js` pour que
   le header l'utilise sans importer `app/boot.js`).
 - Une view n'importe ni `models/` ni `core/api.js` ; un model n'importe ni `views/` ni `lib/dom.js`.
-  Ce dont une view a besoin cote metier (places restantes, categories presentes) lui est passe par le controleur.
+  Ce dont une view a besoin cote metier est un champ de l'objet normalise (`event.remainingPlaces`,
+  `event.availability`) ou lui est passe par le controleur (categories presentes, resultats).
+- Leaflet n'est lu que dans `views/home/map/LeafletMap.js`.
 
 ## Page carte (index.html)
 
 - Les evenements sont charges une fois (`limit=100`, plafond du back) puis filtres **cote client**
-  (`models/eventFilters.js`) : distance haversine au point choisi, rayon 1–20 km, "Ce week-end"
-  (samedi 0 h -> lundi 0 h), "Gratuit", "Places disponibles", categories (OU), recherche du header
-  (titre, lieu, ville ; sans accents ni casse).
+  (`models/eventSearch.js`) : distance haversine au point choisi, rayon 1–20 km, puis les criteres de
+  `models/eventFilters.js` : "Ce week-end" (samedi 0 h -> lundi 0 h), "Gratuit", "Places disponibles",
+  categories (OU), recherche du header (titre, lieu, ville ; sans accents ni casse). Ajouter un filtre =
+  un predicat + une entree dans `USER_FILTERS` (+ son drapeau dans `MapSearch`, sa puce dans index.html).
 - Un evenement **sans coordonnees** reste dans la liste ("position inconnue"), n'est pas dessine et ne
   compte pas dans "N evenements dans ce cercle" (le statut ajoute "· N sans position sur la carte").
 - La liste est le contenu accessible principal ; la carte est un complement : marqueurs hors tabulation,
   carte focusable (fleches, +/−, **Entree** = placer le point au centre). Le statut `role="status"` annonce le compte.
-- Evenements termines (fin, ou debut a defaut, passee) exclus cote client : l'API trie par date sans filtrer et
+- Evenements termines (fin, ou debut a defaut, passee ; `isUpcoming`) exclus cote client : l'API trie par date sans filtrer et
   plafonne a 100. Si la reponse atteint ce plafond, le statut precise "au moins 100 evenements charges, liste
   peut-etre incomplete". TODO back : parametre `from` (date) sur `GET /api/events` pour ne renvoyer que l'a venir.
 - Les controles memorisent les criteres pendant le chargement mais la liste n'est dessinee qu'une fois les
@@ -121,10 +148,10 @@ lib/          -> rien (utilitaires purs)
   `#home-map-status`.
 - Recherche du header : formulaire GET vers `index.html?q=` ; sur la carte, elle filtre en direct sans rechargement.
 - **Leaflet 1.9.4** en `<script>` classique UMD + `<link>` depuis unpkg, versions epinglees avec `integrity`
-  (SRI) : un `import` ESM depuis un CDN ne peut pas porter d'empreinte. `MapView` lit `window.L` ; s'il manque
+  (SRI) : un `import` ESM depuis un CDN ne peut pas porter d'empreinte. `LeafletMap` lit `window.L` ; s'il manque
   (hors ligne, bloque), un message s'affiche et la liste reste utilisable. Tuiles OpenStreetMap, attribution
   "Leaflet · © contributeurs OpenStreetMap" (lien de copyright exige par OSM).
-- Categories : le referentiel du back ne recoupe la charte qu'en partie. `models/category.js` rattache
+- Categories : le referentiel du back ne recoupe la charte qu'en partie. `views/components/category/category.js` rattache
   `soiree`, `sport`, `conference`, `culture`, `tech` (-> Hackathon) et `forum-entreprises` (pas encore en base)
   a leur couleur ; les autres slugs (`concert`, `gaming`, `bde`, `exterieur`, `gastronomie`) sont gris
   (texte secondaire) et regroupes sous "Autres" dans la legende. Libelles affiches tels que renvoyes par l'API.
@@ -211,6 +238,10 @@ export class MaPageView {
 
   showEvent(event) { /* h(...) + textContent, jamais innerHTML */ }
 
+  showMissing() {
+    this.showError("Aucun événement sélectionné.");
+  }
+
   showError(message) {
     this.statusEl.textContent = "";
     this.errorEl.textContent = message;
@@ -225,18 +256,20 @@ import { fetchEvent } from "../models/Event.js";
 import { MaPageView } from "../views/MaPageView.js";
 
 export class MaPageController {
-  constructor({ view = new MaPageView() } = {}) {
+  // Dependances injectables (tests, autre source) ; valeurs par defaut = l'application reelle.
+  constructor({ view = new MaPageView(), loadEvent = fetchEvent } = {}) {
     this.view = view;
+    this.loadEvent = loadEvent;
   }
 
   async start(id) {
     if (!this.view.isReady) return;
     if (!id) {
-      this.view.showError("Aucun evenement selectionne.");
+      this.view.showMissing();          // le texte ("Aucun evenement selectionne.") vit dans la view
       return;
     }
     try {
-      this.view.showEvent(await fetchEvent(id));
+      this.view.showEvent(await this.loadEvent(id));
     } catch (err) {
       if (!isApiError(err)) console.error(err);
       this.view.showError(messageFor(err));
@@ -337,6 +370,7 @@ Mentions legales / Contact a ajouter quand ces pages existeront (pas de lien cas
   - variante : `.alert--error` (double tiret)
   - etat : `.is-*` (ex. `.is-open`) **uniquement** si aucun attribut ARIA ne l'exprime ;
     sinon styler l'attribut (`[aria-current="page"]`, `[aria-busy="true"]`, `[aria-invalid="true"]`).
-- Composant rendu par une view : sa feuille vit a cote de son JS
-  (`src/views/components/eventCard/eventCard.css`) ; composant purement HTML/CSS : feuille dans
+- Composant rendu ou pilote par une view : sa feuille vit a cote de son JS
+  (`src/views/components/eventCard/eventCard.css`, `src/views/home/pointCard/pointCard.css`) ; quand une
+  view est decoupee, sa feuille l'est aussi. Composant purement HTML/CSS : feuille dans
   `assets/css/components/`. Dans les deux cas, ajoutee par `@import` dans `assets/css/main.css`.

@@ -1,23 +1,26 @@
 import { h } from "../../../lib/dom.js";
-import { formatDistance, formatEventWhen } from "../../../lib/format.js";
+import { formatEventWhen } from "../../../lib/format.js";
+import { categoryClass, colorCategoryOf } from "../category/category.js";
+import { distanceText, joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/pill.js";
 
 /**
  * Carte compacte de la liste de la carte. Le titre est un bouton etire sur toute la carte :
  * il selectionne l'evenement (synchronise avec le marqueur) ; `aria-current="true"` = selection.
- * `item` = { event, distanceKm, remaining }.
+ * `item` = { event, distanceKm } (resultat de searchEvents).
  */
-export function renderEventRow({ event, distanceKm, remaining }, { selected = false, onSelect } = {}) {
-  const details = [
+export function renderEventRow({ event, distanceKm }, { selected = false, onSelect } = {}) {
+  const category = colorCategoryOf(event);
+  const details = joinMeta(
     formatEventWhen(event.startAt),
     event.venueName || event.city,
-    distanceKm === null ? "position inconnue" : formatDistance(distanceKm),
-  ].filter(Boolean).join(" · ");
+    distanceText(distanceKm, { unknown: "position inconnue" }),
+  );
 
-  return h("li", { class: ["event-row", event.category?.key && `cat--${event.category.key}`] },
+  return h("li", { class: ["event-row", categoryClass(category)] },
     h("span", { class: "event-row__square", "aria-hidden": "true" }),
     h("div", { class: "event-row__body" },
-      event.category ? h("div", { class: "pill-row" }, renderCategoryPill(event.category)) : null,
+      category ? h("div", { class: "pill-row" }, renderCategoryPill(category)) : null,
       h("h2", { class: "event-row__title" },
         h("button", {
           type: "button",
@@ -29,7 +32,7 @@ export function renderEventRow({ event, distanceKm, remaining }, { selected = fa
       ),
       h("p", { class: "event-row__meta" }, details),
       h("div", { class: "pill-row" },
-        renderPlacesPill(remaining),
+        renderPlacesPill(event),
         renderPricePill(event),
       ),
     ),

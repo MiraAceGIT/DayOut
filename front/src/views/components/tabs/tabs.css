@@ -1,0 +1,24 @@
+/* Onglets segmentes (role=tablist), pilotes par tabs.js (meme dossier). */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+}
+.tabs__tab {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-detail);
+  font-weight: 600;
+  cursor: pointer;
+}
+.tabs__tab[aria-selected="true"] {
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+}

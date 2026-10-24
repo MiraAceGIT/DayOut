@@ -1,5 +1,5 @@
 /* Page carte (index.html) : header + panneau gauche + carte plein ecran, sans footer.
-   Markup statique dans index.html, pilote par HomeView.js (meme dossier). */
+   Markup statique dans index.html, pilote par HomeView.js et ses sous-vues (sous-dossiers). */
 .page-map {
   height: 100vh;
   height: 100dvh;
@@ -31,128 +31,6 @@
   gap: var(--space-4);
 }
 
-/* Onglets segmentes */
-.tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-2);
-}
-.tabs__tab {
-  min-height: 40px;
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-text);
-  font-size: var(--font-size-detail);
-  font-weight: 600;
-  cursor: pointer;
-}
-.tabs__tab[aria-selected="true"] {
-  background: var(--color-brand);
-  color: var(--color-on-brand);
-}
-
-/* Carte "Point choisi" */
-.point-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
-}
-.point-card__row {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-.point-card__icon { flex: none; margin-top: 2px; color: var(--color-link); }
-.point-card__place { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.point-card__caption {
-  color: var(--color-muted);
-  font-size: var(--font-size-detail);
-  line-height: var(--line-height-detail);
-}
-.point-card__label { font-weight: 600; }
-
-.point-card__radius {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: var(--space-2);
-}
-.point-card__radius-label { font-weight: 600; font-size: var(--font-size-detail); }
-.point-card__radius-value { color: var(--color-link); font-weight: 700; font-size: var(--font-size-detail); }
-.point-card__radius .range { grid-column: 1 / -1; }
-.point-card__bound { color: var(--color-muted); font-size: var(--font-size-pill); }
-.point-card__bound--end { justify-self: end; }
-
-/* Curseur natif habille : piste violet clair, partie remplie et pouce orange (element d'action). */
-.range {
-  --range-progress: 10%;
-  width: 100%;
-  height: 24px;
-  margin: 0;
-  background: transparent;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-.range::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(to right, var(--color-action) var(--range-progress), var(--color-surface-2) var(--range-progress));
-}
-.range::-moz-range-track {
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-2);
-}
-.range::-moz-range-progress {
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--color-action);
-}
-.range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 22px;
-  height: 22px;
-  margin-top: -8px;
-  border: 2px solid var(--color-text);
-  border-radius: 50%;
-  background: var(--color-action);
-}
-.range::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--color-text);
-  border-radius: 50%;
-  background: var(--color-action);
-}
-
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-/* Puces de categorie : style "pastille" de la charte, a bascule. */
-.chip--category {
-  min-height: 32px;
-  padding-inline: var(--space-3);
-  border-color: var(--color-border-light);
-  background: var(--color-surface);
-  font-size: var(--font-size-pill);
-  letter-spacing: var(--letter-spacing-pill);
-  text-transform: uppercase;
-}
-.chip--category[aria-pressed="true"] .cat-dot { box-shadow: 0 0 0 2px var(--color-on-brand); }
-
 .results-head {
   display: flex;
   flex-wrap: wrap;
@@ -162,13 +40,6 @@
 }
 .results-head__count { font-weight: 700; }
 .results-head__sort { color: var(--color-muted); font-size: var(--font-size-detail); }
-
-.event-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.event-list[aria-busy="true"] { opacity: .5; }
 
 .foryou {
   padding: var(--space-4);

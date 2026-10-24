@@ -1,6 +1,7 @@
-import { h } from "../../lib/dom.js";
-import { icon, pinIcon } from "../components/icon/icon.js";
-import { renderEventPopup } from "../components/eventPopup/eventPopup.js";
+import { h } from "../../../lib/dom.js";
+import { categoryClass, colorCategoryOf } from "../../components/category/category.js";
+import { renderEventPopup } from "../../components/eventPopup/eventPopup.js";
+import { icon, pinIcon } from "../../components/icon/icon.js";
 
 // Seul fichier qui touche Leaflet. Leaflet 1.9.4 est charge en <script> classique (UMD + SRI) dans index.html :
 // un import ESM depuis un CDN ne peut pas porter d'attribut integrity. Absent (hors ligne, bloque), la liste reste utilisable.
@@ -14,12 +15,11 @@ function token(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-export class MapView {
-  constructor(root = document) {
-    this.containerEl = root.querySelector("#home-map");
-    this.statusEl    = root.querySelector("#home-map-status");
-    this.legendEl    = root.querySelector("#home-legend");
-    this.L = window.L;
+/** Carte Leaflet : tuiles, controles, point choisi et son cercle, marqueurs, bulle, choix du point au clic / Entree. */
+export class LeafletMap {
+  constructor(containerEl, L = window.L) {
+    this.containerEl = containerEl;
+    this.L = L;
     this.map = null;
     this.markers = new Map(); // id -> { marker, item }
     this.selectedId = null;
@@ -29,13 +29,15 @@ export class MapView {
     return Boolean(this.L && this.map);
   }
 
-  /** `handlers` : onPick({lat,lng}), onSelect(id), onLocate(). */
+  /**
+   * `handlers` : onPick({lat,lng}), onSelect(id), onLocate().
+   * Renvoie "ready", "unavailable" (Leaflet absent : conteneur marque) ou "absent" (pas de conteneur).
+   */
   init({ origin, radiusKm, handlers }) {
-    if (!this.containerEl) return;
+    if (!this.containerEl) return "absent";
     if (!this.L) {
       this.containerEl.classList.add("map-view__map--unavailable");
-      this.showMessage("La carte n'a pas pu être chargée. La liste des événements reste disponible.");
-      return;
+      return "unavailable";
     }
     const L = this.L;
     this.handlers = handlers;
@@ -97,6 +99,7 @@ export class MapView {
       const c = this.map.getCenter().wrap();
       handlers.onPick({ lat: c.lat, lng: c.lng });
     });
+    return "ready";
   }
 
   addLocateControl() {
@@ -138,10 +141,10 @@ export class MapView {
   }
 
   pinFor(item, selected) {
-    const key = item.event.category?.key;
     const size = selected ? 44 : 34;
     return this.L.divIcon({
-      className: ["map-pin", key && `cat--${key}`, selected && "map-pin--selected"].filter(Boolean).join(" "),
+      className: ["map-pin", categoryClass(colorCategoryOf(item.event)), selected && "map-pin--selected"]
+        .filter(Boolean).join(" "),
       html: pinIcon({ size }),
       iconSize: [size, size],
       iconAnchor: [size / 2, size - 2],
@@ -155,7 +158,7 @@ export class MapView {
   }
 
   /**
-   * `items` = [{ event, distanceKm, remaining }] ; seuls ceux qui ont une position sont dessines.
+   * `items` = [{ event, distanceKm }] ; seuls ceux qui ont une position sont dessines.
    * La bulle de l'evenement selectionne est rouverte s'il reste visible et qu'elle etait ouverte
    * (clearLayers la ferme) ; fermee par l'utilisateur, elle le reste.
    */
@@ -201,25 +204,5 @@ export class MapView {
     current.marker.setIcon(this.pinFor(current.item, true));
     current.marker.setZIndexOffset(1000);
     if (openPopup) current.marker.openPopup();
-  }
-
-  /**
-   * Legende "Categories" depuis les categories presentes ([{ slug, label, key }]) : une ligne par couleur
-   * de la charte, les categories sans couleur regroupees sous "Autres" (meme gris, indistinguables).
-   */
-  renderLegend(categories) {
-    if (!this.legendEl) return;
-    const item = (key, label) => h("li", { class: ["map-legend__item", key && `cat--${key}`] },
-      h("span", { class: "cat-dot", "aria-hidden": "true" }), label);
-    const coloured = categories.filter((c) => c.key);
-    const hasOthers = coloured.length < categories.length;
-    const items = coloured.map((c) => item(c.key, c.label));
-    if (hasOthers) items.push(item(null, "Autres"));
-    this.legendEl.querySelector("ul")?.replaceChildren(...items);
-    this.legendEl.hidden = categories.length === 0;
-  }
-
-  showMessage(message) {
-    if (this.statusEl) this.statusEl.textContent = message;
   }
 }

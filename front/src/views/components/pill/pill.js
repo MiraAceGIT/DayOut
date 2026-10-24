@@ -1,18 +1,12 @@
 import { h } from "../../../lib/dom.js";
-import { formatPrice } from "../../../lib/format.js";
+import { formatPrice, pluralize } from "../../../lib/format.js";
+import { categoryClass, renderCategoryDot } from "../category/category.js";
 
-/** Seuil "dernieres places" (couleur --color-warning). */
-export const LAST_PLACES_THRESHOLD = 5;
-
-function placesLabel(n) {
-  return `${n} place${n > 1 ? "s" : ""}`;
-}
-
-/** `category` = { key, label } normalise par toCategory() ; null -> rien. */
+/** `category` = { slug, label } normalise par toCategory() ; null -> rien. */
 export function renderCategoryPill(category) {
   if (!category) return null;
-  return h("span", { class: ["pill", category.key && `cat--${category.key}`] },
-    h("span", { class: "cat-dot", "aria-hidden": "true" }),
+  return h("span", { class: ["pill", categoryClass(category)] },
+    renderCategoryDot(),
     category.label,
   );
 }
@@ -27,12 +21,18 @@ export function renderPricePill(event) {
 }
 
 /**
- * `remaining` = places restantes (null = illimite). Complet (rouge), dernieres places (jaune fonce) ;
- * au-dela du seuil, pastille neutre seulement si `showPlenty`.
+ * D'apres `event.availability` (toEvent) : complet (rouge), dernieres places (jaune fonce) ;
+ * places en nombre, pastille neutre seulement si `showPlenty` ; capacite illimitee -> rien.
  */
-export function renderPlacesPill(remaining, { showPlenty = false } = {}) {
-  if (remaining === null || remaining === undefined) return null;
-  if (remaining === 0) return h("span", { class: "pill pill--error" }, "Complet");
-  if (remaining <= LAST_PLACES_THRESHOLD) return h("span", { class: "pill pill--warning" }, placesLabel(remaining));
-  return showPlenty ? h("span", { class: "pill pill--neutral" }, placesLabel(remaining)) : null;
+export function renderPlacesPill(event, { showPlenty = false } = {}) {
+  switch (event.availability) {
+    case "full":
+      return h("span", { class: "pill pill--error" }, "Complet");
+    case "last":
+      return h("span", { class: "pill pill--warning" }, pluralize(event.remainingPlaces, "place"));
+    case "open":
+      return showPlenty ? h("span", { class: "pill pill--neutral" }, pluralize(event.remainingPlaces, "place")) : null;
+    default:
+      return null;
+  }
 }

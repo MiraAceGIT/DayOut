@@ -1,3 +1,4 @@
+import { pluralize } from "../lib/format.js";
 import { renderEventCard } from "./components/eventCard/eventCard.js";
 
 export class EventsView {
@@ -26,12 +27,12 @@ export class EventsView {
     this.listEl.setAttribute("aria-busy", "false");
   }
 
-  /** `items` = [{ event, remaining }] prepares par le controleur. */
-  showEvents(items) {
-    this.listEl.replaceChildren(...items.map(({ event, remaining }) => renderEventCard(event, { remaining })));
-    this.setStatus(items.length === 0
+  /** `events` normalises par toEvent(). */
+  showEvents(events) {
+    this.listEl.replaceChildren(...events.map((event) => renderEventCard(event)));
+    this.setStatus(events.length === 0
       ? "Aucun événement à afficher."
-      : `${items.length} événement${items.length > 1 ? "s" : ""} à venir.`);
+      : `${pluralize(events.length, "événement")} à venir.`);
   }
 
   showError(message) {
