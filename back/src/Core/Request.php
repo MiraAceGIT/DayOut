@@ -4,11 +4,10 @@ declare(strict_types=1);
 namespace App\Core;
 
 use JsonException;
-use RuntimeException;
 
 final class Request
 {
-    /** Body vide -> [] ; JSON invalide -> RuntimeException code 400 (renvoyee en 400 par le dispatcher). */
+    /** Body vide -> [] ; JSON invalide -> HttpException 400. */
     public static function json(): array
     {
         $raw = file_get_contents('php://input');
@@ -18,10 +17,10 @@ final class Request
         try {
             $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
-            throw new RuntimeException('Invalid JSON body: ' . $e->getMessage(), 400, $e);
+            throw HttpException::badRequest('Invalid JSON body: ' . $e->getMessage(), [], $e);
         }
         if (!is_array($data)) {
-            throw new RuntimeException('JSON body must be an object or array', 400);
+            throw HttpException::badRequest('JSON body must be an object or array');
         }
         return $data;
     }

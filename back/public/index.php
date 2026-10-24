@@ -60,26 +60,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
 $router = new Router();
 require APP_ROOT . '/routes/api.php';
 
-try {
-    $router->dispatch(
-        $_SERVER['REQUEST_METHOD'] ?? 'GET',
-        parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'
-    );
-} catch (\PDOException $e) {
-    // A traiter avant RuntimeException (classe parente) : getCode() y est un
-    // SQLSTATE string ('42S22'), qui passerait le test 4xx ci-dessous.
-    Log::error('Database error', ['exception' => $e]);
-    Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
-} catch (\RuntimeException $e) {
-    // Code 4xx = erreur de validation d'entree (ex. Request::json()).
-    $code = (int) $e->getCode();
-    if ($code >= 400 && $code < 500) {
-        Response::error('BAD_REQUEST', $e->getMessage(), $code);
-    }
-    Log::error('Unhandled exception', ['exception' => $e]);
-    Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
-} catch (\Throwable $e) {
-    // Jamais exposer la stack ni le message au client, meme en debug.
-    Log::error('Unhandled exception', ['exception' => $e]);
-    Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
-}
+$router->dispatch(
+    $_SERVER['REQUEST_METHOD'] ?? 'GET',
+    parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'
+);

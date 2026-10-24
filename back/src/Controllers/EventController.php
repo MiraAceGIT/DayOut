@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\HttpException;
 use App\Core\Request;
 use App\Models\Event;
 
@@ -36,7 +37,7 @@ final class EventController extends Controller
         $id = (int) $params['id'];
         $event = $this->events->findPublishedById($id);
         if ($event === null) {
-            $this->error('NOT_FOUND', 'Event not found', 404, ['id' => $id]);
+            throw HttpException::notFound('Event not found', ['id' => $id]);
         }
         $this->ok($event);
     }

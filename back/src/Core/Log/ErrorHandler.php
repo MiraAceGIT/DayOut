@@ -3,10 +3,15 @@ declare(strict_types=1);
 
 namespace App\Core\Log;
 
+use App\Core\HttpException;
 use App\Core\Response;
 use Throwable;
 
-/** Capte ce qui echappe au try/catch du dispatcher : warnings PHP, exceptions hors dispatch, erreurs fatales. */
+/**
+ * Gestionnaire global : aucune exception n'a besoin d'etre attrapee dans les controllers.
+ *   HttpException -> son statut et son message ; toute autre exception -> log + 500 generique.
+ * Capte aussi les warnings PHP et les erreurs fatales.
+ */
 final class ErrorHandler
 {
     /** Types que set_error_handler() ne recoit jamais : visibles seulement au shutdown. */
@@ -33,7 +38,11 @@ final class ErrorHandler
 
     public static function handleException(Throwable $e): never
     {
-        Log::critical('Uncaught exception', ['exception' => $e]);
+        if ($e instanceof HttpException) {
+            Response::error($e->errorCode, $e->getMessage(), $e->status, $e->details);
+        }
+        // Jamais exposer la stack ni le message au client, meme en debug.
+        Log::error('Unhandled exception', ['exception' => $e]);
         Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
     }
 

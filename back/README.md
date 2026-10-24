@@ -332,4 +332,22 @@ HTTP -> public/.htaccess -> public/index.php
      -> QueryBuilder -> Compiler (SQL) -> Connection (bindings) -> PDO -> MariaDB
      -> Caster (casts de chaque ligne, d'apres Model::CASTS)
      -> Response::json / Response::error
+     (exception levee n'importe ou -> ErrorHandler::handleException)
 ```
+
+## Gestion des erreurs
+
+Aucun `try/catch` n'est necessaire dans les controllers : toute exception remonte
+au gestionnaire global `App\Core\Log\ErrorHandler`.
+
+- `App\Core\HttpException` -> renvoyee au client avec son statut, son code et son message :
+  ```php
+  throw HttpException::notFound('Event not found', ['id' => $id]);
+  throw HttpException::badRequest('Missing field', ['field' => 'title']);
+  throw new HttpException(409, 'CONFLICT', 'Already registered');
+  ```
+- toute autre exception (PDO, logique, ...) -> journalisee dans `error.log`,
+  le client recoit un `500 INTERNAL_ERROR` generique.
+
+Un `try/catch` ne se justifie que pour reagir a une erreur precise
+(ex. `/health` qui repond `db: down` au lieu d'echouer).
