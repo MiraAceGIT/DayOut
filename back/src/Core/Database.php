@@ -45,8 +45,8 @@ final class Database
             self::$pdo->exec("SET time_zone = '+00:00'");
         } catch (PDOException $e) {
             // Ne JAMAIS concatener $e->getMessage() a l'exception : il peut
-            // exposer host/user/password au client. Log serveur uniquement.
-            error_log('[Database] connection failed: ' . $e->getMessage());
+            // exposer host/user au client. Il reste dans `previous`, journalise
+            // par l'appelant (dispatcher ou /health).
             throw new RuntimeException('Database connection failed', 0, $e);
         }
 

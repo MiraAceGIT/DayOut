@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Log\Log;
 use JsonException;
 
 /**
@@ -44,7 +45,7 @@ final class Response
             // Sinon le client recevrait un body vide avec le statut d'origine (ex. 200).
             http_response_code(500);
             echo '{"error":{"code":"ENCODING_ERROR","message":"Response could not be encoded"}}';
-            error_log('[Response] json_encode failed: ' . $e->getMessage());
+            Log::error('Response encoding failed', ['exception' => $e]);
         }
         exit;
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Log\Log;
 use Throwable;
 
 final class HealthController extends Controller
@@ -17,7 +18,7 @@ final class HealthController extends Controller
             $db = 'up';
         } catch (Throwable $e) {
             // /health doit toujours repondre, meme BDD down.
-            error_log('[Health] DB check failed: ' . $e->getMessage());
+            Log::error('Health check: database unreachable', ['exception' => $e]);
         }
 
         $this->ok([

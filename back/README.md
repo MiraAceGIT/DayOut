@@ -15,6 +15,7 @@ back/
 │   └── .htaccess       ← rewrite + headers de securite
 ├── src/
 │   ├── Core/           ← Router, Database, Request, Response, Controller, Password
+│   │   ├── Log/        ← journalisation (error / info / audit)
 │   │   └── Orm/        ← moteur ORM maison
 │   │       ├── Connection.php, ValueBinder.php  ← execution PDO + bindings
 │   │       ├── Caster.php, Rows.php             ← casts + batch anti N+1
@@ -24,6 +25,7 @@ back/
 │   └── Controllers/    ← C : logique HTTP (une classe par ressource)
 ├── config/config.php   ← charge le .env
 ├── routes/            ← un fichier de routes par ressource (charges par api.php)
+├── storage/logs/       ← fichiers de logs (crees a la volee, ignores par git)
 ├── .env.example
 └── README.md
 ```
@@ -262,6 +264,50 @@ de jointure en whitelist, `update()` / `delete()` refuses sans `WHERE`.
 `selectRaw()` / `whereRaw()` acceptent du SQL brut : n'y concatener **jamais**
 une entree utilisateur (passer par les bindings de `whereRaw`). Les erreurs SQL
 (contraintes, triggers `SIGNAL 45000`) remontent en `PDOException`.
+
+## Journalisation
+
+Logger maison sans dependance (`src/Core/Log/`), point d'entree unique `App\Core\Log\Log`.
+
+| Fichier                         | Contenu                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| `error-AAAA-MM-JJ.log`          | `warning` et plus grave : exceptions, erreurs PHP, fatales                 |
+| `info-AAAA-MM-JJ.log`           | `notice`, `info`, `debug` : une ligne par requete HTTP (statut, duree)     |
+| `audit-AAAA-MM-JJ.log`          | actions metier sensibles, ecrites quel que soit `LOG_LEVEL`               |
+
+Rotation quotidienne (UTC) ; les fichiers plus vieux que `LOG_RETENTION_DAYS`
+(30 j) ou `AUDIT_RETENTION_DAYS` (365 j) sont supprimes a la premiere ecriture
+du jour. Dossier : `LOG_PATH` (defaut `back/storage/logs`).
+
+**Format** : une ligne JSON par entree.
+```json
+{"timestamp":"2026-10-24T09:12:03.481Z","level":"error","channel":"error","message":"Database error","requestId":"9f2c4e1a7b3d5f60","userId":null,"method":"GET","path":"/api/events","context":{"exception":{"class":"PDOException","message":"...","code":"42S22","file":"...:42","trace":["..."]}}}
+```
+`requestId` est commun a toutes les entrees d'une requete et renvoye au client
+dans l'en-tete `X-Request-Id` : le citer suffit pour retrouver un incident.
+
+**Utilisation :**
+```php
+use App\Core\Log\Log;
+
+Log::error('Payment provider unreachable', ['exception' => $e, 'eventId' => $id]);
+Log::info('Reminder emails sent', ['count' => $sent]);
+
+// Audit : action, type de ressource, id, resultat (success | failure | denied)
+Log::audit('event.delete', 'event', $id);
+Log::audit('auth.login', 'user', $userId, 'failure', ['reason' => 'bad_password']);
+
+// Dans le futur middleware d'auth, une fois l'utilisateur identifie :
+Log::setUserId($user['id']);
+```
+
+Garde-fous :
+- les cles de contexte sensibles (`password`, `token`, `secret`, `authorization`,
+  `cookie`, `csrf`, `session`, `api_key`...) sont remplacees par `[REDACTED]`,
+  et la valeur de `DB_PASSWORD` est masquee partout ;
+- traces d'exception sans les arguments des fonctions, chemin sans query string ;
+- l'IP n'est enregistree que dans l'audit ;
+- une erreur d'ecriture des logs ne casse jamais la requete (repli sur le log PHP).
 
 ## Securite — ce qui est en place
 

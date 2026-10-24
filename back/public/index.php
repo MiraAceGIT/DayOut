@@ -24,9 +24,16 @@ spl_autoload_register(function (string $class): void {
 
 require APP_ROOT . '/config/config.php';
 
+use App\Core\Log\AccessLog;
+use App\Core\Log\ErrorHandler;
+use App\Core\Log\Log;
 use App\Core\Response;
 use App\Core\Router;
 
+ErrorHandler::register();
+AccessLog::register();
+
+header('X-Request-Id: ' . Log::requestId());
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -43,6 +50,7 @@ if ($requestOrigin !== '' && in_array($requestOrigin, $allowedOrigins, true)) {
     header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
     header('Access-Control-Max-Age: 600');
+    header('Access-Control-Expose-Headers: X-Request-Id');
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
@@ -60,7 +68,7 @@ try {
 } catch (\PDOException $e) {
     // A traiter avant RuntimeException (classe parente) : getCode() y est un
     // SQLSTATE string ('42S22'), qui passerait le test 4xx ci-dessous.
-    error_log('[dispatch] ' . $e);
+    Log::error('Database error', ['exception' => $e]);
     Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
 } catch (\RuntimeException $e) {
     // Code 4xx = erreur de validation d'entree (ex. Request::json()).
@@ -68,10 +76,10 @@ try {
     if ($code >= 400 && $code < 500) {
         Response::error('BAD_REQUEST', $e->getMessage(), $code);
     }
-    error_log('[dispatch] ' . $e);
+    Log::error('Unhandled exception', ['exception' => $e]);
     Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
 } catch (\Throwable $e) {
     // Jamais exposer la stack ni le message au client, meme en debug.
-    error_log('[dispatch] ' . $e);
+    Log::error('Unhandled exception', ['exception' => $e]);
     Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
 }
