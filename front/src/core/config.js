@@ -9,7 +9,7 @@ export const API_BASE_URL = (
 ).replace(/\/+$/, "");
 
 /** Dossier `front/`, resolu depuis ce module : valable quelle que soit la profondeur de la page. */
-export const FRONT_ROOT = new URL("../../../", import.meta.url);
+export const FRONT_ROOT = new URL("../../", import.meta.url);
 
 /** `path` relatif a `front/`, pas a la page courante. */
 export function frontUrl(path) {

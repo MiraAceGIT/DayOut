@@ -1,5 +1,5 @@
-import { h } from "../lib/dom.js";
-import { frontUrl } from "./config.js";
+import { h } from "../../../lib/dom.js";
+import { frontUrl } from "../../../core/config.js";
 
 export const NAV_ITEMS = [
   { id: "home",   label: "Accueil",    path: "index.html" },

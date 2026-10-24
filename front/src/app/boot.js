@@ -1,6 +1,6 @@
-import { setUnauthorizedHandler } from "./api.js";
-import { frontUrl } from "./config.js";
-import { renderHeader } from "./layout.js";
+import { setUnauthorizedHandler } from "../core/api.js";
+import { frontUrl } from "../core/config.js";
+import { renderHeader } from "../views/layout/header/header.js";
 
 /** Page de connexion (pas encore creee). */
 export const LOGIN_PATH = "pages/login.html";
