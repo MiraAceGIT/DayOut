@@ -1,6 +1,6 @@
 -- Inscriptions : controles d'acces + maintien de events.registered_count.
 -- "Active" = fn_registration_is_active(status) = status <> 'cancelled' (registered, attended, no_show).
--- registered_count = nombre d'inscriptions actives ; recalcul : infra/sql/recount_registrations.sql.
+-- registered_count = nombre d'inscriptions actives.
 
 DELIMITER $$
 

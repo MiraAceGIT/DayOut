@@ -116,18 +116,13 @@ mysql -u root dayout < seed.sql
 `registered_count` est une dénormalisation maintenue par triggers (`12_triggers_registrations.sql`).
 Une inscription est **active** (comptée) si `status <> 'cancelled'` : `registered`, `attended` et
 `no_show` comptent, `cancelled` non. Cette définition n'existe qu'à un endroit,
-`fn_registration_is_active()` (`09_routines.sql`), utilisée par tous les triggers et par le script de recalcul.
+`fn_registration_is_active()` (`09_routines.sql`), utilisée par tous les triggers.
 
 La place est réservée sous verrou (`SELECT ... FOR UPDATE` sur la ligne `events`) : deux inscriptions
 simultanées à la dernière place sont sérialisées, la seconde reçoit `50304 Event is full`.
 
-Si les compteurs ont dérivé (import manuel, triggers contournés...), les recalculer :
-
-```bash
-mysql -u root dayout < infra/sql/recount_registrations.sql
-```
-
-Le script est rejouable et se termine par une requête de contrôle qui doit renvoyer 0 ligne.
+Après un reset complet (`reset_db.sh`), les compteurs sont toujours justes : le seed passe par les
+triggers. Si on modifie un trigger, rejouer le reset suffit à les recalculer.
 
 ## Écoles : désactiver, ne jamais supprimer
 
@@ -240,7 +235,6 @@ infra/
     │   └── 14_triggers_fk_checks.sql     ← règles impossibles en CHECK sur une FK (MariaDB #1901)
     ├── build_schema.sh   ← concatène schema/*.sql → dist/schema.sql
     ├── reset_db.sh       ← recrée une base + schéma + seed en une commande
-    ├── recount_registrations.sql ← recalcule events.registered_count
     └── seed.sql          ← données de test (écoles, users, events…)
 
 Ajouter une table : la placer dans le fichier de son domaine (en respectant l'ordre des FK) et ajouter son `DROP TABLE IF EXISTS` dans `00_reset.sql`.

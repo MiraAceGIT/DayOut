@@ -16,7 +16,7 @@ CREATE TABLE events (
   capacity             INT UNSIGNED NULL,
   -- Denormalisation volontaire : = COUNT(registrations actives), evite un COUNT par carte du feed.
   -- Active = status <> 'cancelled' (fn_registration_is_active). Maintenu par trg_registrations_ai/au/ad
-  -- et trg_users_bd_registrations ; recalcul : infra/sql/recount_registrations.sql.
+  -- et trg_users_bd_registrations.
   registered_count     INT UNSIGNED NOT NULL DEFAULT 0,
   price_cents          INT UNSIGNED NOT NULL DEFAULT 0,
   currency             CHAR(3)      NOT NULL DEFAULT 'EUR',
