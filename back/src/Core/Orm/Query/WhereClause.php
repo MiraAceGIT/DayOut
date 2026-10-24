@@ -3,11 +3,7 @@ declare(strict_types=1);
 
 namespace App\Core\Orm\Query;
 
-/**
- * Liste ordonnee de conditions + leurs bindings. Les fragments recus sont
- * deja valides/quotes : cette classe ne fait que les enchainer.
- * Compile en "a AND b OR (c AND d)" (precedence SQL standard).
- */
+/** Fragments deja valides/quotes, enchaines sans parentheses : AND prime sur OR (precedence SQL). */
 final class WhereClause
 {
     /** @var array<int, array{bool: string, sql: string}> */
@@ -23,7 +19,7 @@ final class WhereClause
         return $this;
     }
 
-    /** Ajoute un sous-groupe entre parentheses. Groupe vide = no-op. */
+    /** Groupe vide = no-op. */
     public function addGroup(WhereClause $group, string $boolean = 'AND'): self
     {
         if ($group->isEmpty()) {

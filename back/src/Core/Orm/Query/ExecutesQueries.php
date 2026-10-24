@@ -5,10 +5,7 @@ namespace App\Core\Orm\Query;
 
 use InvalidArgumentException;
 
-/**
- * Methodes terminales du QueryBuilder (lecture + ecriture). Trait reserve a
- * QueryBuilder : il s'appuie sur $parts, $hydrator et connection().
- */
+/** Reserve a QueryBuilder : s'appuie sur $parts, $hydrator et connection(). */
 trait ExecutesQueries
 {
     /** @return array<int, array<string, mixed>> */
@@ -24,14 +21,13 @@ trait ExecutesQueries
         return $rows[0] ?? null;
     }
 
-    /** Valeur d'une seule colonne de la premiere ligne. */
     public function value(string $column): mixed
     {
         $row = (clone $this)->select($column)->first();
         return $row === null ? null : reset($row);
     }
 
-    /** Liste des valeurs d'une colonne : pluck('id') -> [1, 2, 3]. */
+    /** @return array<int, mixed> */
     public function pluck(string $column): array
     {
         $rows = (clone $this)->select($column)->get();
@@ -49,7 +45,7 @@ trait ExecutesQueries
         return $this->connection()->scalar(Compiler::exists($this->parts), $this->getBindings()) !== false;
     }
 
-    /** INSERT d'une ligne. Retourne l'id auto-increment (0 si cle composite). */
+    /** Id auto-increment, 0 si cle composite. */
     public function insert(array $data): int
     {
         if ($data === []) {
@@ -59,7 +55,6 @@ trait ExecutesQueries
         return $this->connection()->insert($sql, array_values($data));
     }
 
-    /** UPDATE sur les lignes filtrees. Retourne le nombre de lignes modifiees. */
     public function update(array $data): int
     {
         if ($data === []) {
@@ -70,7 +65,6 @@ trait ExecutesQueries
         return $this->connection()->affecting($sql, array_merge(array_values($data), $wheres->bindings()));
     }
 
-    /** DELETE sur les lignes filtrees. Retourne le nombre de lignes supprimees. */
     public function delete(): int
     {
         $wheres = $this->parts->wheres;

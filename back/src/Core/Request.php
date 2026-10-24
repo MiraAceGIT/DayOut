@@ -6,14 +6,9 @@ namespace App\Core;
 use JsonException;
 use RuntimeException;
 
-/**
- * Helpers de lecture de la requete HTTP (body JSON, query string).
- * Toutes les erreurs de parsing JSON remontent via RuntimeException,
- * attrapee par le dispatcher pour renvoyer un 400 explicite.
- */
 final class Request
 {
-    /** Retourne le body JSON decode (tableau associatif) ou []. */
+    /** Body vide -> [] ; JSON invalide -> RuntimeException code 400 (renvoyee en 400 par le dispatcher). */
     public static function json(): array
     {
         $raw = file_get_contents('php://input');
@@ -31,13 +26,12 @@ final class Request
         return $data;
     }
 
-    /** Lit un parametre de query string ($_GET) avec valeur par defaut. */
     public static function query(string $key, ?string $default = null): ?string
     {
         return isset($_GET[$key]) ? (string) $_GET[$key] : $default;
     }
 
-    /** Entier valide dans [min, max], valeur par defaut sinon. */
+    /** Hors [min, max] ou non entier -> $default. */
     public static function queryInt(string $key, int $default, int $min, int $max): int
     {
         $value = filter_input(INPUT_GET, $key, FILTER_VALIDATE_INT, [

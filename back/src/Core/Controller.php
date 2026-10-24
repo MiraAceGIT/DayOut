@@ -5,10 +5,6 @@ namespace App\Core;
 
 use PDO;
 
-/**
- * Controller de base. Expose un acces rapide a la BDD et aux helpers
- * de reponse. Hereditage facultatif.
- */
 abstract class Controller
 {
     protected function db(): PDO

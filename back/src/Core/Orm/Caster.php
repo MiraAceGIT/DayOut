@@ -8,12 +8,7 @@ use DateTimeInterface;
 use DateTimeZone;
 use LogicException;
 
-/**
- * Casts appliques a la lecture, pour un contrat JSON coherent :
- *  - booleens -> bool (plutot que 0/1 renvoyes par PDO MySQL)
- *  - entiers  -> int
- *  - dates    -> ISO 8601 UTC
- */
+/** Casts a la lecture : PDO MySQL renvoie 0/1 et des chaines, l'API expose bool/int/ISO 8601 UTC. */
 final class Caster
 {
     /**
@@ -23,7 +18,6 @@ final class Caster
     public static function apply(array $row, array $casts, string $owner): array
     {
         foreach ($casts as $column => $type) {
-            // Colonne non selectionnee ou NULL SQL : on ne touche pas.
             if (!array_key_exists($column, $row) || $row[$column] === null) {
                 continue;
             }
@@ -38,7 +32,7 @@ final class Caster
             'int'      => (int) $value,
             'float'    => (float) $value,
             'bool'     => (bool) $value,
-            // La BDD stocke en UTC (SET time_zone='+00:00' dans le schema).
+            // Session MySQL en UTC (cf. Database::connection()).
             'datetime' => (new DateTimeImmutable((string) $value, new DateTimeZone('UTC')))
                 ->format(DateTimeInterface::ATOM),
             'json'     => json_decode((string) $value, true),

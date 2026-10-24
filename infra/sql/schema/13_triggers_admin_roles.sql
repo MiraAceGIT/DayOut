@@ -1,17 +1,7 @@
--- =============================================================================
--- DayOut — Triggers : contrôle du rôle admin sur les FK vers users
--- -----------------------------------------------------------------------------
--- NOTE MariaDB : utiliser `COLLATE utf8mb4_unicode_ci` dans les comparaisons
--- croisees schools.email_domain / NEW.email_domain pour eviter l'erreur
--- "Illegal mix of collations" quand connection_collation differe.
--- =============================================================================
-
 DELIMITER $$
 
--- 9.10 Garantie "role admin" pour les colonnes FK pointant arbitrairement vers users.
---      Le CHECK ne peut pas interroger une autre table : triggers obligatoires.
+-- Les FK vers users reservees aux admins sont verifiees par trigger (un CHECK ne peut pas lire une autre table).
 
--- 9.10.a report_actions.admin_id doit referencer un admin
 DROP TRIGGER IF EXISTS trg_report_actions_bi $$
 CREATE TRIGGER trg_report_actions_bi
 BEFORE INSERT ON report_actions
@@ -40,7 +30,6 @@ BEGIN
   END IF;
 END $$
 
--- 9.10.b absence_corrections.reviewed_by doit etre admin (si renseigne)
 DROP TRIGGER IF EXISTS trg_absence_corr_bi $$
 CREATE TRIGGER trg_absence_corr_bi
 BEFORE INSERT ON absence_corrections
@@ -72,7 +61,6 @@ BEGIN
   END IF;
 END $$
 
--- 9.10.c creator_profiles.reviewed_by doit etre admin (si renseigne)
 DROP TRIGGER IF EXISTS trg_creator_profiles_bi $$
 CREATE TRIGGER trg_creator_profiles_bi
 BEFORE INSERT ON creator_profiles
@@ -104,7 +92,6 @@ BEGIN
   END IF;
 END $$
 
--- 9.10.d contact_messages.handled_by doit etre admin (si renseigne)
 DROP TRIGGER IF EXISTS trg_contact_msg_bi $$
 CREATE TRIGGER trg_contact_msg_bi
 BEFORE INSERT ON contact_messages

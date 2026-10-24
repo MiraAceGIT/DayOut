@@ -1,8 +1,3 @@
--- =============================================================================
--- DayOut — Schema : inscriptions & fiabilité
--- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
--- =============================================================================
-
 CREATE TABLE registrations (
   id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   event_id       BIGINT UNSIGNED NOT NULL,
@@ -25,7 +20,7 @@ CREATE TABLE registrations (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Clics billetterie externe (compte 0.5 participation dans le score)
+-- Clics billetterie externe : comptent 0.5 participation dans le score de fiabilite.
 CREATE TABLE paid_event_clicks (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   event_id    BIGINT UNSIGNED NOT NULL,
@@ -42,7 +37,7 @@ CREATE TABLE paid_event_clicks (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Journal de participation (impact score fiabilite)
+-- Journal des variations du score de fiabilite (cf. 08_views.sql).
 CREATE TABLE attendance_events (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id     BIGINT UNSIGNED NOT NULL,
@@ -64,8 +59,7 @@ CREATE TABLE attendance_events (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- user_id supprime : il se deduit de registration_id -> registrations.user_id.
--- Pour retrouver le proprietaire : JOIN registrations ON registrations.id = absence_corrections.registration_id.
+-- Pas de user_id : il se deduit via registration_id -> registrations.user_id (JOIN registrations).
 CREATE TABLE absence_corrections (
   id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   registration_id BIGINT UNSIGNED NOT NULL,

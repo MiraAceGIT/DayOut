@@ -1,14 +1,11 @@
 <?php
 declare(strict_types=1);
 
-// =============================================================================
-// Front controller : point d'entree unique de l'API.
-// Toutes les requetes HTTP arrivent ici via .htaccess (RewriteRule -> index.php).
-// =============================================================================
+// Front controller : toutes les requetes y arrivent via .htaccess.
 
 define('APP_ROOT', dirname(__DIR__));
 
-// --- Autoload PSR-4 simplifie (App\...) ----------------------------------------
+// Autoload PSR-4 : App\ -> src/
 spl_autoload_register(function (string $class): void {
     $prefix  = 'App\\';
     $baseDir = APP_ROOT . '/src/';
@@ -30,15 +27,12 @@ require APP_ROOT . '/config/config.php';
 use App\Core\Response;
 use App\Core\Router;
 
-// --- Headers de securite -------------------------------------------------------
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 
-// --- CORS (whitelist via env) --------------------------------------------------
-// CORS_ORIGIN peut contenir plusieurs origines separees par des virgules.
-// En dev local : CORS_ORIGIN=http://localhost:5500
+// CORS : CORS_ORIGIN = origines autorisees, separees par des virgules.
 $allowedOrigins = array_filter(array_map('trim', explode(',', (string) getenv('CORS_ORIGIN'))));
 $requestOrigin  = $_SERVER['HTTP_ORIGIN'] ?? '';
 
@@ -55,7 +49,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     Response::noContent();
 }
 
-// --- Dispatch ------------------------------------------------------------------
 $router = new Router();
 require APP_ROOT . '/routes/api.php';
 
@@ -70,7 +63,7 @@ try {
     error_log('[dispatch] ' . $e);
     Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
 } catch (\RuntimeException $e) {
-    // Les RuntimeException avec code 4xx proviennent de la validation d'entree.
+    // Code 4xx = erreur de validation d'entree (ex. Request::json()).
     $code = (int) $e->getCode();
     if ($code >= 400 && $code < 500) {
         Response::error('BAD_REQUEST', $e->getMessage(), $code);
@@ -79,7 +72,6 @@ try {
     Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
 } catch (\Throwable $e) {
     // Jamais exposer la stack ni le message au client, meme en debug.
-    // Les details sont uniquement dans les logs serveur.
     error_log('[dispatch] ' . $e);
     Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
 }

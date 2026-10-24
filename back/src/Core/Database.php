@@ -8,10 +8,6 @@ use PDO;
 use PDOException;
 use RuntimeException;
 
-/**
- * Point de composition de l'acces BDD. Lit la config depuis l'env (.env).
- * Usage : Database::connection() (PDO brut) ou Database::orm() (ORM).
- */
 final class Database
 {
     private static ?PDO $pdo = null;
@@ -23,8 +19,7 @@ final class Database
             return self::$pdo;
         }
 
-        // On exige les variables critiques : pas de fallback silencieux
-        // sur root sans mot de passe en prod.
+        // Pas de fallback silencieux sur root sans mot de passe en prod.
         foreach (['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER'] as $required) {
             if (getenv($required) === false) {
                 throw new RuntimeException("Missing environment variable: $required");
@@ -49,8 +44,8 @@ final class Database
             // doit l'etre aussi, quel que soit le fuseau du serveur.
             self::$pdo->exec("SET time_zone = '+00:00'");
         } catch (PDOException $e) {
-            // Ne JAMAIS concatener $e->getMessage() : il peut exposer
-            // host/user/password dans la trace client. Log serveur uniquement.
+            // Ne JAMAIS concatener $e->getMessage() a l'exception : il peut
+            // exposer host/user/password au client. Log serveur uniquement.
             error_log('[Database] connection failed: ' . $e->getMessage());
             throw new RuntimeException('Database connection failed', 0, $e);
         }
@@ -58,10 +53,7 @@ final class Database
         return self::$pdo;
     }
 
-    /**
-     * Connection ORM partagee. Une seule instance par requete HTTP : une
-     * transaction ouverte dessus couvre donc tous les models.
-     */
+    /** Instance unique par requete : une transaction ouverte couvre tous les models. */
     public static function orm(): Connection
     {
         return self::$orm ??= new Connection(self::connection());

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Concatene schema/*.sql (dans l'ordre) en un seul fichier dist/schema.sql,
-# importable en une fois dans phpMyAdmin.
+# Concatene schema/*.sql (dans l'ordre) en dist/schema.sql, importable en une fois dans phpMyAdmin.
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p dist

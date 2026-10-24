@@ -1,8 +1,3 @@
--- =============================================================================
--- DayOut — Schema : référentiels
--- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
--- =============================================================================
-
 CREATE TABLE schools (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name          VARCHAR(160) NOT NULL,

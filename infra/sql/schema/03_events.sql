@@ -1,8 +1,3 @@
--- =============================================================================
--- DayOut — Schema : événements
--- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
--- =============================================================================
-
 CREATE TABLE events (
   id                   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   creator_id           BIGINT UNSIGNED NOT NULL,
@@ -19,16 +14,14 @@ CREATE TABLE events (
   latitude             DECIMAL(9,6) NULL,
   longitude            DECIMAL(9,6) NULL,
   capacity             INT UNSIGNED NULL,
-  -- DENORMALISATION VOLONTAIRE : derivable via COUNT(registrations WHERE status='registered').
-  -- Justification : affiche partout dans le feed, evite un COUNT a chaque rendu de carte.
-  -- Maintenu par les triggers trg_registrations_ai/au/ad.
+  -- Denormalisation volontaire : = COUNT(registrations actives), evite un COUNT par carte du feed.
+  -- Maintenu par trg_registrations_ai/au/ad.
   registered_count     INT UNSIGNED NOT NULL DEFAULT 0,
   price_cents          INT UNSIGNED NOT NULL DEFAULT 0,
   currency             CHAR(3)      NOT NULL DEFAULT 'EUR',
   is_paid              TINYINT(1)   NOT NULL DEFAULT 0,
   external_ticket_url  VARCHAR(255) NULL,
-  -- DENORMALISATION VOLONTAIRE : equivalent a (restricted_school_id IS NOT NULL).
-  -- Justification : filtre explicite dans les requetes et formulaires (lisibilite).
+  -- Denormalisation volontaire : = (restricted_school_id IS NOT NULL), pour des filtres lisibles.
   -- Coherence imposee par trg_events_bi / trg_events_bu.
   school_restricted    TINYINT(1)   NOT NULL DEFAULT 0,
   restricted_school_id INT UNSIGNED NULL,

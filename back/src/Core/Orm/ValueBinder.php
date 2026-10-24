@@ -10,10 +10,7 @@ use InvalidArgumentException;
 use PDO;
 use PDOStatement;
 
-/**
- * Normalise et bind les valeurs d'une requete preparee. Applique a tous les
- * bindings (WHERE compris) pour que where('start_at', '>=', $date) fonctionne.
- */
+/** Applique a tous les bindings (WHERE compris) : where('start_at', '>=', $date) fonctionne. */
 final class ValueBinder
 {
     /** Placeholders positionnels `?` : les cles du tableau sont ignorees. */
@@ -24,7 +21,7 @@ final class ValueBinder
         }
     }
 
-    /** bool -> 0/1, DateTime -> 'Y-m-d H:i:s' en UTC (la BDD est en UTC). */
+    /** DateTime converti en UTC (fuseau de la session MySQL). */
     public static function normalize(mixed $value): mixed
     {
         if (is_bool($value)) {

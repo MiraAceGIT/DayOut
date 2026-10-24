@@ -8,23 +8,9 @@ use Closure;
 use LogicException;
 
 /**
- * Query builder fluent. Construit l'etat (QueryParts), delegue la
- * compilation au Compiler et l'execution a la Connection.
- *
- * Usage :
- *   Database::orm()->table('events')
- *       ->select('id', 'title')
- *       ->where('status', 'published')
- *       ->where('start_at', '>=', $now)
- *       ->orderBy('start_at')
- *       ->limit(20)
- *       ->get();
- *
- * Securite :
- *  - toutes les valeurs passent par des placeholders `?` (jamais concatenees)
- *  - les identifiants sont valides par Grammar au moment de l'appel
- *  - les methodes *Raw() sont les seules a accepter du SQL brut : ne JAMAIS
- *    y concatener une entree utilisateur (utiliser les bindings).
+ * Valeurs toujours en placeholders `?`, identifiants valides par Grammar.
+ * Seules les methodes *Raw() acceptent du SQL brut : ne JAMAIS y concatener
+ * d'entree utilisateur.
  */
 final class QueryBuilder
 {
@@ -42,14 +28,13 @@ final class QueryBuilder
         $this->connection = $connection;
     }
 
-    /** Colonnes a selectionner. Accepte `col`, `table.col` et `col AS alias`. */
     public function select(string ...$columns): self
     {
         $this->parts->columns = Grammar::wrapAll($columns ?: ['*']);
         return $this;
     }
 
-    /** Expression brute (COUNT, CONCAT...). Pas de bindings : SQL statique uniquement. */
+    /** SQL brut sans bindings : expression statique uniquement, jamais d'entree utilisateur. */
     public function selectRaw(string $expression): self
     {
         if ($this->parts->columns === ['*']) {
@@ -107,13 +92,12 @@ final class QueryBuilder
         return $this;
     }
 
-    /** Pagination 1-indexee : forPage(2, 20) -> LIMIT 20 OFFSET 20. */
+    /** $page commence a 1. */
     public function forPage(int $page, int $perPage): self
     {
         return $this->limit($perPage)->offset((max(1, $page) - 1) * $perPage);
     }
 
-    /** Transformation appliquee a chaque ligne lue (utilise par Model pour les casts). */
     public function hydrateWith(?Closure $hydrator): self
     {
         $this->hydrator = $hydrator;
@@ -130,6 +114,7 @@ final class QueryBuilder
         return $this->parts->wheres->bindings();
     }
 
+    // Clone profond : first()/value()/pluck() modifient un clone, pas la requete d'origine.
     public function __clone()
     {
         $this->parts = clone $this->parts;

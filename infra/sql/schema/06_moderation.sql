@@ -1,8 +1,3 @@
--- =============================================================================
--- DayOut — Schema : interactions sociales & modération
--- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
--- =============================================================================
-
 CREATE TABLE event_messages (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   event_id    BIGINT UNSIGNED NOT NULL,

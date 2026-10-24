@@ -1,9 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// =============================================================================
-// Charge le .env (format simple KEY=VALUE) et le pousse dans getenv()/$_ENV.
-// =============================================================================
+// .env minimal (KEY=VALUE, pas d'interpolation) pousse dans getenv()/$_ENV.
 
 $envFile = APP_ROOT . '/.env';
 if (is_file($envFile)) {
@@ -20,10 +18,9 @@ if (is_file($envFile)) {
     }
 }
 
-// Fuseau horaire par defaut (coherent avec la BDD : UTC)
+// UTC par defaut, comme la session MySQL.
 date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'UTC');
 
-// Rapports d'erreur selon APP_DEBUG
 if (getenv('APP_DEBUG') === 'true') {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');

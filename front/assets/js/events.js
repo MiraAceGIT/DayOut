@@ -3,11 +3,6 @@ import { api, ApiError } from "./api.js";
 const listEl  = document.querySelector("#events-list");
 const errorEl = document.querySelector("#events-error");
 
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-
-/** Formate une date ISO en date/heure FR. */
 function formatDate(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleString("fr-FR", {
@@ -16,7 +11,6 @@ function formatDate(iso) {
   });
 }
 
-/** Formate un prix en centimes vers EUR, ou "Gratuit" si !isPaid. */
 function formatPrice(cents, isPaid) {
   if (!isPaid) return "Gratuit";
   return (Number(cents) / 100).toLocaleString("fr-FR", {
@@ -25,10 +19,7 @@ function formatPrice(cents, isPaid) {
   });
 }
 
-/**
- * Construit une carte evenement via document.createElement + textContent.
- * -> aucune injection HTML possible (XSS-safe par construction).
- */
+// textContent uniquement (jamais innerHTML) : donnees API non fiables, protege du XSS.
 function renderEvent(ev) {
   const article = document.createElement("article");
   article.className = "event-card";
@@ -64,10 +55,6 @@ function renderEvent(ev) {
   return article;
 }
 
-// -----------------------------------------------------------------------------
-// Rendu : loading / vide / erreur / succes
-// -----------------------------------------------------------------------------
-
 function showStatus(message) {
   listEl.replaceChildren();
   const p = document.createElement("p");
@@ -99,10 +86,6 @@ function showError(err) {
   }
   listEl.replaceChildren();
 }
-
-// -----------------------------------------------------------------------------
-// Chargement
-// -----------------------------------------------------------------------------
 
 async function loadEvents() {
   if (!listEl || !errorEl) return;

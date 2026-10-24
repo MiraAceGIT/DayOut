@@ -11,28 +11,20 @@ use App\Core\Orm\Rows;
 use LogicException;
 
 /**
- * Model de base (le M de MVC) : une sous-classe par table, qui decrit la table
- * via ses constantes et expose une methode nommee par besoin metier.
- * Les lignes sont renvoyees en tableaux associatifs deja castes (prets pour
- * Response::json). query() reste protected : les controllers ne construisent
- * pas de SQL eux-memes.
- *
- * Utilisation (dans un controller) :
- *   $users = new User();
- *   $users->find(3);
- *   $users->create($this->body(), ['password_hash' => $hash]);
+ * Base des models MVC : une sous-classe par table, une methode par besoin metier.
+ * Lignes renvoyees en tableaux deja castes ; query() reste protected pour que
+ * les controllers ne construisent pas de SQL.
  */
 abstract class Model
 {
-    /** Nom de la table (obligatoire). */
     protected const TABLE = '';
 
     protected const PRIMARY_KEY = 'id';
 
-    /** Colonnes lues par defaut (contrat API). Eviter '*' sur les tables sensibles. */
+    /** Contrat API. Eviter '*' sur les tables sensibles. */
     protected const COLUMNS = ['*'];
 
-    /** Saisie client autorisee en ecriture via create()/updateById() (anti mass-assignment). */
+    /** Saisie client uniquement (anti mass-assignment) ; champs serveur via le 2e argument de create()/updateById(). */
     protected const FILLABLE = [];
 
     /** colonne => int | float | bool | datetime | json */
@@ -40,7 +32,7 @@ abstract class Model
 
     private Connection $connection;
 
-    /** Sans argument : connexion partagee de l'app. Le parametre sert aux tests. */
+    /** Sans argument : connexion partagee Database::orm(). Le parametre sert aux tests. */
     public function __construct(?Connection $connection = null)
     {
         if (static::TABLE === '') {
@@ -54,10 +46,7 @@ abstract class Model
         return $this->query()->where(static::PRIMARY_KEY, $id)->first();
     }
 
-    /**
-     * Chargement batch (anti N+1) : une seule requete WHERE pk IN (...).
-     * @return array<int|string, array<string, mixed>> indexe par cle primaire
-     */
+    /** @return array<int|string, array<string, mixed>> indexe par cle primaire */
     public function findMany(array $ids): array
     {
         $ids = array_values(array_unique($ids));
@@ -74,17 +63,16 @@ abstract class Model
     }
 
     /**
-     * Insere une ligne. Retourne l'id cree.
      * $input (saisie client) est filtre par FILLABLE ; $server (creator_id,
      * status, password_hash...) est fixe par le code et n'est pas filtre.
-     * Les erreurs SQL (contraintes, triggers SIGNAL 45000) remontent en PDOException.
+     * Erreurs SQL (contraintes, triggers SIGNAL 45000) -> PDOException.
      */
     public function create(array $input, array $server = []): int
     {
         return $this->table()->insert($this->row($input, $server));
     }
 
-    /** Meme separation $input / $server que create(). Retourne le nombre de lignes modifiees. */
+    /** Meme separation $input / $server que create(). */
     public function updateById(int|string $id, array $input, array $server = []): int
     {
         return $this->table()
@@ -92,13 +80,12 @@ abstract class Model
             ->update($this->row($input, $server));
     }
 
-    /** Retourne le nombre de lignes supprimees. */
     public function deleteById(int|string $id): int
     {
         return $this->table()->where(static::PRIMARY_KEY, $id)->delete();
     }
 
-    /** Lecture : builder pre-configure (table, COLUMNS, casts). */
+    /** Lecture : COLUMNS + casts appliques. */
     protected function query(): QueryBuilder
     {
         return $this->table()
@@ -112,7 +99,7 @@ abstract class Model
         return $this->connection->table(static::TABLE);
     }
 
-    /** Saisie client filtree par FILLABLE + champs serveur ; $input peut etre vide si $server suffit. */
+    /** $input peut etre vide si $server suffit. */
     private function row(array $input, array $server): array
     {
         if ($input === [] && $server !== []) {

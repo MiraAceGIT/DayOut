@@ -6,15 +6,8 @@ namespace App\Core;
 use RuntimeException;
 
 /**
- * Routeur simple. Supporte :
- *  - les params nommes : "/events/{id}"
- *  - les params typees entiers : "/events/{id:\d+}" (regex inline)
- *  - les middlewares : $router->get($path, $handler, [AuthMiddleware::class])
- *  - HEAD comme alias de GET (RFC 7231)
- *
- * Chaque middleware doit avoir une methode handle(array $params): void.
- * Lever une exception ou appeler Response::error() depuis le middleware
- * interrompt le dispatch.
+ * Middleware : classe avec handle(array $params): void, instanciee sans argument.
+ * Lever une exception ou appeler Response::error() interrompt le dispatch.
  */
 final class Router
 {
@@ -38,7 +31,7 @@ final class Router
     private function add(string $method, string $path, array $handler, array $middlewares): void
     {
         $params = [];
-        // Supporte {name} (par defaut [^/]+) et {name:regex} (regex personnalisee)
+        // {name} -> [^/]+ ; {name:regex} -> regex fournie
         $regex = preg_replace_callback(
             '#\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]+))?\}#',
             function (array $m) use (&$params): string {

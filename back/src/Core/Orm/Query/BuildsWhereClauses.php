@@ -5,10 +5,7 @@ namespace App\Core\Orm\Query;
 
 use Closure;
 
-/**
- * Methodes WHERE du QueryBuilder. Trait reserve a QueryBuilder : il s'appuie
- * sur sa propriete privee $parts.
- */
+/** Reserve a QueryBuilder : s'appuie sur sa propriete privee $parts. */
 trait BuildsWhereClauses
 {
     /**
@@ -85,7 +82,7 @@ trait BuildsWhereClauses
         return $this->addWhere(Grammar::wrap($column) . ' BETWEEN ? AND ?', [$min, $max]);
     }
 
-    /** Condition brute avec bindings : whereRaw('DATE(start_at) = ?', [$day]). */
+    /** SQL brut : ne JAMAIS y concatener d'entree utilisateur, passer par $bindings. */
     public function whereRaw(string $sql, array $bindings = [], string $boolean = 'AND'): self
     {
         return $this->addWhere($sql, $bindings, $boolean);

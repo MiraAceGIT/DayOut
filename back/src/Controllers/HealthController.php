@@ -16,7 +16,7 @@ final class HealthController extends Controller
             $this->db()->query('SELECT 1');
             $db = 'up';
         } catch (Throwable $e) {
-            // Log serveur mais on continue : /health doit toujours repondre.
+            // /health doit toujours repondre, meme BDD down.
             error_log('[Health] DB check failed: ' . $e->getMessage());
         }
 

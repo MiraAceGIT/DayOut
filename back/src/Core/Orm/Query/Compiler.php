@@ -5,10 +5,7 @@ namespace App\Core\Orm\Query;
 
 use LogicException;
 
-/**
- * Assemble les requetes SQL a partir de fragments deja valides. Ne touche
- * jamais aux valeurs : elles restent en placeholders `?`.
- */
+/** Assemble des fragments deja valides par Grammar ; les valeurs restent en `?`. */
 final class Compiler
 {
     public static function select(QueryParts $q): string
@@ -46,7 +43,7 @@ final class Compiler
 
         // Avec GROUP BY, COUNT(*) compterait par groupe : on compte les groupes.
         if ($q->groups !== []) {
-            // Colonnes inutiles pour compter, et deux `id` feraient echouer MySQL (1060)
+            // ['1'] : deux colonnes `id` (jointure) feraient echouer la sous-requete (MySQL 1060)
             $q->columns = ['1'];
             return 'SELECT COUNT(*) FROM (' . self::select($q) . ') AS sub';
         }
@@ -91,7 +88,6 @@ final class Compiler
 
     private static function assertHasWhere(string $action, string $table, WhereClause $where): void
     {
-        // Garde-fou : un UPDATE/DELETE sans WHERE toucherait toute la table.
         if ($where->isEmpty()) {
             throw new LogicException("Refusing to $action without a WHERE clause on $table");
         }

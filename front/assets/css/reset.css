@@ -1,6 +1,4 @@
-/* ============================================================================
-   Reset minimal (base Josh Comeau, allege)
-   ============================================================================ */
+/* Reset minimal inspire de Josh Comeau */
 *, *::before, *::after { box-sizing: border-box; }
 
 /* Reset de marges sur les elements de contenu uniquement (pas sur tous les *) */

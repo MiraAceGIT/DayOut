@@ -3,13 +3,9 @@ declare(strict_types=1);
 
 namespace App\Core\Orm\Query;
 
-/**
- * Etat mutable d'un SELECT en construction. Tous les fragments stockes ici
- * sont deja valides/quotes par Grammar : le Compiler les assemble tels quels.
- */
+/** Fragments deja valides/quotes par Grammar, sauf $table (brut, quote a la compilation). */
 final class QueryParts
 {
-    /** Nom de table brut (quote a la compilation). */
     public string $table;
 
     /** @var string[] */
@@ -37,8 +33,7 @@ final class QueryParts
 
     public function __clone()
     {
-        // Clone profond : sans ca, first()/count()/... (qui travaillent sur un
-        // clone) partageraient le meme WhereClause que la requete d'origine.
+        // Clone profond : sinon les clones (first(), count()...) partageraient le WhereClause d'origine.
         $this->wheres = clone $this->wheres;
     }
 }

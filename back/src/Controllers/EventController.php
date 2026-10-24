@@ -30,7 +30,7 @@ final class EventController extends Controller
         ]);
     }
 
-    /** GET /api/events/{id} (id entier via regex {id:\d+}) */
+    /** GET /api/events/{id:\d+} */
     public function show(array $params): void
     {
         $id = (int) $params['id'];

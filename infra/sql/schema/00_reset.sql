@@ -1,20 +1,12 @@
--- =============================================================================
--- DayOut — Schema (DDL)
--- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
--- Engine: InnoDB   Charset: utf8mb4   Collation: utf8mb4_unicode_ci
--- NOTE: la base `dayout` doit être créée au préalable (phpMyAdmin).
--- Rejouable : FOREIGN_KEY_CHECKS=0 + DROP TABLE IF EXISTS en tête.
--- Fichiers à jouer dans l'ordre (cf. infra/README.md).
--- =============================================================================
+-- DayOut — schéma pour MariaDB 10.4+ (XAMPP) / MySQL 8.0. La base `dayout` doit exister.
+-- Fichiers schema/*.sql à jouer dans l'ordre (cf. infra/README.md).
+-- Rejouable : FOREIGN_KEY_CHECKS=0 + DROP IF EXISTS, dans l'ordre inverse des dépendances.
 
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 SET sql_mode = 'STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ERROR_FOR_DIVISION_BY_ZERO';
 SET FOREIGN_KEY_CHECKS = 0;
 
--- -----------------------------------------------------------------------------
--- Clean-up (ordre inverse des dépendances)
--- -----------------------------------------------------------------------------
 DROP VIEW  IF EXISTS v_user_reliability;
 
 DROP TABLE IF EXISTS contact_messages;

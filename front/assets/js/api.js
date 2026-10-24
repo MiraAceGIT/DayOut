@@ -1,18 +1,7 @@
-// =============================================================================
-// Wrapper fetch() minimal pour parler a l'API back.
-// Centralise la base URL + la gestion d'erreur -> toutes les pages l'utilisent.
-//
-// Base URL : lue depuis <meta name="api-base" content="..."> dans le HTML.
-// Fallback : http://localhost:8000 (dev).
-// =============================================================================
-
 const META_API_BASE = document.querySelector('meta[name="api-base"]')?.content;
 export const API_BASE_URL = META_API_BASE?.trim() || "http://localhost:8000";
 
-/**
- * Erreur enrichie : distingue reseau (serveur injoignable) et HTTP (status + payload).
- * On expose .type ("network" | "http") pour que la UI puisse adapter le message.
- */
+/** .type : "network" (serveur injoignable) | "http" (status + code/details de l'enveloppe {error}). */
 export class ApiError extends Error {
   constructor(message, { type = "http", status = 0, code = null, details = null } = {}) {
     super(message);

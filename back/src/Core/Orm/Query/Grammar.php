@@ -5,11 +5,7 @@ namespace App\Core\Orm\Query;
 
 use InvalidArgumentException;
 
-/**
- * Validation et quoting des fragments non bindables (identifiants, mots-cles).
- * Les identifiants passent une regex puis sont entoures de backticks ; les
- * operateurs, sens de tri et types de jointure sont en whitelist.
- */
+/** Validation des fragments non bindables : identifiants par regex, mots-cles par whitelist. */
 final class Grammar
 {
     public const OPERATORS = ['=', '<>', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE'];
@@ -20,7 +16,7 @@ final class Grammar
     private const DIRECTIONS = ['ASC', 'DESC'];
     private const JOIN_TYPES = ['INNER', 'LEFT', 'RIGHT'];
 
-    /** Valide puis entoure un identifiant de backticks (`table`.`col` AS `alias`). */
+    /** Accepte aussi 'col AS alias' -> `col` AS `alias`. */
     public static function wrap(string $identifier): string
     {
         $identifier = trim($identifier);

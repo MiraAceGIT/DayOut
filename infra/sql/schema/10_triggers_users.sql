@@ -1,14 +1,9 @@
--- =============================================================================
--- DayOut — Triggers : utilisateurs (whitelist écoles)
--- -----------------------------------------------------------------------------
--- NOTE MariaDB : utiliser `COLLATE utf8mb4_unicode_ci` dans les comparaisons
--- croisees schools.email_domain / NEW.email_domain pour eviter l'erreur
--- "Illegal mix of collations" quand connection_collation differe.
--- =============================================================================
+-- NOTE MariaDB : `COLLATE utf8mb4_unicode_ci` dans les comparaisons sur schools.email_domain
+-- evite "Illegal mix of collations" quand la collation de connexion differe.
 
 DELIMITER $$
 
--- 9.1 Whitelist ecoles sur inscription (INSERT)
+-- Hors admin : le domaine de l'email doit etre une ecole active ; renseigne email_domain et school_id.
 DROP TRIGGER IF EXISTS trg_users_bi_whitelist $$
 CREATE TRIGGER trg_users_bi_whitelist
 BEFORE INSERT ON users
@@ -43,7 +38,7 @@ BEGIN
   END IF;
 END $$
 
--- 9.2 Whitelist ecoles si l'email change (UPDATE)
+-- Idem si l'email change (school_id n'est pas recalcule).
 DROP TRIGGER IF EXISTS trg_users_bu_whitelist $$
 CREATE TRIGGER trg_users_bu_whitelist
 BEFORE UPDATE ON users

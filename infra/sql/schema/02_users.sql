@@ -1,15 +1,8 @@
--- =============================================================================
--- DayOut — Schema : utilisateurs
--- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
--- =============================================================================
-
 CREATE TABLE users (
   id                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   email              VARCHAR(190) NOT NULL,
-  -- DENORMALISATION VOLONTAIRE : email_domain = SUBSTRING_INDEX(email,'@',-1).
-  -- Maintenu par trg_users_bi_whitelist / trg_users_bu_whitelist.
-  -- Justification : index direct pour la whitelist ecoles, evite SUBSTRING_INDEX
-  -- a chaque lookup. Risque : divergence si on bypass les triggers.
+  -- Denormalisation volontaire : = SUBSTRING_INDEX(email,'@',-1), indexe pour la whitelist ecoles.
+  -- Maintenu par trg_users_bi_whitelist / trg_users_bu_whitelist ; diverge si on contourne les triggers.
   email_domain       VARCHAR(120) NOT NULL,
   password_hash      VARCHAR(255) NOT NULL,
   first_name         VARCHAR(80)  NOT NULL,

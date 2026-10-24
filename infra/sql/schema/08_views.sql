@@ -1,11 +1,5 @@
--- =============================================================================
--- DayOut — Schema : vue score de fiabilité (colonne + journal)
--- -----------------------------------------------------------------------------
--- Approche hybride :
---  - users.reliability_score = valeur courante denormalisee (0..100)
---  - attendance_events      = journal detaille (audit, debuggable, rejouable)
---  - v_user_reliability     = agregation en temps reel pour analyse admin
--- =============================================================================
+-- Score de fiabilite, approche hybride : users.reliability_score = valeur courante (denormalisee),
+-- attendance_events = journal detaille (audit), v_user_reliability = agregat temps reel pour l'admin.
 
 CREATE OR REPLACE VIEW v_user_reliability AS
 SELECT

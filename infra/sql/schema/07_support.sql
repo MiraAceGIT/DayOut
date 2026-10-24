@@ -1,8 +1,3 @@
--- =============================================================================
--- DayOut — Schema : contenu statique / support
--- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
--- =============================================================================
-
 CREATE TABLE faq_entries (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   question    VARCHAR(255) NOT NULL,

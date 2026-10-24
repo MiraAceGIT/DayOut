@@ -5,15 +5,11 @@ namespace App\Models;
 
 use App\Core\Orm\Query\QueryBuilder;
 
-/**
- * Model Event : table `events`. Seuls les events `published` sont exposes
- * publiquement. Pas de logique metier ici, uniquement l'acces aux donnees.
- */
+/** Seuls les events `published` sont exposes. */
 final class Event extends Model
 {
     protected const TABLE = 'events';
 
-    /** Colonnes exposees par l'API (ne jamais utiliser SELECT *). */
     protected const COLUMNS = [
         'id', 'creator_id', 'title', 'slug', 'description', 'cover_image_url',
         'start_at', 'end_at', 'venue_name', 'address_line', 'city', 'postal_code',
@@ -42,7 +38,7 @@ final class Event extends Model
         'created_at'        => 'datetime',
     ];
 
-    /** Liste des events publies, pagination par limit/offset. */
+    /** @return array<int, array<string, mixed>> */
     public function listPublished(int $limit = 20, int $offset = 0): array
     {
         return $this->published()
@@ -53,13 +49,11 @@ final class Event extends Model
             ->get();
     }
 
-    /** Un event par id, uniquement s'il est publie. */
     public function findPublishedById(int $id): ?array
     {
         return $this->published()->where('id', $id)->first();
     }
 
-    /** Scope : events visibles publiquement. */
     private function published(): QueryBuilder
     {
         return $this->query()->where('status', 'published');

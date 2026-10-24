@@ -1,8 +1,3 @@
--- =============================================================================
--- DayOut — Schema : planning personnel & suggestions
--- Target: MariaDB 10.4+ (XAMPP) / MySQL 8.0 compatible
--- =============================================================================
-
 CREATE TABLE plannings (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id    BIGINT UNSIGNED NOT NULL,

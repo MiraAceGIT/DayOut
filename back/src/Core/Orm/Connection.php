@@ -8,10 +8,7 @@ use PDO;
 use PDOStatement;
 use Throwable;
 
-/**
- * Execute du SQL deja compile via PDO. Seule classe de l'ORM a manipuler
- * PDOStatement : le reste ne voit que du SQL + des bindings.
- */
+/** Seule classe de l'ORM a manipuler PDOStatement : le reste ne voit que SQL + bindings. */
 final class Connection
 {
     private PDO $pdo;
@@ -21,13 +18,11 @@ final class Connection
         $this->pdo = $pdo;
     }
 
-    /** Acces au PDO brut (requetes hors ORM). */
     public function pdo(): PDO
     {
         return $this->pdo;
     }
 
-    /** Query builder libre : $connection->table('events')->where(...)->get(). */
     public function table(string $table): QueryBuilder
     {
         return new QueryBuilder($table, $this);
@@ -39,28 +34,27 @@ final class Connection
         return $this->run($sql, $bindings)->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /** Premiere colonne de la premiere ligne, false si aucune ligne. */
+    /** false si aucune ligne. */
     public function scalar(string $sql, array $bindings = []): mixed
     {
         return $this->run($sql, $bindings)->fetchColumn();
     }
 
-    /** Retourne l'id auto-increment (0 si cle composite). */
+    /** Id auto-increment, 0 si la table n'en a pas (cle composite). */
     public function insert(string $sql, array $bindings): int
     {
         $this->run($sql, $bindings);
         return (int) $this->pdo->lastInsertId();
     }
 
-    /** UPDATE / DELETE : retourne le nombre de lignes touchees. */
+    /** UPDATE / DELETE : nombre de lignes touchees. */
     public function affecting(string $sql, array $bindings): int
     {
         return $this->run($sql, $bindings)->rowCount();
     }
 
     /**
-     * Execute $fn dans une transaction : commit si OK, rollback + rethrow sinon.
-     * Usage : Database::orm()->transaction(function (Connection $db) { ...; return $id; });
+     * $fn recoit la Connection ; sa valeur de retour est renvoyee apres commit.
      * Pas d'imbrication : appeler transaction() dans $fn leve une PDOException.
      */
     public function transaction(callable $fn): mixed
