@@ -30,8 +30,8 @@ CREATE TABLE planning_items (
   CONSTRAINT fk_plan_item_event
     FOREIGN KEY (event_id) REFERENCES events(id)
     ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT chk_plan_item_dates CHECK (end_at > start_at),
-  CONSTRAINT chk_plan_item_source CHECK (event_id IS NOT NULL OR title IS NOT NULL)
+  -- event_id OU title requis : trigger trg_planning_items_* (CHECK interdit sur une FK SET NULL)
+  CONSTRAINT chk_plan_item_dates CHECK (end_at > start_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE suggestion_dismissals (

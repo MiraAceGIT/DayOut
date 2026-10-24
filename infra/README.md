@@ -147,7 +147,8 @@ infra/
     │   ├── 10_triggers_users.sql         ← whitelist écoles
     │   ├── 11_triggers_events.sql        ← cohérence restriction école
     │   ├── 12_triggers_registrations.sql ← contrôles d'inscription + registered_count
-    │   └── 13_triggers_admin_roles.sql   ← FK vers users réservées aux admins
+    │   ├── 13_triggers_admin_roles.sql   ← FK vers users réservées aux admins
+    │   └── 14_triggers_fk_checks.sql     ← règles impossibles en CHECK sur une FK (MariaDB #1901)
     ├── build_schema.sh   ← concatène schema/*.sql → dist/schema.sql
     └── seed.sql          ← données de test (écoles, users, events…)
 

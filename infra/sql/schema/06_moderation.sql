@@ -46,12 +46,8 @@ CREATE TABLE reports (
     ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_reports_message
     FOREIGN KEY (target_message_id) REFERENCES event_messages(id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT chk_report_target CHECK (
-    (target_type = 'event'   AND target_event_id   IS NOT NULL AND target_user_id IS NULL AND target_message_id IS NULL) OR
-    (target_type = 'user'    AND target_user_id    IS NOT NULL AND target_event_id IS NULL AND target_message_id IS NULL) OR
-    (target_type = 'message' AND target_message_id IS NOT NULL AND target_event_id IS NULL AND target_user_id    IS NULL)
-  )
+    ON DELETE SET NULL ON UPDATE CASCADE
+  -- Coherence target_type / target_*_id : trigger trg_reports_* (CHECK interdit sur une FK SET NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE report_actions (
