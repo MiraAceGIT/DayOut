@@ -26,11 +26,12 @@ export class EventsView {
     this.listEl.setAttribute("aria-busy", "false");
   }
 
-  showEvents(events) {
-    this.listEl.replaceChildren(...events.map(renderEventCard));
-    this.setStatus(events.length === 0
+  /** `items` = [{ event, remaining }] prepares par le controleur. */
+  showEvents(items) {
+    this.listEl.replaceChildren(...items.map(({ event, remaining }) => renderEventCard(event, { remaining })));
+    this.setStatus(items.length === 0
       ? "Aucun événement à afficher."
-      : `${events.length} événement${events.length > 1 ? "s" : ""} à venir.`);
+      : `${items.length} événement${items.length > 1 ? "s" : ""} à venir.`);
   }
 
   showError(message) {

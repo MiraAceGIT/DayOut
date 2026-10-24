@@ -1,10 +1,22 @@
+.input {
+  width: 100%;
+  min-height: var(--tap-target);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-field);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.input::placeholder { color: var(--color-muted); opacity: 1; }
+
 /* Classes et attributs poses par lib/forms.js (showFieldErrors) */
 [aria-invalid="true"] {
-  border-color: var(--color-error-fg);
+  border-color: var(--color-error);
 }
 
 .field-error {
-  color: var(--color-error-fg);
-  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  font-size: var(--font-size-detail);
+  line-height: var(--line-height-detail);
   margin-top: var(--space-1);
 }

@@ -1,0 +1,18 @@
+/* Seul endroit qui associe une categorie de la charte a sa couleur : --cat-color est lu par les pastilles,
+   les carres des cartes, les marqueurs et la legende. La correspondance slug API -> cle est dans models/category.js. */
+.cat--soiree     { --cat-color: var(--color-cat-soiree); }
+.cat--sport      { --cat-color: var(--color-cat-sport); }
+.cat--conference { --cat-color: var(--color-cat-conference); }
+.cat--hackathon  { --cat-color: var(--color-cat-hackathon); }
+.cat--culture    { --cat-color: var(--color-cat-culture); }
+.cat--forum      { --cat-color: var(--color-cat-forum); }
+
+/* Point decoratif : le libelle a cote porte l'information, la couleur n'est qu'un repere. */
+.cat-dot {
+  flex: none;
+  display: inline-block;
+  width: .625rem;
+  height: .625rem;
+  border-radius: 50%;
+  background: var(--cat-color, var(--color-muted));
+}

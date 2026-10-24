@@ -1,17 +1,33 @@
 body {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
   line-height: var(--line-height);
   background: var(--color-bg);
   color: var(--color-text);
 }
 
+body > main { flex: 1 0 auto; width: 100%; }
+
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--color-text);
+}
+h1 { font-size: var(--font-size-h1); line-height: var(--line-height-h1); font-weight: 700; }
+h2 { font-size: var(--font-size-h2); line-height: var(--line-height-h2); }
+h3 { font-size: var(--font-size-h3); line-height: var(--line-height-h3); }
+
 /* Liens dans le contenu : soulignes (WCAG 1.4.1, la couleur seule ne suffit pas). */
 main a:not([class]) {
-  color: var(--color-primary);
+  color: var(--color-link);
+  font-weight: 600;
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
 }
+main a:not([class]):hover { color: var(--color-link-hover); }
 
 a:focus-visible,
 button:focus-visible,
@@ -19,13 +35,13 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: var(--focus-ring);
+  outline: 3px solid var(--focus-color);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 2px var(--focus-halo);
 }
 
 /* main recoit le focus via le skip-link : pas d'anneau autour de tout le contenu. */
-main:focus { outline: none; }
+main[tabindex]:focus { outline: none; box-shadow: none; }
 
 .visually-hidden {
   position: absolute;

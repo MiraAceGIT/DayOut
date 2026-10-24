@@ -1,14 +1,43 @@
+/* Charte graphique DayOut. Repartition d'un ecran : 70 % neutres, 20 % violet nuit, 10 % orange + categories. */
 :root {
-  --color-bg:          #f7f8fa;
-  --color-surface:     #ffffff;
-  --color-text:        #1a1d23;
-  --color-muted:       #4b5563;        /* ratio AA conforme sur fond clair */
-  --color-primary:     #4f46e5;        /* repris en litteral dans <meta name="theme-color"> */
-  --color-primary-ink: #ffffff;
-  --color-border:      #e5e7eb;
-  --color-error-bg:    #fef2f2;
-  --color-error-fg:    #991b1b;
-  --color-error-bd:    #fecaca;
+  /* Neutres */
+  --color-bg:           #f7f5fa;
+  --color-surface:      #ffffff;        /* cartes */
+  --color-surface-2:    #efebf5;        /* filtres, chips, bandeaux */
+  --color-text:         #241238;        /* violet nuit */
+  --color-muted:        #6b6280;        /* texte secondaire : date, lieu */
+  --color-border:       #8c82a0;        /* champs de formulaire */
+  /* Absente de la charte : teinte claire de --color-border pour les cartes et separateurs (non porteuse d'information). */
+  --color-border-light: #e4dfec;
+
+  /* Marque : header, footer. Repris en litteral dans <meta name="theme-color">. */
+  --color-brand:        #241238;
+  --color-on-brand:     #ffffff;
+  --color-on-brand-muted: #cfc7dc;
+
+  /* Orange DayOut : fond des actions "sortir" uniquement, jamais en couleur de texte. */
+  --color-action:       #ff771c;
+  --color-action-hover: #ff8f45;
+  --color-on-action:    #241238;        /* jamais de blanc sur orange (2,7:1) */
+
+  /* Orange texte : liens, prix */
+  --color-link:         #ae4705;
+  --color-link-hover:   #8a3804;
+
+  /* Etats : toujours accompagnes d'un mot ou d'une icone */
+  --color-success:      #157a50;
+  --color-warning:      #946000;        /* dernieres places */
+  --color-error:        #bf2b3b;
+  --color-error-bg:     #fcf0f1;
+  --color-info:         #2f62d0;
+
+  /* Categories d'evenement : carte et pastilles uniquement */
+  --color-cat-soiree:     #8b3fd9;
+  --color-cat-sport:      #158f55;
+  --color-cat-conference: #2f62d0;
+  --color-cat-hackathon:  #0e8597;
+  --color-cat-culture:    #d63a6e;
+  --color-cat-forum:      #a0700a;
 
   --space-1: .25rem;
   --space-2: .5rem;
@@ -16,22 +45,37 @@
   --space-4: 1rem;
   --space-5: 1.5rem;
   --space-6: 2rem;
+  --space-7: 3rem;
 
-  --font-sans:      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                    Helvetica, Arial, sans-serif;
-  --font-size-sm:   .875rem;
-  --font-size-md:   1rem;
-  --font-size-lg:   1.25rem;
-  --font-size-xl:   1.5rem;
-  --font-size-2xl:  2rem;
-  --line-height:    1.5;
+  --font-heading: "Fredoka", "Trebuchet MS", Arial, sans-serif;
+  --font-body:    "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 
-  --radius:         10px;
+  --font-size-h1:     2.25rem;   /* 36/42 */
+  --line-height-h1:   1.1667;
+  --font-size-h2:     1.75rem;   /* 28/34 */
+  --line-height-h2:   1.2143;
+  --font-size-h3:     1.375rem;  /* 22/28 */
+  --line-height-h3:   1.2727;
+  --font-size-body:   1rem;      /* 16/24 */
+  --line-height:      1.5;
+  --font-size-detail: .875rem;   /* 14/20 */
+  --line-height-detail: 1.4286;
+  --font-size-pill:   .75rem;    /* 12, majuscules */
+  --letter-spacing-pill: .06em;
+
   --radius-sm:      4px;
-  --shadow:         0 2px 6px rgba(0, 0, 0, .05);
-  --focus-ring:     2px solid var(--color-primary);
+  --radius-field:   8px;
+  --radius-card:    14px;
+  --radius-section: 24px;
+  --radius-pill:    999px;
+  --shadow:         0 2px 8px rgba(36, 18, 56, .06);
+
+  /* Anneau + halo : lisible sur fond clair comme sur violet (les zones sombres inversent les deux couleurs). */
+  --focus-color:    var(--color-text);
+  --focus-halo:     var(--color-surface);
 
   --max-width:      960px;
+  --tap-target:     44px;
   /* Hauteur reservee au header injecte en JS (evite un decalage de mise en page). */
-  --header-min-height: calc(var(--font-size-lg) * var(--line-height) + 2 * var(--space-4) + 1px);
+  --header-min-height: calc(var(--tap-target) + 2 * var(--space-3));
 }

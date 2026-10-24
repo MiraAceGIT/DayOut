@@ -7,45 +7,62 @@ Pas de framework, pas de build, pas de npm : modules ES natifs servis tels quels
 
 ```
 front/
-├── index.html                    ← accueil
+├── index.html                    ← carte "Que faire autour de toi ?" (accueil plein ecran, sans footer)
 ├── pages/
-│   └── events.html               ← liste des evenements (demo API)
-├── assets/css/                  ← CSS global (sans JS proprietaire)
-│   ├── main.css                  ← point d'entree unique (@import de toutes les feuilles)
-│   ├── reset.css                 ← reset minimal + prefers-reduced-motion
-│   ├── tokens.css                ← variables : couleurs, --space-*, --font-size-*...
-│   ├── base.css                  ← styles des elements (body, liens, focus)
-│   ├── layout.css                ← .container, structure de page
-│   └── components/               ← composants purement HTML/CSS
-│       ├── skip-link.css, hero.css, card-grid.css
-│       └── feedback.css (alertes / statut), form.css (erreurs de champ)
-├── src/                          ← code de l'application
+│   └── events.html               ← liste des evenements (cartes + footer)
+├── assets/
+│   ├── img/dayout-logo-light.svg ← logo pour fond violet nuit (header, footer)
+│   └── css/                      ← CSS global (sans JS proprietaire)
+│       ├── main.css              ← point d'entree unique (@import de toutes les feuilles)
+│       ├── reset.css             ← reset minimal + [hidden] + prefers-reduced-motion
+│       ├── tokens.css            ← charte : couleurs, typo, rayons, --space-*, focus
+│       ├── base.css              ← elements (body, titres Fredoka, liens orange texte, focus)
+│       ├── layout.css            ← .container
+│       └── components/           ← composants purement HTML/CSS
+│           ├── button.css        ← .button (--primary/--secondary/--dark/--on-dark/--small), .link-button, .chip
+│           ├── category.css      ← .cat--<cle> -> --cat-color, .cat-dot (seul lien categorie -> couleur)
+│           ├── skip-link.css, card-grid.css
+│           └── feedback.css (alertes / statut), form.css (.input, erreurs de champ)
+├── src/
 │   ├── config.local.example.js   ← modele de surcharge locale (a copier)
 │   ├── config.local.js           ← surcharge locale optionnelle (ignore par git)
 │   ├── core/
 │   │   ├── config.js             ← configuration unique (API_BASE_URL, racine du front)
+│   │   ├── routes.js             ← LOGIN_PATH, loginUrl(next) (boot, header, bulle de la carte)
+│   │   ├── geolocation.js        ← currentPosition() : API navigateur, sur clic uniquement
 │   │   ├── api.js                ← wrapper fetch() : enveloppe, erreurs, CSRF, 401, timeout
 │   │   └── errors.js             ← messageFor(err), isApiError(err) : messages utilisateur
 │   ├── app/
-│   │   └── boot.js               ← boot({ page }) : header + handler 401 (LOGIN_PATH)
+│   │   └── boot.js               ← boot({ page }) : header + footer + handler 401
 │   ├── lib/
 │   │   ├── dom.js                ← h(tag, props, ...children) : DOM sans innerHTML
-│   │   ├── format.js             ← formatDate, formatPrice
+│   │   ├── format.js             ← formatDate, formatDay, formatHour, formatEventWhen, formatDistance, formatPrice
+│   │   ├── geo.js                ← distanceKm (haversine), isLatLng (calcul pur)
 │   │   └── forms.js              ← showFieldErrors, clearFieldErrors
 │   ├── models/
-│   │   └── Event.js              ← fetchUpcomingEvents({ limit, signal }), toEvent(raw)
+│   │   ├── Event.js              ← fetchUpcomingEvents, toEvent(raw), remainingPlaces, MAX_EVENTS_LIMIT
+│   │   ├── category.js           ← toCategory, categoriesIn : slug API -> couleur de la charte
+│   │   └── eventFilters.js       ← filterEvents (rayon, week-end, gratuit, places, categories, recherche)
 │   ├── views/                    ← un dossier par composant : son JS + sa feuille CSS
-│   │   ├── layout/header/
-│   │   │   ├── header.js         ← renderHeader({ current }), NAV_ITEMS : header + nav partages
-│   │   │   └── header.css
-│   │   ├── components/eventCard/
-│   │   │   ├── eventCard.js      ← renderEventCard(event) : evenement -> Node
-│   │   │   └── eventCard.css
-│   │   └── EventsView.js         ← #events-list / -error / -status : showLoading, showEvents, showError
+│   │   ├── layout/header/        ← renderHeader({ current }), NAV_ITEMS, SEARCH_INPUT_ID
+│   │   ├── layout/footer/        ← renderFooter() dans footer[data-layout]
+│   │   ├── components/
+│   │   │   ├── logo/             ← renderLogo() : seul endroit qui connait le fichier du logo
+│   │   │   ├── icon/icon.js      ← icon(name), pinIcon() : SVG Lucide via createElementNS
+│   │   │   ├── pill/             ← renderCategoryPill, renderPricePill, renderPlacesPill (+ .pill)
+│   │   │   ├── eventCard/        ← carte complete (page evenements)
+│   │   │   ├── eventRow/         ← carte compacte de la liste de la carte (selection synchronisee)
+│   │   │   └── eventPopup/       ← bulle du marqueur selectionne
+│   │   ├── home/
+│   │   │   ├── HomeView.js       ← panneau gauche : onglets, point, rayon, filtres, liste, statut
+│   │   │   ├── MapView.js        ← seul fichier qui touche Leaflet (carte, cercle, marqueurs, legende)
+│   │   │   └── home.css, map.css
+│   │   └── EventsView.js         ← #events-list / -error / -status
 │   ├── controllers/
-│   │   └── EventsController.js   ← orchestre model + view (chargement, erreurs)
+│   │   ├── HomeController.js     ← etat des filtres, chargement, synchro liste <-> carte, geolocalisation
+│   │   └── EventsController.js
 │   └── pages/
-│       ├── home.js               ← point d'entree de index.html
+│       ├── home.js               ← point d'entree de index.html (lit ?q=)
 │       └── events.js             ← point d'entree de pages/events.html
 ├── .gitignore
 └── README.md
@@ -70,16 +87,51 @@ front/
 
 ```
 pages/        -> app/boot.js, controllers/
-controllers/  -> models/, views/, core/errors.js
-models/       -> core/api.js
-views/        -> views/components/, lib/, core/config.js (frontUrl)
-app/boot.js   -> core/, views/layout/header/
+controllers/  -> models/, views/, core/errors.js, core/geolocation.js
+models/       -> core/api.js, models/, lib/geo.js (calcul pur)
+views/        -> views/, lib/, core/config.js (frontUrl), core/routes.js (loginUrl)
+app/boot.js   -> core/, views/layout/
 core/         -> core/ uniquement
 lib/          -> rien (utilitaires purs)
 ```
 
-- Rien n'importe `pages/` ; pas de dependance circulaire.
+- Rien n'importe `pages/` ; pas de dependance circulaire (`loginUrl` vit dans `core/routes.js` pour que
+  le header l'utilise sans importer `app/boot.js`).
 - Une view n'importe ni `models/` ni `core/api.js` ; un model n'importe ni `views/` ni `lib/dom.js`.
+  Ce dont une view a besoin cote metier (places restantes, categories presentes) lui est passe par le controleur.
+
+## Page carte (index.html)
+
+- Les evenements sont charges une fois (`limit=100`, plafond du back) puis filtres **cote client**
+  (`models/eventFilters.js`) : distance haversine au point choisi, rayon 1–20 km, "Ce week-end"
+  (samedi 0 h -> lundi 0 h), "Gratuit", "Places disponibles", categories (OU), recherche du header
+  (titre, lieu, ville ; sans accents ni casse).
+- Un evenement **sans coordonnees** reste dans la liste ("position inconnue"), n'est pas dessine et ne
+  compte pas dans "N evenements dans ce cercle" (le statut ajoute "· N sans position sur la carte").
+- La liste est le contenu accessible principal ; la carte est un complement : marqueurs hors tabulation,
+  carte focusable (fleches, +/−, **Entree** = placer le point au centre). Le statut `role="status"` annonce le compte.
+- Evenements termines (fin, ou debut a defaut, passee) exclus cote client : l'API trie par date sans filtrer et
+  plafonne a 100. Si la reponse atteint ce plafond, le statut precise "au moins 100 evenements charges, liste
+  peut-etre incomplete". TODO back : parametre `from` (date) sur `GET /api/events` pour ne renvoyer que l'a venir.
+- Les controles memorisent les criteres pendant le chargement mais la liste n'est dessinee qu'une fois les
+  donnees chargees (jamais "Aucun evenement" pendant le chargement ou apres une erreur).
+- Statut `role="status"` mis a jour 400 ms apres la derniere frappe / le dernier cran du curseur (la liste,
+  elle, est immediate) ; la recherche est recopiee dans `?q=` (`history.replaceState`).
+- Geolocalisation demandee **uniquement** au clic sur "Me localiser" ; refus ou erreur -> message dans
+  `#home-map-status`.
+- Recherche du header : formulaire GET vers `index.html?q=` ; sur la carte, elle filtre en direct sans rechargement.
+- **Leaflet 1.9.4** en `<script>` classique UMD + `<link>` depuis unpkg, versions epinglees avec `integrity`
+  (SRI) : un `import` ESM depuis un CDN ne peut pas porter d'empreinte. `MapView` lit `window.L` ; s'il manque
+  (hors ligne, bloque), un message s'affiche et la liste reste utilisable. Tuiles OpenStreetMap, attribution
+  "Leaflet · © contributeurs OpenStreetMap" (lien de copyright exige par OSM).
+- Categories : le referentiel du back ne recoupe la charte qu'en partie. `models/category.js` rattache
+  `soiree`, `sport`, `conference`, `culture`, `tech` (-> Hackathon) et `forum-entreprises` (pas encore en base)
+  a leur couleur ; les autres slugs (`concert`, `gaming`, `bde`, `exterieur`, `gastronomie`) sont gris
+  (texte secondaire) et regroupes sous "Autres" dans la legende. Libelles affiches tels que renvoyes par l'API.
+  Couleur d'un evenement = sa premiere categorie de la charte, sinon sa premiere categorie.
+- TODO : onglet "Pour toi" (renvoie vers la connexion), liens "Pour toi / Mes evenements / Planning",
+  filtre "Toutes les ecoles" (l'API ne renvoie pas l'ecole organisatrice), "Organise par …" dans la bulle,
+  page detail ("Voir l'evenement" pointe vers la liste), inscription ("S'inscrire" passe par la connexion).
 
 ## Lancer en local
 
@@ -114,6 +166,9 @@ un 404 dans l'onglet Reseau, sans effet : les valeurs par defaut s'appliquent.
 
 ```html
 <!-- pages/ma-page.html -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fredoka:wght@600;700&display=swap">
 <link rel="stylesheet" href="../assets/css/main.css">
 ...
 <a class="skip-link" href="#main">Aller au contenu</a>
@@ -125,6 +180,9 @@ un 404 dans l'onglet Reseau, sans effet : les valeurs par defaut s'appliquent.
   <p id="ma-page-error" class="alert alert--error" role="alert"></p>
   <p id="ma-page-status" class="status-message" role="status"></p>
 </main>
+<footer class="site-footer" data-layout>
+  <noscript><!-- meme contenu en statique (voir pages/events.html) --></noscript>
+</footer>
 <script src="../src/config.local.js"></script>
 <script type="module" src="../src/pages/ma-page.js"></script>
 ```
@@ -207,7 +265,7 @@ new MaPageController().start(new URLSearchParams(location.search).get("id"));
 - `X-CSRF-Token` envoye sur POST/PUT/PATCH/DELETE si `setCsrfTokenProvider(fn)` fournit
   un jeton (par defaut aucun : le back n'a pas encore d'endpoint CSRF).
 - `setUnauthorizedHandler(fn)` : appele sur tout 401 avant de lever l'erreur.
-  `boot()` l'installe pour rediriger vers `pages/login.html?next=...` (`LOGIN_PATH` dans `app/boot.js`).
+  `boot()` l'installe pour rediriger vers `pages/login.html?next=...` (`LOGIN_PATH`, `loginUrl()` dans `core/routes.js`).
 - Timeout par defaut 10 s (`timeout: 0` pour le desactiver), combinable avec un `signal` appelant.
 
 Formulaires : sur `err.isValidation`, `showFieldErrors(form, err.details)` pose
@@ -233,11 +291,45 @@ reference de requete) ; c'est le controleur qui le calcule et le passe a la view
 - Liens du contenu soulignes ; focus visible sur liens, boutons et champs ;
   `prefers-reduced-motion` respecte.
 
+## Charte graphique
+
+Tokens dans `assets/css/tokens.css` ; repartition d'un ecran : 70 % neutres / 20 % violet nuit / 10 % orange + categories.
+
+| Role | Token | Valeur |
+| --- | --- | --- |
+| Texte, titres, header/footer | `--color-text`, `--color-brand` | #241238 (violet nuit) |
+| Fond d'action "sortir" (bouton primaire, curseur) | `--color-action` | #FF771C : texte dessus **toujours** violet nuit (6,5:1), jamais blanc (2,7:1), jamais en couleur de texte |
+| Liens, prix, mots orange | `--color-link` | #AE4705 |
+| Fond / cartes / chips | `--color-bg`, `--color-surface`, `--color-surface-2` | #F7F5FA, #FFFFFF, #EFEBF5 |
+| Texte secondaire / bordure de champ | `--color-muted`, `--color-border` | #6B6280, #8C82A0 |
+| Bordure de carte (hors charte) | `--color-border-light` | #E4DFEC, teinte claire de #8C82A0, decorative |
+| Etats (toujours avec un mot) | `--color-success/-warning/-error/-info` | #157A50, #946000, #BF2B3B, #2F62D0 |
+| Categories (pastilles, carte) | `--color-cat-*` | Soiree #8B3FD9, Sport #158F55, Conference #2F62D0, Hackathon #0E8597, Culture #D63A6E, Forum #A0700A |
+
+- Typo (Google Fonts, `<link>` + preconnect dans chaque page) : **Fredoka** 600/700 pour les titres
+  (H1 36/42, H2 28/34, H3 22/28), **Figtree** 400–700 pour le texte (16/24, detail 14/20, pastille 12 majuscules).
+- Formes : boutons et pastilles en pilule, champs 8 px, cartes 14 px, bandeaux 24 px. Icones Lucide 20–24 px, `aria-hidden`.
+- Focus : anneau `--focus-color` + halo `--focus-halo` ; les zones violettes (header, footer, skip-link) inversent les deux.
+- Ton : tutoiement, verbes d'action sur les boutons, dates francaises ("Sam. 15 nov. · 9 h"), pas d'emoji.
+
+### Logo
+
+Fichier unique `assets/img/dayout-logo-light.svg` (blanc + orange, pour fond violet nuit), reference **seulement**
+dans `views/components/logo/logo.js` (`renderLogo()`, alt "DayOut", 96 px de large minimum). Pour changer de
+fichier ou de variante, modifier `LOGO_LIGHT` (et `LOGO_RATIO` si le viewBox change). Jamais de logo G4B dans le
+header ; "Realise par G4B Digital" dans le footer uniquement.
+
+### Footer
+
+`views/layout/footer/footer.js` remplit `<footer class="site-footer" data-layout>` (logo, accroche, credit),
+comme le header, avec un fallback `<noscript>` statique. Absent de la page carte (plein ecran). Liens FAQ / CGU /
+Mentions legales / Contact a ajouter quand ces pages existeront (pas de lien casse d'ici la).
+
 ## Conventions CSS
 
-- Valeurs via les tokens de `tokens.css` (`--color-*`, `--space-1..6`, `--font-size-*`) :
+- Valeurs via les tokens de `tokens.css` (`--color-*`, `--space-1..7`, `--font-size-*`, `--radius-*`) :
   pas de valeur en dur dans les composants. `theme-color` (meta HTML) reprend en litteral
-  la valeur de `--color-primary`, a garder synchronisee.
+  la valeur de `--color-brand` (#241238), a garder synchronisee.
 - Pas de selecteur d'id pour le style : ids reserves au JS et a l'ARIA.
 - Nommage BEM leger :
   - bloc : `.event-card`, `.site-nav`, `.card-grid`

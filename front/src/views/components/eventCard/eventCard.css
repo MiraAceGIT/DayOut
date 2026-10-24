@@ -1,37 +1,45 @@
+/* Markup rendu par eventCard.js (meme dossier) */
 .event-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-5);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow);
 }
 
+/* Bandeau a la couleur de la categorie ; neutre (surface 2) si l'evenement n'en a pas de la charte. */
+.event-card::before {
+  content: "";
+  height: 8px;
+  background: var(--cat-color, var(--color-surface-2));
+}
+
+.event-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
 .event-card__title {
-  font-size: var(--font-size-lg);
-  margin-bottom: var(--space-2);
+  font-size: var(--font-size-h3);
+  line-height: var(--line-height-h3);
 }
 
 .event-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
   color: var(--color-muted);
-  font-size: var(--font-size-sm);
-  margin-bottom: var(--space-3);
-}
-.event-card__meta li { display: inline-flex; }
-
-.event-card__price {
-  color: var(--color-primary);
-  font-weight: 600;
+  font-size: var(--font-size-detail);
+  line-height: var(--line-height-detail);
 }
 
 .event-card__desc {
-  font-size: var(--font-size-md);
-  margin-bottom: var(--space-3);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
-.event-card__capacity {
-  font-size: var(--font-size-sm);
-  color: var(--color-muted);
-}
+.event-card__status { margin-top: auto; padding-top: var(--space-2); }

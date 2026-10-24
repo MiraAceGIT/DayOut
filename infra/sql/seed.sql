@@ -36,7 +36,8 @@ INSERT INTO categories (id, slug, label, icon, active) VALUES
   (7,  'tech',         'Tech / Hackathon', 'cpu',         1),
   (8,  'bde',          'BDE / Assoc',      'users',       1),
   (9,  'exterieur',    'Exterieur',        'tree',        1),
-  (10, 'gastronomie',  'Gastronomie',      'utensils',    1);
+  (10, 'gastronomie',  'Gastronomie',      'utensils',    1),
+  (11, 'afterwork',    'Afterwork',        'glass',       0);  -- desactivee : jamais exposee par l'API
 
 -- Users
 INSERT INTO users
@@ -142,56 +143,56 @@ INSERT INTO user_interests (user_id, category_id) VALUES
 -- Events (futurs / passes par rapport au 2026-10-19)
 INSERT INTO events
   (id, creator_id, title, slug, description, cover_image_url,
-   start_at, end_at, venue_name, address_line, city, postal_code,
+   start_at, end_at, venue_name, address_line, city, postal_code, latitude, longitude,
    capacity, price_cents, currency, is_paid, external_ticket_url,
    school_restricted, restricted_school_id, status, published_at)
 VALUES
   (1, 2, 'Soiree de rentree ISEP 2026', 'soiree-rentree-isep-2026',
    'La soiree qui lance l''annee a l''ISEP. DJ set, open bar soft, animations.', NULL,
    '2026-11-07 20:00:00','2026-11-08 02:00:00',
-   'Le Rooftop', '28 rue Notre-Dame-des-Victoires', 'Paris', '75002',
+   'Le Rooftop', '28 rue Notre-Dame-des-Victoires', 'Paris', '75002', 48.868900, 2.341000,
    250, 0, 'EUR', 0, NULL,
    1, 1, 'published', '2026-10-01 09:00:00'),
 
   (2, 3, 'Conference : IA, emploi et societe', 'conf-ia-emploi-societe',
    'Table ronde avec chercheurs INRIA et DRH tech sur l''impact de l''IA.', NULL,
    '2026-11-14 18:30:00','2026-11-14 20:30:00',
-   'Amphi Jaures', '14-16 rue Voltaire', 'Le Kremlin-Bicetre', '94270',
+   'Amphi Jaures', '14-16 rue Voltaire', 'Le Kremlin-Bicetre', '94270', 48.815600, 2.363000,
    180, 0, 'EUR', 0, NULL,
    0, NULL, 'published', '2026-10-05 10:00:00'),
 
   (3, 4, 'Hackathon DayOut 48h', 'hackathon-dayout-48h',
    '48h non-stop pour pitcher la meilleure idee etudiante. Jury, prix, pizzas.', NULL,
    '2026-11-21 09:00:00','2026-11-23 09:00:00',
-   'Epitech Paris', '14-16 rue Voltaire', 'Paris', '75011',
+   'Epitech Paris', '14-16 rue Voltaire', 'Paris', '75011', 48.853000, 2.389500,
    120, 1500, 'EUR', 1, 'https://billetterie.example.com/hackathon-dayout',
    0, NULL, 'published', '2026-10-08 12:00:00'),
 
   (4, 3, 'Concert Jazz Etudiant', 'concert-jazz-etudiant',
    'Scene ouverte jazz avec les formations etudiantes des conservatoires.', NULL,
    '2026-11-28 20:00:00','2026-11-28 23:30:00',
-   'Petit Bain', '7 Port de la Gare', 'Paris', '75013',
+   'Petit Bain', '7 Port de la Gare', 'Paris', '75013', 48.835700, 2.376400,
    200, 800, 'EUR', 1, 'https://billetterie.example.com/jazz-etu',
    0, NULL, 'published', '2026-10-10 14:00:00'),
 
   (5, 4, 'Tournoi League of Legends inter-ecoles', 'tournoi-lol-inter-ecoles',
    'Tournoi 5v5 BO3 entre ecoles d''ingenieurs. Stream Twitch officiel.', NULL,
    '2026-12-05 10:00:00','2026-12-05 20:00:00',
-   'Esport Arena', '45 rue de la Victoire', 'Paris', '75009',
+   'Esport Arena', '45 rue de la Victoire', 'Paris', '75009', 48.874800, 2.334700,
    160, 0, 'EUR', 0, NULL,
    0, NULL, 'published', '2026-10-11 09:00:00'),
 
   (6, 2, 'Afterwork BDE ISEP', 'afterwork-bde-isep-nov',
    'Afterwork mensuel du BDE au bar partenaire.', NULL,
    '2026-10-30 19:00:00','2026-10-30 23:00:00',
-   'Le Comptoir', '12 avenue Pasteur', 'Issy-les-Moulineaux', '92130',
+   'Le Comptoir', '12 avenue Pasteur', 'Issy-les-Moulineaux', '92130', NULL, NULL,
    80, 0, 'EUR', 0, NULL,
    1, 1, 'published', '2026-10-12 11:00:00'),
 
   (7, 2, 'Course inter-campus 10km', 'course-inter-campus-10km',
    '10 km solidaire reliant plusieurs campus. T-shirt offert.', NULL,
    '2026-12-12 09:30:00','2026-12-12 12:30:00',
-   'Parc Suzanne-Lenglen', 'Boulevard des Freres-Voisin', 'Paris', '75015',
+   'Parc Suzanne-Lenglen', 'Boulevard des Freres-Voisin', 'Paris', '75015', 48.831500, 2.272900,
    300, 0, 'EUR', 0, NULL,
    0, NULL, 'published', '2026-10-13 10:00:00'),
 
@@ -199,21 +200,21 @@ VALUES
   (8, 3, 'Soiree Halloween EPITA', 'soiree-halloween-epita-2026',
    'Soiree deguisee, concours du meilleur costume.', NULL,
    '2026-10-10 20:00:00','2026-10-11 02:00:00',
-   'Salle des fetes', '14-16 rue Voltaire', 'Le Kremlin-Bicetre', '94270',
+   'Salle des fetes', '14-16 rue Voltaire', 'Le Kremlin-Bicetre', '94270', 48.815600, 2.363000,
    150, 0, 'EUR', 0, NULL,
    0, NULL, 'published', '2026-09-20 10:00:00'),
 
   (9, 4, 'Meetup Dev Web Octobre', 'meetup-dev-web-oct-2026',
    'Meetup mensuel dev web - React, Node, bonnes pratiques.', NULL,
    '2026-10-05 19:00:00','2026-10-05 22:00:00',
-   'Station F', '5 Parvis Alan Turing', 'Paris', '75013',
+   'Station F', '5 Parvis Alan Turing', 'Paris', '75013', 48.834100, 2.370700,
    100, 0, 'EUR', 0, NULL,
    0, NULL, 'published', '2026-09-15 10:00:00'),
 
   (10, 2, 'Gala BDE ISEP 2027 (brouillon)', 'gala-bde-isep-2027',
    'En preparation - gala annuel du BDE ISEP.', NULL,
    '2027-03-14 20:00:00','2027-03-15 03:00:00',
-   'Pavillon Vendome', 'A definir', 'Paris', '75000',
+   'Pavillon Vendome', 'A definir', 'Paris', '75000', NULL, NULL,
    400, 4500, 'EUR', 1, NULL,
    1, 1, 'draft', NULL);
 
@@ -224,7 +225,7 @@ INSERT INTO event_categories (event_id, category_id) VALUES
   (3, 7),               -- Hackathon : tech
   (4, 2), (4, 5),       -- Concert jazz : concert + culture
   (5, 6),               -- Tournoi LoL : gaming
-  (6, 1), (6, 8),       -- Afterwork : soiree + BDE
+  (6, 11),              -- Afterwork : categorie inactive seule (API : categories = [])
   (7, 4), (7, 9),       -- Course : sport + exterieur
   (8, 1),               -- Halloween : soiree
   (9, 7),               -- Meetup : tech

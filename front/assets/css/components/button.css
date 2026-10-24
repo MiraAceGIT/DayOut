@@ -1,0 +1,87 @@
+/* Orange (--primary) reserve a l'action principale "sortir" : une seule par zone visible (regle 70/20/10). */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap-target);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.button--primary {
+  background: var(--color-action);
+  color: var(--color-on-action);
+}
+.button--primary:hover { background: var(--color-action-hover); }
+
+.button--secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+.button--secondary:hover { background: var(--color-surface-2); }
+
+.button--dark {
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+}
+.button--dark:hover { text-decoration: underline; }
+
+/* Sur fond violet (header) : contour blanc. */
+.button--on-dark {
+  background: transparent;
+  border-color: var(--color-on-brand);
+  color: var(--color-on-brand);
+}
+.button--on-dark:hover { background: var(--color-on-brand); color: var(--color-brand); }
+
+.button--small {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--font-size-detail);
+}
+
+/* Bouton d'action secondaire presente comme un lien (ex. "Changer") : orange texte souligne. */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-link);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.link-button:hover { color: var(--color-link-hover); }
+
+/* Puce de filtre a bascule (aria-pressed) : surface 2, violet nuit une fois active. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: var(--font-size-detail);
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--color-border); }
+.chip[aria-pressed="true"] {
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+}

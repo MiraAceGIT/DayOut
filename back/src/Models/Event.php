@@ -13,7 +13,7 @@ final class Event extends Model
     protected const COLUMNS = [
         'id', 'creator_id', 'title', 'slug', 'description', 'cover_image_url',
         'start_at', 'end_at', 'venue_name', 'address_line', 'city', 'postal_code',
-        'capacity', 'registered_count', 'price_cents', 'currency', 'is_paid',
+        'latitude', 'longitude', 'capacity', 'registered_count', 'price_cents', 'currency', 'is_paid',
         'external_ticket_url', 'school_restricted', 'restricted_school_id',
         'status', 'published_at', 'created_at',
     ];
@@ -34,6 +34,8 @@ final class Event extends Model
         'capacity'             => 'int',
         'registered_count'     => 'int',
         'price_cents'          => 'int',
+        'latitude'             => 'float', // DECIMAL : PDO renvoie une chaine
+        'longitude'            => 'float',
         'is_paid'              => 'bool',
         'school_restricted'    => 'bool',
         'start_at'             => 'datetime',

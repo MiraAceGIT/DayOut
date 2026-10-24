@@ -5,7 +5,10 @@ namespace Tests\Http;
 
 use Tests\HttpTestCase;
 
-/** Seed : events 1 a 7 published, 8 et 9 archived, 10 draft. */
+/**
+ * Seed : events 1 a 7 published, 8 et 9 archived, 10 draft.
+ * Event 6 : sans coordonnees, lie a une seule categorie inactive (doit sortir sans categorie).
+ */
 final class EventsTest extends HttpTestCase
 {
     public function testListReturnsOnlyPublishedEventsSortedByStartDate(): void
@@ -75,6 +78,72 @@ final class EventsTest extends HttpTestCase
     {
         foreach ([8, 9, 10] as $id) {
             $this->assertError(404, 'NOT_FOUND', $this->get("/api/events/$id"));
+        }
+    }
+
+    public function testListItemsExposeCoordinatesAndCategories(): void
+    {
+        $items = $this->get('/api/events')->json()['data']['items'];
+
+        foreach ($items as $event) {
+            $this->assertMapFields($event);
+        }
+        $byId = array_column($items, null, 'id');
+        $this->assertSame(48.8689, $byId[1]['latitude']);
+        $this->assertSame(2.341, $byId[1]['longitude']);
+        $this->assertSame(
+            [['slug' => 'bde', 'label' => 'BDE / Assoc'], ['slug' => 'soiree', 'label' => 'Soiree']],
+            $byId[1]['categories'],
+            'categories sorted by label'
+        );
+        $this->assertSame([['slug' => 'concert', 'label' => 'Concert'], ['slug' => 'culture', 'label' => 'Culture']], $byId[4]['categories']);
+    }
+
+    public function testShowExposesCoordinatesAndCategories(): void
+    {
+        $event = $this->get('/api/events/7')->json()['data'];
+
+        $this->assertMapFields($event);
+        $this->assertSame(48.8315, $event['latitude']);
+        $this->assertSame(2.2729, $event['longitude']);
+        $this->assertSame([['slug' => 'exterieur', 'label' => 'Exterieur'], ['slug' => 'sport', 'label' => 'Sport']], $event['categories']);
+    }
+
+    public function testEventWithoutCoordinatesNorActiveCategory(): void
+    {
+        $fromShow = $this->get('/api/events/6')->json()['data'];
+        $fromList = array_column($this->get('/api/events')->json()['data']['items'], null, 'id')[6];
+
+        foreach ([$fromShow, $fromList] as $event) {
+            $this->assertMapFields($event);
+            $this->assertSame(null, $event['latitude']);
+            $this->assertSame(null, $event['longitude']);
+            $this->assertSame([], $event['categories'], 'inactive category is hidden');
+        }
+    }
+
+    public function testCategoriesFollowPagination(): void
+    {
+        $page = $this->get('/api/events?limit=2&offset=1')->json()['data']['items'];
+
+        $this->assertCount(2, $page);
+        foreach ($page as $event) {
+            $this->assertSame($event['categories'], $this->get('/api/events/' . $event['id'])->json()['data']['categories']);
+        }
+    }
+
+    private function assertMapFields(array $event): void
+    {
+        $id = 'event ' . ($event['id'] ?? '?');
+        foreach (['latitude', 'longitude', 'categories'] as $key) {
+            $this->assertArrayHasKey($key, $event, $id);
+        }
+        $this->assertTrue($event['latitude'] === null || is_float($event['latitude']), "$id latitude float|null");
+        $this->assertTrue($event['longitude'] === null || is_float($event['longitude']), "$id longitude float|null");
+        $this->assertTrue(is_array($event['categories']) && array_is_list($event['categories']), "$id categories list");
+        foreach ($event['categories'] as $category) {
+            $this->assertSame(['slug', 'label'], array_keys($category), $id);
+            $this->assertTrue(is_string($category['slug']) && is_string($category['label']), $id);
         }
     }
 }

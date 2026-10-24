@@ -8,12 +8,13 @@
 .alert:not(:empty) {
   padding: var(--space-3) var(--space-4);
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-left-width: 4px;
+  border-radius: var(--radius-field);
   margin-block: var(--space-4);
 }
 
 .alert--error:not(:empty) {
-  color: var(--color-error-fg);
+  color: var(--color-error);
   background: var(--color-error-bg);
-  border-color: var(--color-error-bd);
+  border-color: var(--color-error);
 }

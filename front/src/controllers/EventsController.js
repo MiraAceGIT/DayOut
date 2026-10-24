@@ -1,5 +1,5 @@
 import { isApiError, messageFor } from "../core/errors.js";
-import { fetchUpcomingEvents } from "../models/Event.js";
+import { fetchUpcomingEvents, remainingPlaces } from "../models/Event.js";
 import { EventsView } from "../views/EventsView.js";
 
 export class EventsController {
@@ -14,7 +14,7 @@ export class EventsController {
 
     try {
       const events = await fetchUpcomingEvents({ limit: this.limit });
-      this.view.showEvents(events);
+      this.view.showEvents(events.map((event) => ({ event, remaining: remainingPlaces(event) })));
     } catch (err) {
       // Une ApiError est un echec attendu (reseau, HTTP...) ; toute autre erreur est un bug, a garder en console.
       if (!isApiError(err)) console.error(err);

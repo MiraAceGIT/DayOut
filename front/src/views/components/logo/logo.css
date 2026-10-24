@@ -1,0 +1,11 @@
+/* Markup rendu par logo.js (meme dossier) */
+.logo {
+  display: inline-flex;
+  flex: none;
+  text-decoration: none;
+}
+
+.logo__img {
+  min-width: 96px;
+  height: auto;
+}

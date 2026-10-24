@@ -6,9 +6,18 @@
 @import url("layout.css");
 
 @import url("components/skip-link.css");
-@import url("../../src/views/layout/header/header.css");
-@import url("components/hero.css");
+@import url("components/button.css");
+@import url("components/category.css");
 @import url("components/card-grid.css");
-@import url("../../src/views/components/eventCard/eventCard.css");
 @import url("components/feedback.css");
 @import url("components/form.css");
+
+@import url("../../src/views/components/pill/pill.css");
+@import url("../../src/views/components/logo/logo.css");
+@import url("../../src/views/layout/header/header.css");
+@import url("../../src/views/layout/footer/footer.css");
+@import url("../../src/views/components/eventCard/eventCard.css");
+@import url("../../src/views/components/eventRow/eventRow.css");
+@import url("../../src/views/components/eventPopup/eventPopup.css");
+@import url("../../src/views/home/home.css");
+@import url("../../src/views/home/map.css");

@@ -1,0 +1,29 @@
+/* Markup rendu par pill.js (meme dossier) ; aussi utilisable en HTML statique. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-pill);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: var(--letter-spacing-pill);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pill--success { color: var(--color-success); border-color: currentColor; }
+.pill--warning { color: var(--color-warning); border-color: currentColor; }
+.pill--error   { color: var(--color-error);   border-color: currentColor; }
+.pill--price   { color: var(--color-link);    border-color: currentColor; }
+.pill--neutral { color: var(--color-muted);   border-color: var(--color-border); }
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

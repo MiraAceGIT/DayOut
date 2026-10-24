@@ -35,3 +35,6 @@ ul, ol { list-style: none; }
     scroll-behavior: auto !important;
   }
 }
+
+/* `hidden` doit gagner sur les display des composants (onglets, legende, groupes masques). */
+[hidden] { display: none !important; }

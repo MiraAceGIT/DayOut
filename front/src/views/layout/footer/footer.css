@@ -1,0 +1,28 @@
+/* Markup injecte par footer.js (meme dossier) ; le fallback noscript reprend les memes classes. */
+.site-footer {
+  margin-top: var(--space-7);
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  --focus-color: var(--color-on-brand);
+  --focus-halo: var(--color-brand);
+}
+
+.site-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+}
+
+.site-footer__brand {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-h3);
+  font-weight: 700;
+}
+
+.site-footer__tagline { flex: 1 1 16rem; }
+
+.site-footer__credit {
+  color: var(--color-on-brand-muted);
+  font-size: var(--font-size-detail);
+}

@@ -2,10 +2,13 @@
   position: absolute;
   left: -9999px;
   top: 0;
-  background: var(--color-primary);
-  color: var(--color-primary-ink);
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  font-weight: 600;
   padding: var(--space-2) var(--space-4);
-  border-radius: 0 0 var(--radius) 0;
-  z-index: 10;
+  border-radius: 0 0 var(--radius-field) 0;
+  z-index: 2000; /* au-dessus des panneaux Leaflet (z-index jusqu'a 1000) */
+  --focus-color: var(--color-on-brand);
+  --focus-halo: var(--color-brand);
 }
 .skip-link:focus { left: 0; }

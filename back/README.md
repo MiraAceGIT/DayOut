@@ -96,6 +96,8 @@ des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
   "address_line": "...",
   "city": "Paris",
   "postal_code": "75002",
+  "latitude": 48.8689,
+  "longitude": 2.341,
   "capacity": 250,
   "registered_count": 12,
   "price_cents": 1500,
@@ -106,13 +108,20 @@ des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
   "restricted_school_id": 1,
   "status": "published",
   "published_at": "2026-10-01T09:00:00+00:00",
-  "created_at":   "2026-10-01T09:00:00+00:00"
+  "created_at":   "2026-10-01T09:00:00+00:00",
+  "categories": [
+    { "slug": "bde",    "label": "BDE / Assoc" },
+    { "slug": "soiree", "label": "Soiree" }
+  ]
 }
 ```
 
 Types garantis : `is_paid` et `school_restricted` en `bool`, entiers en `int`,
-dates en ISO 8601 UTC (`DateTime::ATOM`). Seuls les events `status='published'`
-sont exposes.
+`latitude` / `longitude` en `float` ou `null` (non geolocalise), dates en ISO 8601
+UTC (`DateTime::ATOM`). `categories` : liste de `{ slug, label }` triee par `label`
+puis `id`, categories actives uniquement, `[]` si aucune ; chargees en une seule
+requete pour toute la page (`Category::listActiveByEvent`). Seuls les events
+`status='published'` sont exposes.
 
 ## Tester
 
@@ -128,7 +137,7 @@ back/tests/run.sh --unit        # unitaires seuls, sans BDD
 
 - `tests/Unit/` : classes testees directement, sans serveur : Router (middlewares, groupes),
   Kernel (rendu des erreurs, CORS, en-tetes), Request / Response, QueryBuilder (SQL genere),
-  Model (sur SQLite en memoire), Validator, ContextSanitizer, et les filets d'ErrorHandler
+  Caster, Model et Category (sur SQLite en memoire), Validator, ContextSanitizer, et les filets d'ErrorHandler
   (dans un processus a part).
 - `tests/Http/` : vraies requetes HTTP. `run.sh` remet a zero la base **`dayout_test`**
   (`infra/sql/reset_db.sh`, schema + seed), puis lance `php -S` sur un port libre
