@@ -4,27 +4,30 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Database;
 use App\Core\Log\Log;
+use App\Core\Request;
+use App\Core\Response;
 use Throwable;
 
 final class HealthController extends Controller
 {
     /** GET /api/health : smoke test (API + BDD joignables). */
-    public function index(array $params): void
+    public function index(Request $request): Response
     {
         $db = 'down';
         try {
-            $this->db()->query('SELECT 1');
+            Database::orm()->scalar('SELECT 1');
             $db = 'up';
         } catch (Throwable $e) {
             // /health doit toujours repondre, meme BDD down.
             Log::error('Health check: database unreachable', ['exception' => $e]);
         }
 
-        $this->ok([
+        return $this->ok([
             'api'  => 'up',
             'db'   => $db,
-            'time' => date(DATE_ATOM),
+            'time' => gmdate(DATE_ATOM),
         ]);
     }
 }

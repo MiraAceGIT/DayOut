@@ -7,46 +7,82 @@ use App\Core\Log\Log;
 use JsonException;
 
 /**
- * Format unique des reponses : { "data": ... } ou
- * { "error": { "code", "message", "details"? } }.
+ * Reponse HTTP immuable, renvoyee par les actions et les middlewares puis envoyee
+ * une seule fois par public/index.php (send()). Format unique du body :
+ * { "data": ... } ou { "error": { "code", "message", "details"? } }.
  */
 final class Response
 {
-    public static function json(mixed $data, int $status = 200): never
-    {
-        self::send(['data' => $data], $status);
+    /** @param array<string, string> $headers */
+    private function __construct(
+        public readonly int $status,
+        private readonly ?array $payload,
+        private readonly array $headers = [],
+    ) {
     }
 
-    public static function error(string $code, string $message, int $status, array $details = []): never
+    public static function json(mixed $data, int $status = 200): self
     {
-        $payload = ['error' => ['code' => $code, 'message' => $message]];
+        return new self($status, ['data' => $data]);
+    }
+
+    public static function error(string $code, string $message, int $status, array $details = []): self
+    {
+        $error = ['code' => $code, 'message' => $message];
         if ($details !== []) {
-            $payload['error']['details'] = $details;
+            $error['details'] = $details;
         }
-        self::send($payload, $status);
+        return new self($status, ['error' => $error]);
     }
 
-    public static function noContent(): never
+    public static function noContent(): self
     {
-        http_response_code(204);
-        exit;
+        return new self(204, null);
     }
 
-    private static function send(array $payload, int $status): never
+    public function withHeader(string $name, string $value): self
     {
+        return new self($this->status, $this->payload, [$name => $value] + $this->headers);
+    }
+
+    public function header(string $name): ?string
+    {
+        foreach ($this->headers as $key => $value) {
+            if (strcasecmp($key, $name) === 0) {
+                return $value;
+            }
+        }
+        return null;
+    }
+
+    /** Body decode (null pour 204) : utile aux tests. */
+    public function payload(): ?array
+    {
+        return $this->payload;
+    }
+
+    public function send(): void
+    {
+        $body = null;
+        $status = $this->status;
+        if ($this->payload !== null) {
+            try {
+                $body = json_encode($this->payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+            } catch (JsonException $e) {
+                // Sinon le client recevrait un body vide avec le statut d'origine (ex. 200).
+                $status = 500;
+                $body = '{"error":{"code":"ENCODING_ERROR","message":"Response could not be encoded"}}';
+                Log::error('Response encoding failed', ['exception' => $e]);
+            }
+        }
+
         http_response_code($status);
-        header('Content-Type: application/json; charset=utf-8');
-        try {
-            echo json_encode(
-                $payload,
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
-            );
-        } catch (JsonException $e) {
-            // Sinon le client recevrait un body vide avec le statut d'origine (ex. 200).
-            http_response_code(500);
-            echo '{"error":{"code":"ENCODING_ERROR","message":"Response could not be encoded"}}';
-            Log::error('Response encoding failed', ['exception' => $e]);
+        foreach ($this->headers as $name => $value) {
+            header("$name: $value");
         }
-        exit;
+        if ($body !== null) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo $body;
+        }
     }
 }

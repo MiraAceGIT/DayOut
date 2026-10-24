@@ -12,11 +12,13 @@ nommees, `Controllers` orchestrent, la vue est la reponse JSON (`Response`).
 back/
 ├── public/
 │   ├── index.php       ← point d'entree unique (front controller)
-│   └── .htaccess       ← rewrite + headers de securite
+│   └── .htaccess       ← rewrite + blocage des fichiers sensibles
 ├── src/
-│   ├── Core/           ← Router, Database, Request, Response, Controller, Password,
-│   │                     Validator, HttpException
-│   │   ├── Log/        ← journalisation (error / info / audit)
+│   ├── Core/           ← Config, Router, Request, Response, Controller, Database,
+│   │                     Validator, HttpException, Password
+│   │   ├── Http/       ← Kernel, Middleware, ExceptionRenderer, DbErrorMapper,
+│   │   │                 Cors, SecurityHeaders
+│   │   ├── Log/        ← journalisation (error / info / audit) + filets ErrorHandler
 │   │   └── Orm/        ← moteur ORM maison
 │   │       ├── Connection.php, ValueBinder.php  ← execution PDO + bindings
 │   │       ├── Caster.php, Rows.php             ← casts + batch anti N+1
@@ -24,7 +26,7 @@ back/
 │   │                     Compiler, Grammar
 │   ├── Models/         ← M : Model.php (base) + une classe par table
 │   └── Controllers/    ← C : logique HTTP (une classe par ressource)
-├── config/config.php   ← charge le .env
+├── config/config.php   ← charge le .env, construit et renvoie la Config
 ├── routes/            ← un fichier de routes par ressource (charges par api.php)
 ├── storage/logs/       ← fichiers de logs (crees a la volee, ignores par git)
 ├── tests/              ← runner maison : Unit/ (sans BDD), Http/ (integration)
@@ -46,7 +48,11 @@ back/
    L'API ecoute sur `http://localhost:8000`.
 
    **B. XAMPP Apache** — placer le projet dans `C:\xampp\htdocs\dayout`
-   puis ouvrir `http://localhost/dayout/back/public/`.
+   puis ouvrir `http://localhost/dayout/back/public/api/health`. Le prefixe
+   `/dayout/back/public` est retire automatiquement du chemin (deduit de `SCRIPT_NAME`).
+
+Au demarrage, `config/config.php` valide le `.env` : une variable `DB_*` manquante,
+un `LOG_LEVEL` inconnu ou un entier invalide donnent un `500` journalise (cause dans `error.log`).
 
 ## Format de reponse
 
@@ -63,7 +69,9 @@ Toutes les reponses sont en JSON et suivent une enveloppe standard.
 ```
 
 Codes d'erreur emis : `BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`,
-`VALIDATION_ERROR` (422, `details` = champ -> message), `INTERNAL_ERROR`, `ENCODING_ERROR`.
+`VALIDATION_ERROR` (422, `details` = champ -> message), `CONFLICT`, les codes metier
+des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
+`INTERNAL_ERROR`, `ENCODING_ERROR`.
 
 ## Endpoints
 
@@ -118,7 +126,10 @@ back/tests/run.sh EventsTest    # filtre sur "Classe::methode"
 back/tests/run.sh --unit        # unitaires seuls, sans BDD
 ```
 
-- `tests/Unit/` : classes testees directement (Validator, ContextSanitizer, ErrorHandler).
+- `tests/Unit/` : classes testees directement, sans serveur : Router (middlewares, groupes),
+  Kernel (rendu des erreurs, CORS, en-tetes), Request / Response, QueryBuilder (SQL genere),
+  Model (sur SQLite en memoire), Validator, ContextSanitizer, et les filets d'ErrorHandler
+  (dans un processus a part).
 - `tests/Http/` : vraies requetes HTTP. `run.sh` remet a zero la base **`dayout_test`**
   (`infra/sql/reset_db.sh`, schema + seed), puis lance `php -S` sur un port libre
   branche sur cette base, avec des logs dans un dossier temporaire. La base de dev
@@ -159,7 +170,18 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
 
 1. Ecrire le `Model` dans `src/Models/` (herite de `App\Models\Model`, voir *ORM* ci-dessous).
 2. Ecrire le `Controller` dans `src/Controllers/` (herite de `App\Core\Controller`) ;
-   il instancie ses models dans son constructeur (`new User()`).
+   il instancie ses models dans son constructeur (`new User()`). Chaque action recoit
+   la `Request` et **renvoie** une `Response` :
+   ```php
+   public function show(Request $request): Response
+   {
+       $id = (int) $request->param('id');
+       return $this->ok($this->found($this->users->findPublicById($id), 'User', $id));
+   }
+   ```
+   Helpers : `ok($data, $status)`, `noContent()`, `validate($request, $rules)`,
+   `found($row, 'Resource', $id)` (404 si `null`). Pour echouer : `throw HttpException`.
+   Requete : `param('id')`, `json()`, `query()`, `queryInt()`, `header()`, `attribute('user')`.
 3. Declarer les routes dans `routes/<ressource>.php` (ex. `routes/users.php`),
    charge automatiquement par `routes/api.php` :
    ```php
@@ -171,9 +193,30 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
    /** @var \App\Core\Router $router */
    $router->get('/api/users/{id:\d+}', [UserController::class, 'show']);
    ```
-4. Pour une route protegee (futur) :
+4. Routes protegees : des middlewares (`App\Core\Http\Middleware`), par route ou par groupe.
+   Un groupe applique son prefixe et ses middlewares a toutes ses routes (imbricable) :
    ```php
-   $router->post('/api/events', [EventController::class, 'create'], [AuthMiddleware::class]);
+   $router->group('/api/events', [Authenticate::class], function (Router $r) {
+       $r->post('', [EventController::class, 'create'], [new RequireRole('creator')]);
+       $r->delete('/{id:\d+}', [EventController::class, 'delete'], [new RequireRole('admin')]);
+   });
+   ```
+   Un middleware peut refuser (`throw new HttpException(401, ...)`), enrichir la requete
+   pour l'action (`$next($request->withAttribute('user', $user))`) ou agir apres
+   (`$next($request)->withHeader(...)`) :
+   ```php
+   final class Authenticate implements Middleware
+   {
+       public function process(Request $request, callable $next): Response
+       {
+           $user = /* session -> utilisateur */ null;
+           if ($user === null) {
+               throw new HttpException(401, 'UNAUTHENTICATED', 'Login required');
+           }
+           Log::setUserId($user['id']);
+           return $next($request->withAttribute('user', $user));
+       }
+   }
    ```
 
 ## ORM
@@ -226,13 +269,14 @@ public function __construct(?User $users = null)
 | `FILLABLE`    | colonnes de la saisie client acceptees par `create()` / `updateById()`, le reste est ignore |
 | `CASTS`       | `int`, `float`, `bool`, `datetime` (ISO 8601 UTC), `json`            |
 
-**Lire** (methodes publiques heritees + `$this->query()` dans le model) :
+**Lire** : uniquement dans le model, qui expose ses methodes nommees. `find()`,
+`findMany()` et `all()` sont `protected` : ils ignorent les regles de visibilite
+(un `find()` public renverrait un event `draft`).
 ```php
-$users->find(3);                                 // ?array
-$users->findMany([1, 2, 2, 3]);                  // [1 => [...], 2 => [...], 3 => [...]] (1 requete)
-$users->all();
-
 // dans le model User :
+public function findPublicById(int $id): ?array { return $this->find($id); }
+$this->findMany([1, 2, 2, 3]);                   // [1 => [...], 2 => [...], 3 => [...]] (1 requete)
+
 $this->query()->where('school_id', 1)->orderBy('last_name')->limit(20)->get();
 $this->query()->where('reliability_score', '<', 40)->count();
 $this->query()->whereIn('id', [1, 2, 3])->pluck('email');
@@ -248,9 +292,10 @@ $this->query()->where('role', 'admin')->exists();
 ```php
 // 1er argument : saisie client (filtree par FILLABLE)
 // 2e argument  : champs fixes par le serveur (non filtres)
-$id = $users->create($this->body(), ['password_hash' => Password::hash($password)]);  // id insere
-$users->updateById($id, ['first_name' => 'B']);                                       // nb lignes
+$id = $users->create($data, ['password_hash' => Password::hash($password)]);  // id insere
+$users->updateById($id, ['first_name' => 'B']);                               // nb lignes
 $users->deleteById($id);
+// Rien a ecrire (body vide ou sans champ FILLABLE) -> HttpException 400.
 
 // Requete libre (pas de filtre FILLABLE ni de casts) : $this->table() dans un
 // model, ou Database::orm()->table(...) ailleurs.
@@ -301,10 +346,13 @@ unset($event);
 
 Garde-fous : valeurs toujours bindees (`?`), noms de colonnes valides par regex
 au moment de l'appel et entoures de backticks, operateurs, sens de tri et types
-de jointure en whitelist, `update()` / `delete()` refuses sans `WHERE`.
+de jointure en whitelist, `update()` / `delete()` refuses sans `WHERE`,
+`where('col', '>', null)` refuse (toujours faux en SQL).
 `selectRaw()` / `whereRaw()` acceptent du SQL brut : n'y concatener **jamais**
-une entree utilisateur (passer par les bindings de `whereRaw`). Les erreurs SQL
-(contraintes, triggers `SIGNAL 45000`) remontent en `PDOException`.
+une entree utilisateur (passer par les bindings de `whereRaw`). `whereRaw()` est
+toujours entoure de parentheses : un `OR` interne n'annule pas les autres conditions.
+Les erreurs SQL (contraintes, triggers `SIGNAL 45000`) remontent en `PDOException`,
+traduites en reponse HTTP par `DbErrorMapper` (voir *Gestion des erreurs*).
 
 ## Journalisation
 
@@ -355,9 +403,11 @@ Garde-fous :
 - PDO `ERRMODE_EXCEPTION` + `EMULATE_PREPARES=false` + placeholders `?` bindes (anti-SQLi)
 - CORS whitelist via `CORS_ORIGIN` (plus `*` avec credentials)
 - Headers : `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
-  `Permissions-Policy`, `CSP` (API-only)
+  `Permissions-Policy`, `CSP` (API-only), envoyes par PHP sur toutes les reponses,
+  erreurs comprises (`App\Core\Http\SecurityHeaders`, identiques sous Apache et `php -S`)
 - `.htaccess` bloque les dotfiles et extensions sensibles (`.env`, `.sql`, …)
-- Variables d'env requises validees au boot (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PORT`)
+- Variables d'env validees au demarrage par `App\Core\Config` (`DB_HOST`, `DB_PORT`,
+  `DB_NAME`, `DB_USER` obligatoires, entiers et `LOG_LEVEL` controles)
 - Jamais de `$e->getMessage()` ou de trace dans la reponse HTTP (log serveur uniquement)
 - `App\Core\Password` : bcrypt cost 12, pret pour l'auth future
 
@@ -365,30 +415,57 @@ Garde-fous :
 
 ```
 HTTP -> public/.htaccess -> public/index.php
-     -> autoload + CORS + headers securite
+     -> autoload, ErrorHandler (filets), config/config.php (Config, Log, Database)
      -> routes/api.php -> routes/<ressource>.php (declarations)
-     -> Router::dispatch (match {param}, middlewares)
-     -> Controller::action
-     -> Model (methode nommee)
-     -> QueryBuilder -> Compiler (SQL) -> Connection (bindings) -> PDO -> MariaDB
-     -> Caster (casts de chaque ligne, d'apres Model::CASTS)
-     -> Response::json / Response::error
-     (exception levee n'importe ou -> ErrorHandler::handleException)
+     -> Kernel::handle(Request::fromGlobals())
+          -> Router::dispatch : match {param}, middlewares, Controller::action -> Response
+             -> Model (methode nommee) -> QueryBuilder -> Compiler (SQL)
+                -> Connection (bindings) -> PDO -> MariaDB -> Caster (Model::CASTS)
+          -> exception levee n'importe ou -> ExceptionRenderer -> Response d'erreur
+          -> SecurityHeaders + Cors + X-Request-Id sur toutes les reponses
+     -> Response::send() (seul endroit qui ecrit statut, en-tetes et body)
 ```
 
 ## Gestion des erreurs
 
-Aucun `try/catch` n'est necessaire dans les controllers : toute exception remonte
-au gestionnaire global `App\Core\Log\ErrorHandler`.
+Aucun `try/catch` n'est necessaire dans les controllers : `Kernel` confie toute
+exception a `App\Core\Http\ExceptionRenderer`.
 
-- `App\Core\HttpException` -> renvoyee au client avec son statut, son code et son message :
+- `App\Core\HttpException` -> renvoyee au client avec son statut, son code, son message
+  et ses en-tetes :
   ```php
   throw HttpException::notFound('Event not found', ['id' => $id]);
   throw HttpException::badRequest('Missing field', ['field' => 'title']);
   throw new HttpException(409, 'CONFLICT', 'Already registered');
   ```
+- regle metier d'un trigger SQL (`SIGNAL ... MYSQL_ERRNO = 50xxx`) -> traduite par
+  `App\Core\Http\DbErrorMapper`, avec le message du trigger. Table complete des
+  codes : `infra/README.md`, section *Codes d'erreur des triggers*.
+
+  | errno         | HTTP | code                         |
+  | ------------- | ---- | ---------------------------- |
+  | 50101         | 422  | `EMAIL_DOMAIN_NOT_ALLOWED`   |
+  | 50201, 50202  | 422  | `INVALID_SCHOOL_RESTRICTION` |
+  | 50301         | 403  | `USER_BANNED`                |
+  | 50302         | 403  | `RELIABILITY_TOO_LOW`        |
+  | 50303         | 409  | `EVENT_NOT_OPEN`             |
+  | 50304         | 409  | `EVENT_FULL`                 |
+  | 50401 - 50404 | 403  | `ADMIN_REQUIRED`             |
+  | 50501         | 422  | `INVALID_PLANNING_ITEM`      |
+  | 50502         | 422  | `INVALID_REPORT_TARGET`      |
+  | autre 50xxx   | 409  | `BUSINESS_RULE_VIOLATION`    |
+
+  Ajouter une regle : choisir un errno libre dans la plage du domaine, l'ajouter a
+  `DbErrorMapper::TRIGGER_ERRORS` et aux deux README.
+- contrainte native -> message generique (le message MariaDB cite tables et contraintes) :
+  doublon `1062` et suppression d'une ligne referencee `1451` -> `409 CONFLICT`,
+  cle etrangere inexistante `1452` et CHECK `4025` -> `422 VALIDATION_ERROR`.
 - toute autre exception (PDO, logique, ...) -> journalisee dans `error.log`,
   le client recoit un `500 INTERNAL_ERROR` generique.
+
+Hors du Kernel, `App\Core\Log\ErrorHandler` journalise les warnings PHP et repond
+encore `500 INTERNAL_ERROR` en JSON pour une exception au demarrage (config invalide)
+ou une erreur fatale (memoire, timeout).
 
 Un `try/catch` ne se justifie que pour reagir a une erreur precise
 (ex. `/health` qui repond `db: down` au lieu d'echouer).
@@ -399,9 +476,9 @@ Un `try/catch` ne se justifie que pour reagir a une erreur precise
 elles sont invalides. Dans un controller, `$this->validate()` valide le body JSON :
 
 ```php
-public function create(array $params): void
+public function create(Request $request): Response
 {
-    $data = $this->validate([
+    $data = $this->validate($request, [
         'title'       => 'required|string|min:3|max:150',
         'start_at'    => 'required|datetime',
         'capacity'    => 'nullable|int|min:1',
@@ -410,6 +487,7 @@ public function create(array $params): void
         'contact_url' => 'nullable|url',
     ]);
     // $data ne contient que les champs declares, `int` et `bool` deja castes.
+    return $this->ok(['id' => $this->events->create($data, ['creator_id' => $userId])], 201);
 }
 ```
 
@@ -436,6 +514,25 @@ Reponse en cas d'erreur (une erreur par champ, la premiere regle qui echoue) :
 | `in:a,b`   | une des valeurs listees (sensible a la casse)                        |
 
 Un champ absent et non `required` est simplement absent du resultat. Placer la
-regle de type avant `min` / `max` (`int|min:1`). Une regle inconnue leve une
-`LogicException` (erreur de dev, donc 500). Pour valider la query string :
-`Validator::check($_GET, [...])`.
+regle de type avant `min` / `max` (`int|min:1`). Les regles sont verifiees avant
+les donnees : une regle inconnue ou un argument invalide (`max:abc`) leve une
+`LogicException` (erreur de dev, donc 500), meme si le champ n'est pas envoye.
+Pour valider la query string : `Validator::check($request->query(), [...])`.
+
+## Conventions
+
+- **Langue** : commentaires et documentation en francais (sans accents dans le code,
+  comme le SQL) ; messages renvoyes au client, codes d'erreur et noms en anglais.
+- **Statique ou instance** :
+  - statique pour les fonctions pures sans etat : `Validator`, `Grammar`, `Compiler`,
+    `Caster`, `Rows`, `ValueBinder`, `Password`, `SecurityHeaders`, `ExceptionRenderer`,
+    constructeurs nommes de `HttpException` ;
+  - instance pour ce qui porte un etat par requete ou des entrees/sorties : `Request`,
+    `Response`, `Router`, `Kernel`, `Connection`, middlewares, controllers, models ;
+  - facade statique configuree une fois au demarrage : `Log` et `Database` uniquement.
+- **Configuration** : seul `App\Core\Config` lit l'environnement ; les autres classes
+  recoivent leurs valeurs (`Log::configure()`, `Database::configure()`).
+- **Models** : jamais de `find()` / `all()` publics ; une methode nommee par besoin
+  metier, qui applique les regles de visibilite (`findPublishedById`).
+- **Erreurs** : `throw HttpException` pour le client, n'importe quelle autre exception
+  pour un bug ; pas de `Response::error()` dans les controllers.

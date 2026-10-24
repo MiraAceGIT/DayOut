@@ -73,7 +73,7 @@ final class EventsTest extends HttpTestCase
 
     public function testDraftAndArchivedEventsAreNotExposed(): void
     {
-        foreach ([8, 10] as $id) {
+        foreach ([8, 9, 10] as $id) {
             $this->assertError(404, 'NOT_FOUND', $this->get("/api/events/$id"));
         }
     }

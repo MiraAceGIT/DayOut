@@ -22,7 +22,7 @@ CREATE TABLE planning_items (
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_plan_item_planning_event (planning_id, event_id),
-  KEY idx_plan_item_planning (planning_id),
+  -- Pas d'index sur planning_id seul : couvert par le prefixe de uk_plan_item_planning_event.
   KEY idx_plan_item_event (event_id),
   CONSTRAINT fk_plan_item_planning
     FOREIGN KEY (planning_id) REFERENCES plannings(id)

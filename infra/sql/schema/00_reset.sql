@@ -31,4 +31,19 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS schools;
 
+-- Routines de 09_routines.sql (les triggers partent avec leurs tables).
+DROP PROCEDURE IF EXISTS sp_raise;
+DROP FUNCTION  IF EXISTS fn_email_domain;
+DROP FUNCTION  IF EXISTS fn_school_id_for_domain;
+DROP PROCEDURE IF EXISTS sp_assert_domain_whitelisted;
+DROP PROCEDURE IF EXISTS sp_assert_event_restriction;
+DROP FUNCTION  IF EXISTS fn_registration_is_active;
+DROP PROCEDURE IF EXISTS sp_assert_user_can_register;
+DROP PROCEDURE IF EXISTS sp_lock_event_seat;
+DROP PROCEDURE IF EXISTS sp_registered_count_add;
+DROP FUNCTION  IF EXISTS fn_is_admin;
+DROP PROCEDURE IF EXISTS sp_assert_admin;
+DROP PROCEDURE IF EXISTS sp_assert_planning_item;
+DROP PROCEDURE IF EXISTS sp_assert_report_target;
+
 SET FOREIGN_KEY_CHECKS = 1;

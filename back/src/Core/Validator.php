@@ -28,21 +28,33 @@ final class Validator
 {
     private const DATETIME_FORMATS = ['Y-m-d\TH:i:sP', 'Y-m-d\TH:i:s.vP'];
 
+    /** Regle => argument attendu : null (aucun), 'int' (min:3) ou 'list' (in:a,b). */
+    private const RULES = [
+        'required' => null, 'nullable' => null, 'string' => null, 'int' => null, 'bool' => null,
+        'array'    => null, 'email'    => null, 'url'    => null, 'date' => null, 'datetime' => null,
+        'min'      => 'int', 'max'     => 'int', 'in'    => 'list',
+    ];
+
     /**
      * @param array<string, string|array<int, string>> $rules
      * @return array<string, mixed>
      */
     public static function check(array $data, array $rules): array
     {
+        // Toutes les regles sont verifiees d'abord : une faute de frappe leve une
+        // LogicException tout de suite, meme si le champ n'est pas envoye.
+        $parsed = array_map(self::parseRules(...), $rules, array_keys($rules));
+        $parsed = array_combine(array_keys($rules), $parsed);
+
         $clean  = [];
         $errors = [];
 
-        foreach ($rules as $field => $fieldRules) {
-            $fieldRules = is_string($fieldRules) ? explode('|', $fieldRules) : $fieldRules;
-            $present    = array_key_exists($field, $data);
-            $value      = $data[$field] ?? null;
+        foreach ($parsed as $field => $fieldRules) {
+            $names   = array_column($fieldRules, 0);
+            $present = array_key_exists($field, $data);
+            $value   = $data[$field] ?? null;
 
-            if (in_array('required', $fieldRules, true) && self::isBlank($value)) {
+            if (in_array('required', $names, true) && self::isBlank($value)) {
                 $errors[$field] = 'This field is required';
                 continue;
             }
@@ -50,7 +62,7 @@ final class Validator
                 continue;
             }
             if ($value === null) {
-                if (in_array('nullable', $fieldRules, true)) {
+                if (in_array('nullable', $names, true)) {
                     $clean[$field] = null;
                 } else {
                     $errors[$field] = 'This field cannot be null';
@@ -58,8 +70,7 @@ final class Validator
                 continue;
             }
 
-            foreach ($fieldRules as $rule) {
-                [$name, $arg] = array_pad(explode(':', $rule, 2), 2, null);
+            foreach ($fieldRules as [$name, $arg]) {
                 $error = self::apply($name, $arg, $value);
                 if ($error !== null) {
                     $errors[$field] = $error;
@@ -73,6 +84,33 @@ final class Validator
             throw HttpException::validation($errors);
         }
         return $clean;
+    }
+
+    /**
+     * 'required | int|min:1' -> [['required', null], ['int', null], ['min', '1']].
+     *
+     * @param string|array<int, string> $rules
+     * @return array<int, array{0: string, 1: ?string}>
+     */
+    private static function parseRules(string|array $rules, string $field): array
+    {
+        $parsed = [];
+        foreach (is_string($rules) ? explode('|', $rules) : $rules as $rule) {
+            [$name, $arg] = array_map('trim', array_pad(explode(':', $rule, 2), 2, ''));
+            if (!array_key_exists($name, self::RULES)) {
+                throw new LogicException("Unknown validation rule '$name' on '$field'");
+            }
+            $valid = match (self::RULES[$name]) {
+                null   => $arg === '',
+                'int'  => preg_match('/^-?\d+$/', $arg) === 1,
+                'list' => $arg !== '',
+            };
+            if (!$valid) {
+                throw new LogicException("Invalid argument for rule '$name' on '$field': '$arg'");
+            }
+            $parsed[] = [$name, $arg === '' ? null : $arg];
+        }
+        return $parsed;
     }
 
     /** Renvoie le message d'erreur, ou null si la regle passe ($value peut etre caste). */
@@ -92,11 +130,10 @@ final class Validator
             'date'     => self::isDate($value, ['Y-m-d']) ? null : 'Must be a date (YYYY-MM-DD)',
             'datetime' => self::isDate($value, self::DATETIME_FORMATS)
                 ? null : 'Must be an ISO 8601 datetime with timezone',
-            'min'      => self::size($value) >= self::number($rule, $arg) ? null : self::sizeMessage($value, 'at least', $arg),
-            'max'      => self::size($value) <= self::number($rule, $arg) ? null : self::sizeMessage($value, 'at most', $arg),
+            'min'      => self::size($value) >= (int) $arg ? null : self::sizeMessage($value, 'at least', $arg),
+            'max'      => self::size($value) <= (int) $arg ? null : self::sizeMessage($value, 'at most', $arg),
             'in'       => is_scalar($value) && in_array((string) $value, explode(',', (string) $arg), true)
                 ? null : 'Must be one of: ' . str_replace(',', ', ', (string) $arg),
-            default    => throw new LogicException("Unknown validation rule '$rule'"),
         };
     }
 
@@ -171,13 +208,5 @@ final class Validator
             is_array($value)  => "Must contain $bound $arg items",
             default           => "Must be $bound $arg",
         };
-    }
-
-    private static function number(string $rule, ?string $arg): int
-    {
-        if ($arg === null || preg_match('/^-?\d+$/', $arg) !== 1) {
-            throw new LogicException("Rule '$rule' expects an integer argument");
-        }
-        return (int) $arg;
     }
 }

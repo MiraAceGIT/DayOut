@@ -6,25 +6,17 @@ Options -Indexes
 Options -MultiViews
 
 RewriteEngine On
-RewriteBase /
+# Pas de RewriteBase : la cible index.php reste relative a ce dossier, ce qui
+# fonctionne aussi dans un sous-dossier (http://localhost/dayout/back/public/).
+# Le prefixe est retire du chemin par Request::fromGlobals().
 
 # Si le fichier/dossier existe, servir directement (fichiers statiques).
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [L,QSA]
 
-# -----------------------------------------------------------------------------
-# Headers de securite au niveau Apache (double securite avec PHP).
-# Si mod_headers n'est pas charge, PHP les envoie quand meme.
-# -----------------------------------------------------------------------------
-<IfModule mod_headers.c>
-    Header always set X-Content-Type-Options "nosniff"
-    Header always set X-Frame-Options "DENY"
-    Header always set Referrer-Policy "strict-origin-when-cross-origin"
-    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
-    # L'API ne sert pas de HTML : CSP tres restrictive.
-    Header always set Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
-</IfModule>
+# Les en-tetes de securite sont envoyes par PHP (App\Core\Http\SecurityHeaders),
+# seule source pour qu'ils soient identiques sous Apache et sous `php -S`.
 
 # -----------------------------------------------------------------------------
 # Fichiers sensibles / dotfiles : refuser l'acces direct.

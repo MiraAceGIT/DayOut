@@ -1,0 +1,10 @@
+/* Champs de formulaire et erreurs (lib/forms.js : showFieldErrors / clearFieldErrors) */
+[aria-invalid="true"] {
+  border-color: var(--color-error-fg);
+}
+
+.field-error {
+  color: var(--color-error-fg);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-1);
+}

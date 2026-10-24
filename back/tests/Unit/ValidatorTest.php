@@ -179,4 +179,17 @@ final class ValidatorTest extends TestCase
         $this->assertThrows(LogicException::class, fn () => Validator::check(['a' => 'x'], ['a' => 'strnig']));
         $this->assertThrows(LogicException::class, fn () => Validator::check(['a' => 'x'], ['a' => 'max:abc']));
     }
+
+    public function testInvalidRulesAreDetectedEvenWhenTheFieldIsAbsent(): void
+    {
+        foreach (['strnig', 'max:abc', 'min', 'in:', 'string:5'] as $rule) {
+            $this->assertThrows(LogicException::class, fn () => Validator::check([], ['a' => $rule]), $rule);
+        }
+        $this->assertThrows(LogicException::class, fn () => Validator::check(['a' => null], ['a' => 'nullable|strnig']));
+    }
+
+    public function testSpacesAroundRulesAreIgnored(): void
+    {
+        $this->assertSame(['a' => 5], Validator::check(['a' => '5'], ['a' => ' required | int | min: 1 ']));
+    }
 }

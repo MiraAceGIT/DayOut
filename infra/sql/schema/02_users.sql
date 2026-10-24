@@ -27,9 +27,11 @@ CREATE TABLE users (
   KEY idx_users_school (school_id),
   KEY idx_users_role (role),
   KEY idx_users_domain (email_domain),
+  -- RESTRICT : une ecole se desactive (schools.active=0), elle ne se supprime pas tant que
+  -- des users la referencent (cf. infra/README.md).
   CONSTRAINT fk_users_school
     FOREIGN KEY (school_id) REFERENCES schools(id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
+    ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT chk_users_score CHECK (reliability_score BETWEEN 0 AND 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

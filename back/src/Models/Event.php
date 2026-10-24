@@ -26,16 +26,20 @@ final class Event extends Model
         'external_ticket_url', 'school_restricted', 'restricted_school_id',
     ];
 
+    /** Tous les entiers exposes sont castes : ne pas dependre du comportement de mysqlnd. */
     protected const CASTS = [
-        'is_paid'           => 'bool',
-        'school_restricted' => 'bool',
-        'price_cents'       => 'int',
-        'registered_count'  => 'int',
-        'capacity'          => 'int',
-        'start_at'          => 'datetime',
-        'end_at'            => 'datetime',
-        'published_at'      => 'datetime',
-        'created_at'        => 'datetime',
+        'id'                   => 'int',
+        'creator_id'           => 'int',
+        'restricted_school_id' => 'int',
+        'capacity'             => 'int',
+        'registered_count'     => 'int',
+        'price_cents'          => 'int',
+        'is_paid'              => 'bool',
+        'school_restricted'    => 'bool',
+        'start_at'             => 'datetime',
+        'end_at'               => 'datetime',
+        'published_at'         => 'datetime',
+        'created_at'           => 'datetime',
     ];
 
     /** @return array<int, array<string, mixed>> */

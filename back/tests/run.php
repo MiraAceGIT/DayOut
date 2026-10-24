@@ -12,6 +12,14 @@ declare(strict_types=1);
 use Tests\TestCase;
 use Tests\TestServer;
 
+// Les tests doivent echouer sur un warning PHP, pas le noyer dans un log.
+set_error_handler(static function (int $type, string $message, string $file, int $line): bool {
+    if ((error_reporting() & $type) === 0) {
+        return false; // operateur @
+    }
+    throw new ErrorException($message, 0, $type, $file, $line);
+});
+
 define('APP_ROOT', dirname(__DIR__));
 
 require APP_ROOT . '/autoload.php';
@@ -33,8 +41,9 @@ $testDb   = (string) getenv('TEST_DB_NAME');
 // Dossier jetable : logs du runner et du serveur, jamais ceux de dev.
 $tmpDir = sys_get_temp_dir() . '/dayout-tests-' . bin2hex(random_bytes(4));
 mkdir($tmpDir . '/logs', 0775, true);
-putenv("LOG_PATH=$tmpDir/logs");
+putenv("LOG_PATH=$tmpDir/logs"); // herite par les sous-processus (fixtures)
 putenv('TEST_TMP_DIR=' . $tmpDir);
+App\Core\Log\Log::configure(App\Core\Log\Level::Debug, "$tmpDir/logs");
 
 $suites = ['Unit' => __DIR__ . '/Unit'];
 if (!$unitOnly && $testDb !== '') {

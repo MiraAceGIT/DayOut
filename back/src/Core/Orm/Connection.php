@@ -18,11 +18,6 @@ final class Connection
         $this->pdo = $pdo;
     }
 
-    public function pdo(): PDO
-    {
-        return $this->pdo;
-    }
-
     public function table(string $table): QueryBuilder
     {
         return new QueryBuilder($table, $this);

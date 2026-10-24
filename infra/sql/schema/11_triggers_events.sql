@@ -6,28 +6,19 @@ CREATE TRIGGER trg_events_bi
 BEFORE INSERT ON events
 FOR EACH ROW
 BEGIN
-  IF NEW.school_restricted = 1 AND NEW.restricted_school_id IS NULL THEN
-    SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'school_restricted=1 requires restricted_school_id';
-  END IF;
-  IF NEW.school_restricted = 0 AND NEW.restricted_school_id IS NOT NULL THEN
-    SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'school_restricted=0 forbids restricted_school_id';
-  END IF;
+  CALL sp_assert_event_restriction(NEW.school_restricted, NEW.restricted_school_id);
 END $$
 
+-- Ne revalide que si les colonnes concernees changent : un UPDATE de registered_count, du titre,
+-- du statut... ne doit jamais etre bloque par cette regle (meme schema que 14_triggers_fk_checks.sql).
 DROP TRIGGER IF EXISTS trg_events_bu $$
 CREATE TRIGGER trg_events_bu
 BEFORE UPDATE ON events
 FOR EACH ROW
 BEGIN
-  IF NEW.school_restricted = 1 AND NEW.restricted_school_id IS NULL THEN
-    SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'school_restricted=1 requires restricted_school_id';
-  END IF;
-  IF NEW.school_restricted = 0 AND NEW.restricted_school_id IS NOT NULL THEN
-    SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'school_restricted=0 forbids restricted_school_id';
+  IF NOT (NEW.school_restricted <=> OLD.school_restricted
+          AND NEW.restricted_school_id <=> OLD.restricted_school_id) THEN
+    CALL sp_assert_event_restriction(NEW.school_restricted, NEW.restricted_school_id);
   END IF;
 END $$
 

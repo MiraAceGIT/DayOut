@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+// Charge le .env, construit la Config, configure Log et Database. Renvoie la Config.
 // .env minimal (KEY=VALUE, pas d'interpolation) pousse dans getenv()/$_ENV.
 // Une variable deja definie dans l'environnement l'emporte (ex. DB_NAME=dayout_test pour les tests).
 
@@ -22,13 +23,27 @@ if (is_file($envFile)) {
     }
 }
 
-// UTC par defaut, comme la session MySQL.
-date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'UTC');
+// Validation au demarrage : une variable manquante ou invalide leve ici (500 journalise).
+$config = App\Core\Config::fromEnv(APP_ROOT);
 
-if (getenv('APP_DEBUG') === 'true') {
+// UTC par defaut, comme la session MySQL.
+date_default_timezone_set($config->timezone);
+
+if ($config->debug) {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
 } else {
     error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
     ini_set('display_errors', '0');
 }
+
+App\Core\Log\Log::configure(
+    $config->logLevel,
+    $config->logPath,
+    $config->logRetentionDays,
+    $config->auditRetentionDays,
+    [$config->dbPassword],
+);
+App\Core\Database::configure($config);
+
+return $config;

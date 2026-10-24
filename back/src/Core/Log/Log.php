@@ -10,7 +10,8 @@ use Throwable;
 /**
  * Point d'entree unique de la journalisation :
  *   warning et plus grave -> error.log ; notice, info, debug -> info.log ; audit() -> audit.log.
- * Config .env : LOG_LEVEL, LOG_PATH, LOG_RETENTION_DAYS, AUDIT_RETENTION_DAYS.
+ * Facade statique configuree une fois au demarrage par configure() (valeurs de Config).
+ * Sans configure() (erreur avant le chargement de la config) : niveau info, storage/logs.
  */
 final class Log
 {
@@ -20,10 +21,29 @@ final class Log
         | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR;
 
     private static ?LogWriter $writer = null;
-    private static ?Level $threshold = null;
+    private static Level $threshold = Level::Info;
+    /** @var array<int, string> valeurs masquees dans chaque ligne (ex. DB_PASSWORD) */
+    private static array $secrets = [];
     private static ?string $requestId = null;
     private static ?int $userId = null;
     private static bool $writing = false;
+
+    /** @param array<int, string> $secrets */
+    public static function configure(
+        Level $threshold,
+        string $directory,
+        int $retentionDays = 30,
+        int $auditRetentionDays = 365,
+        array $secrets = [],
+    ): void {
+        self::$threshold = $threshold;
+        self::$secrets   = $secrets;
+        self::$writer    = new LogWriter($directory, [
+            'error'             => $retentionDays,
+            'info'              => $retentionDays,
+            self::AUDIT_CHANNEL => $auditRetentionDays,
+        ]);
+    }
 
     public static function emergency(string $message, array $context = []): void { self::log(Level::Emergency, $message, $context); }
     public static function alert(string $message, array $context = []): void     { self::log(Level::Alert, $message, $context); }
@@ -36,7 +56,7 @@ final class Log
 
     public static function log(Level $level, string $message, array $context = []): void
     {
-        if ($level->isAtLeast(self::threshold())) {
+        if ($level->isAtLeast(self::$threshold)) {
             self::write($level->channel(), $level->value, $message, $context);
         }
     }
@@ -91,7 +111,7 @@ final class Log
                 'path'      => isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : null,
                 'context'   => (object) ContextSanitizer::sanitize($context),
             ];
-            $line = ContextSanitizer::scrubSecrets((string) json_encode($entry, self::JSON_FLAGS));
+            $line = ContextSanitizer::scrubSecrets((string) json_encode($entry, self::JSON_FLAGS), self::$secrets);
             self::writer()->append($channel, $line);
         } catch (Throwable $e) {
             // Journaliser ne doit jamais casser la requete : repli sur le log PHP.
@@ -101,35 +121,12 @@ final class Log
         }
     }
 
-    private static function threshold(): Level
-    {
-        return self::$threshold ??= Level::tryFrom(strtolower((string) getenv('LOG_LEVEL'))) ?? Level::Info;
-    }
-
     private static function writer(): LogWriter
     {
-        $retention = self::days('LOG_RETENTION_DAYS', 30);
-
-        return self::$writer ??= new LogWriter(self::directory(), [
-            'error'             => $retention,
-            'info'              => $retention,
-            self::AUDIT_CHANNEL => self::days('AUDIT_RETENTION_DAYS', 365),
+        return self::$writer ??= new LogWriter(dirname(__DIR__, 3) . '/storage/logs', [
+            'error'             => 30,
+            'info'              => 30,
+            self::AUDIT_CHANNEL => 365,
         ]);
-    }
-
-    private static function directory(): string
-    {
-        $path = (string) (getenv('LOG_PATH') ?: 'storage/logs');
-        if (str_starts_with($path, '/') || preg_match('#^[A-Za-z]:[\\\\/]#', $path) === 1) {
-            return rtrim($path, '/\\');
-        }
-        $root = defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 3);
-        return $root . '/' . rtrim($path, '/\\');
-    }
-
-    private static function days(string $key, int $default): int
-    {
-        $value = filter_var(getenv($key), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        return $value === false ? $default : $value;
     }
 }

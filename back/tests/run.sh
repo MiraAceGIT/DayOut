@@ -26,7 +26,8 @@ for arg in "$@"; do
 done
 
 export TEST_DB_NAME="${TEST_DB_NAME:-dayout_test}"
-DEV_DB="$(grep -E '^[[:space:]]*DB_NAME[[:space:]]*=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d "\r\"' ")"
+# || true : .env absent ou sans DB_NAME ne doit pas arreter le script (set -e + pipefail).
+DEV_DB="$({ grep -E '^[[:space:]]*DB_NAME[[:space:]]*=' .env 2>/dev/null || true; } | tail -n 1 | cut -d= -f2- | tr -d "\r\"' ")"
 if [ "$TEST_DB_NAME" = "${DEV_DB:-dayout}" ]; then
     echo "TEST_DB_NAME ($TEST_DB_NAME) est la base de dev : refuse, elle serait effacee." >&2
     exit 2

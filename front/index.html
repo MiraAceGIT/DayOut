@@ -4,31 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="DayOut : plateforme etudiante d'evenements inter-ecoles.">
+  <!-- Meme valeur que --color-primary (tokens.css) : les variables CSS ne sont pas lues ici. -->
   <meta name="theme-color" content="#4f46e5">
-  <meta name="api-base" content="http://localhost:8000">
   <title>DayOut — Accueil</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="assets/css/reset.css">
   <link rel="stylesheet" href="assets/css/main.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Aller au contenu</a>
 
-  <header class="site-header">
-    <div class="container">
-      <a href="index.html" class="logo">DayOut</a>
-      <nav class="site-nav" aria-label="Navigation principale">
-        <a href="index.html" aria-current="page">Accueil</a>
-        <a href="pages/events.html">Evenements</a>
+  <header class="site-header" data-layout>
+    <noscript>
+      <nav class="site-nav container" aria-label="Navigation principale">
+        <a class="site-nav__link" href="index.html" aria-current="page">Accueil</a>
+        <a class="site-nav__link" href="pages/events.html">Evenements</a>
       </nav>
-    </div>
+    </noscript>
   </header>
 
   <main id="main" class="container" tabindex="-1">
     <section class="hero" aria-labelledby="hero-title">
-      <h1 id="hero-title">Bienvenue sur DayOut</h1>
-      <p>La plateforme etudiante d'evenements inter-ecoles.</p>
+      <h1 id="hero-title" class="hero__title">Bienvenue sur DayOut</h1>
+      <p class="hero__lead">La plateforme etudiante d'evenements inter-ecoles.</p>
     </section>
   </main>
+
+  <!-- Surcharge locale optionnelle (ignoree par git), avant les modules. -->
+  <script src="assets/js/config.local.js"></script>
+  <script type="module" src="assets/js/pages/home.js"></script>
 </body>
 </html>

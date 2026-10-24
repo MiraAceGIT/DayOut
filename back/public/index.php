@@ -1,50 +1,28 @@
 <?php
 declare(strict_types=1);
 
-// Front controller : toutes les requetes y arrivent via .htaccess.
+// Front controller : toutes les requetes y arrivent (.htaccess sous Apache, `php -S` en dev).
 
 define('APP_ROOT', dirname(__DIR__));
 
 require APP_ROOT . '/autoload.php';
-require APP_ROOT . '/config/config.php';
 
+use App\Core\Http\Kernel;
 use App\Core\Log\AccessLog;
 use App\Core\Log\ErrorHandler;
-use App\Core\Log\Log;
-use App\Core\Response;
+use App\Core\Request;
 use App\Core\Router;
 
+// Avant la config : une config invalide doit aussi produire un 500 JSON journalise.
 ErrorHandler::register();
 AccessLog::register();
 
-header('X-Request-Id: ' . Log::requestId());
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: DENY');
-header('Referrer-Policy: strict-origin-when-cross-origin');
-header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-
-// CORS : CORS_ORIGIN = origines autorisees, separees par des virgules.
-$allowedOrigins = array_filter(array_map('trim', explode(',', (string) getenv('CORS_ORIGIN'))));
-$requestOrigin  = $_SERVER['HTTP_ORIGIN'] ?? '';
-
-if ($requestOrigin !== '' && in_array($requestOrigin, $allowedOrigins, true)) {
-    header('Access-Control-Allow-Origin: ' . $requestOrigin);
-    header('Vary: Origin');
-    header('Access-Control-Allow-Credentials: true');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
-    header('Access-Control-Max-Age: 600');
-    header('Access-Control-Expose-Headers: X-Request-Id');
-}
-
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
-    Response::noContent();
-}
+/** @var \App\Core\Config $config */
+$config = require APP_ROOT . '/config/config.php';
 
 $router = new Router();
 require APP_ROOT . '/routes/api.php';
 
-$router->dispatch(
-    $_SERVER['REQUEST_METHOD'] ?? 'GET',
-    parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'
-);
+(new Kernel($router, $config))
+    ->handle(Request::fromGlobals())
+    ->send();

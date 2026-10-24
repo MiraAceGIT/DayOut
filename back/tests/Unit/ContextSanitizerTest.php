@@ -49,17 +49,24 @@ final class ContextSanitizerTest extends TestCase
         $this->assertSame('stdClass', $clean['obj']);
     }
 
-    public function testDbPasswordIsScrubbedFromFreeText(): void
+    public function testKnownSecretsAreScrubbedFromFreeText(): void
     {
-        $previous = getenv('DB_PASSWORD');
-        putenv('DB_PASSWORD=hunter2-db');
-        try {
-            $line = ContextSanitizer::scrubSecrets('{"message":"Access denied using password hunter2-db"}');
-            $this->assertStringNotContains('hunter2-db', $line);
-            $this->assertStringContains(ContextSanitizer::MASK, $line);
-        } finally {
-            putenv($previous === false ? 'DB_PASSWORD' : "DB_PASSWORD=$previous");
-        }
+        $line = ContextSanitizer::scrubSecrets('{"message":"Access denied using password hunter2-db"}', ['hunter2-db']);
+        $this->assertStringNotContains('hunter2-db', $line);
+        $this->assertStringContains(ContextSanitizer::MASK, $line);
+    }
+
+    public function testSecretsAreMatchedInTheirJsonEncodedForm(): void
+    {
+        // Memes options d'encodage que Log.
+        $line = (string) json_encode(['message' => 'pwd is a"b/c'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContains('a\"b', ContextSanitizer::scrubSecrets($line, ['a"b/c']));
+    }
+
+    public function testShortOrEmptySecretsAreIgnored(): void
+    {
+        $line = '{"message":"abc"}';
+        $this->assertSame($line, ContextSanitizer::scrubSecrets($line, ['', 'abc']));
     }
 
     private function throwWithSecretArgument(string $secret): RuntimeException

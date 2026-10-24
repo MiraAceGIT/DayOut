@@ -1,0 +1,43 @@
+/* Styles de base des elements (pas de composants ici). */
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Liens dans le contenu : soulignes (WCAG 1.4.1, la couleur seule ne suffit pas). */
+main a:not([class]) {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Focus visible au clavier */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* main recoit le focus via le skip-link : pas d'anneau autour de tout le contenu. */
+main:focus { outline: none; }
+
+/* Masque visuellement, reste lu par les lecteurs d'ecran. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,0 +1,18 @@
+# Fins de ligne LF partout, y compris dans la copie de travail Windows :
+# un script bash en CRLF casse `set -euo pipefail` hors de Git Bash (Linux, Docker, CI).
+* text=auto eol=lf
+
+*.sh   text eol=lf
+*.sql  text eol=lf
+*.php  text eol=lf
+
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.xlsx binary
+*.woff binary
+*.woff2 binary

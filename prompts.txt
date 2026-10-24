@@ -1,0 +1,30 @@
+Prompt système de journalisation : 
+
+Mets en place un système de journalisation complet dans le backend PHP du projet DayOut.
+▎
+▎ Contexte du projet (à respecter) :
+▎ - PHP natif en strict_types, sans Composer-4 maison (App\ → src/) est déclaré danspublic/index.php.
+▎ - La configuration passe par .env, chargé dans config/config.php et lu avec getenv().
+▎ - Le cœur applicatif est dans src/Core/ (Router, Request, Response, Database, et un ORM maison dans src/Core/Orm/).
+▎ - Les erreurs sont actuellement journalisées par des appels error_log() dispersés dans public/index.php, Database.php, Response.php et HealthController.php. Ils doivent tous être remplacés par le nouveau système.
+▎
+▎ Trois fichiers de logs, dans back/storage/logs/ (à ajouter au .gitignore) :
+▎ - error.log : les exceptions et erreurs, avec classe, message, fichier:ligne, stack trace, et le contexte de la requête (méthode, route, identifiant de reapturées passent aussi par là, viaset_error_handler, set_exception_handler e
+▎ - info.log : le fonctionnement normal, c'est-à-dire chaque requête HTTP (méthode, route, statut, durée), les échecs de connexion à la base et les événements notables.
+▎ - audit.log : les actions métier sensibles, avec qui (identifiant utilisateur, IP), quoi (action), sur quoi (type et identifiant de ressource), quand, et le rént la création, la modification et lasuppression d'événements, les inscriptions, les actions de modération, les changements de rôles admin et l'authentification (succès et échecs).
+▎
+▎ Exigences techniques :
+▎ - Aucune dépendance externe : un logger maison léger dans src/Core/Log/, cohérent avec le reste du projet. Il suit l'interface PSR-3 (emergency à debug) sans l'importer.
+▎ - Un point d'entrée unique et simple à appeler, par exemple Log::error(), Log::info() et Log::audit(). Pas de configuration dupliquée.
+▎ - Format JSON, une ligne par entrée, avec des champs fixes : timestamp (ISO 8601 UTC), level, channel, message, requestId, context.
+▎ - Un requestId généré au début de chaque requête dans index.php, présent dans tous les logs de la requête et renvoyé dans un en-tête X-Request-Id.
+▎ - Une rotation quotidienne (error-2026-10-24.log, etc.) et une rétention configurable. L'audit est conservé plus longtemps que le reste.
+▎ - Des variables de configuration dans .env et .env.example : LOG_LEVEL, LOG_PATH, LOG_RETENTION_DAYS, AUDIT_RETENTION_DAYS.
+▎ - L'écriture utilise FILE_APPEND | LOCK_EX. Une erreur d'écriture dans les logs ne doit jamais faire planter la requête.
+▎ - Masquage automatique des clés sensibles dans le contexte : password, token, authorization, secret, csrf, DB_PASSWORD… Ne jamais journaliser de hash de mot de passe ni de corps de requête complet.
+▎ - Le journal d'audit ne contient que des ajouts, jamais de modification ni de suppression.
+▎ - Le comportement actuel des réponses d'erreur ne change pas : jamais de stack trace ni de message interne renvoyé au client.
+▎
+▎ Style de code :
+▎ - Le même style que le code existant : classes final, typage strict, méthodes courtes, noms explicites.
+▎ - Peu de commentaires : uniquement ceux qui expliquent un pourquoi non évident, comme le commentaire existant sur l'ordre de capture PDOException / RuntimeException. Aucun commentaire qui paraphrase le code.

@@ -1,0 +1,10 @@
+/* Structure de page */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+@media (max-width: 540px) {
+  .container { padding: var(--space-5) var(--space-4); }
+}

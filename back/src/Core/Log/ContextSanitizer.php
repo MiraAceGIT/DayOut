@@ -21,15 +21,23 @@ final class ContextSanitizer
         return self::sanitizeArray($context, 0);
     }
 
-    /** Filet de securite : un secret connu ne doit jamais sortir, meme cite dans un message libre. */
-    public static function scrubSecrets(string $line): string
+    /**
+     * Filet de securite : un secret connu ne doit jamais sortir, meme cite dans un message libre.
+     * $line est du JSON : le secret y est cherche sous sa forme encodee.
+     * Les secrets de moins de 4 caracteres sont ignores (trop de faux positifs).
+     *
+     * @param array<int, string> $secrets
+     */
+    public static function scrubSecrets(string $line, array $secrets): string
     {
-        $secret = (string) getenv('DB_PASSWORD');
-        if (strlen($secret) < 4) {
-            return $line;
+        foreach ($secrets as $secret) {
+            if (strlen($secret) < 4) {
+                continue;
+            }
+            $encoded = substr((string) json_encode($secret, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1, -1);
+            $line = str_replace($encoded, self::MASK, $line);
         }
-        $encoded = substr((string) json_encode($secret, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1, -1);
-        return str_replace($encoded, self::MASK, $line);
+        return $line;
     }
 
     private static function sanitizeArray(array $data, int $depth): array

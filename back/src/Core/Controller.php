@@ -3,33 +3,31 @@ declare(strict_types=1);
 
 namespace App\Core;
 
-use PDO;
-
+/**
+ * Base des controllers : une action par route, signature `action(Request $request): Response`.
+ * Pour echouer : throw HttpException (jamais de Response d'erreur construite a la main).
+ */
 abstract class Controller
 {
-    protected function db(): PDO
+    protected function ok(mixed $data, int $status = 200): Response
     {
-        return Database::connection();
+        return Response::json($data, $status);
     }
 
-    protected function ok(mixed $data, int $status = 200): never
+    protected function noContent(): Response
     {
-        Response::json($data, $status);
+        return Response::noContent();
     }
 
-    protected function error(string $code, string $message, int $status, array $details = []): never
+    /** Valide le body JSON : voir Validator pour les regles. */
+    protected function validate(Request $request, array $rules): array
     {
-        Response::error($code, $message, $status, $details);
+        return Validator::check($request->json(), $rules);
     }
 
-    protected function body(): array
+    /** Ligne trouvee, ou 404 "<Resource> not found" avec l'id en details. */
+    protected function found(?array $row, string $resource, int|string $id): array
     {
-        return Request::json();
-    }
-
-    /** Valide le body JSON (ou $data) : voir Validator pour les regles. */
-    protected function validate(array $rules, ?array $data = null): array
-    {
-        return Validator::check($data ?? $this->body(), $rules);
+        return $row ?? throw HttpException::notFound("$resource not found", ['id' => $id]);
     }
 }

@@ -1,0 +1,8 @@
+/* Grille de cartes reutilisable (liste d'evenements, etc.) */
+.card-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  margin-top: var(--space-4);
+}
+.card-grid[aria-busy="true"] { opacity: .5; }

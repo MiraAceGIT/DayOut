@@ -6,9 +6,11 @@ namespace Tests\Unit;
 use RuntimeException;
 use Tests\TestCase;
 
-/** ErrorHandler::handleException() termine par exit : chaque cas tourne dans un processus PHP a part. */
+/** Filets de securite hors Kernel : chaque cas tourne dans un processus PHP a part. */
 final class ErrorHandlerTest extends TestCase
 {
+    private const INTERNAL_ERROR = ['error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Something went wrong']];
+
     private string $logDir;
 
     public function setUp(): void
@@ -16,40 +18,37 @@ final class ErrorHandlerTest extends TestCase
         $this->logDir = getenv('TEST_TMP_DIR') . '/error-handler-' . bin2hex(random_bytes(4));
     }
 
-    public function testHttpExceptionIsReturnedToClientWithoutErrorLog(): void
+    public function testUncaughtExceptionBecomesGeneric500AndIsLogged(): void
     {
-        $output = $this->runFixture('http');
+        $output = $this->runFixture('uncaught');
 
-        $this->assertSame(
-            ['error' => ['code' => 'CONFLICT', 'message' => 'Already registered', 'details' => ['eventId' => 3]]],
-            json_decode($output, true)
-        );
-        $this->assertSame([], glob($this->logDir . '/error-*.log') ?: []);
+        $this->assertSame(self::INTERNAL_ERROR, json_decode($output, true));
+        $this->assertStringNotContains('secret_detail', $output);
+
+        $entry = $this->lastErrorEntry();
+        $this->assertSame('critical', $entry['level']);
+        $this->assertSame('Uncaught exception', $entry['message']);
+        $this->assertStringContains('secret_detail', $entry['context']['exception']['message']);
     }
 
-    public function testOtherExceptionBecomesGeneric500AndIsLogged(): void
+    public function testFatalErrorStillReturnsJsonEnvelope(): void
     {
-        $output = $this->runFixture('pdo');
+        $output = $this->runFixture('fatal');
 
-        $this->assertSame(
-            ['error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Something went wrong']],
-            json_decode($output, true)
-        );
-        $this->assertStringNotContains('secret_col', $output);
-
-        $logs = glob($this->logDir . '/error-*.log') ?: [];
-        $this->assertCount(1, $logs);
-        $entry = json_decode((string) file_get_contents($logs[0]), true);
-        $this->assertSame('Unhandled exception', $entry['message']);
-        $this->assertSame('PDOException', $entry['context']['exception']['class']);
-        $this->assertStringContains('secret_col', $entry['context']['exception']['message']);
+        $this->assertSame(self::INTERNAL_ERROR, json_decode($output, true), 'partial output discarded');
+        $entry = $this->lastErrorEntry();
+        $this->assertSame('Fatal error', $entry['message']);
+        $this->assertStringContains('Maximum execution time', $entry['context']['message']);
     }
 
     private function runFixture(string $case): string
     {
         $fixture = dirname(__DIR__) . '/fixtures/throw.php';
-        $env     = ['LOG_PATH' => $this->logDir, 'APP_DEBUG' => 'false'] + getenv();
-        $process = proc_open([PHP_BINARY, $fixture, $case], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env);
+        $env     = ['LOG_PATH' => $this->logDir] + getenv();
+        // output_buffering : comme sous un serveur web, la sortie partielle reste jetable.
+        // log_errors=0 : sinon PHP CLI recopie l'erreur fatale sur stderr.
+        $cmd     = [PHP_BINARY, '-d', 'output_buffering=4096', '-d', 'log_errors=0', $fixture, $case];
+        $process = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env);
         if (!is_resource($process)) {
             throw new RuntimeException('Cannot run fixture');
         }
@@ -61,5 +60,14 @@ final class ErrorHandlerTest extends TestCase
 
         $this->assertSame('', $stderr, 'stderr of the fixture');
         return $stdout;
+    }
+
+    /** @return array<string, mixed> */
+    private function lastErrorEntry(): array
+    {
+        $files = glob($this->logDir . '/error-*.log') ?: [];
+        $this->assertTrue($files !== [], 'error log written');
+        $lines = file((string) end($files), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        return json_decode((string) end($lines), true);
     }
 }

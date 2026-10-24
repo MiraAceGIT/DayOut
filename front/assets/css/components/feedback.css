@@ -1,0 +1,20 @@
+/* Messages dynamiques : regions live permanentes, stylees uniquement quand non vides
+   (pas de display:none, sinon certains lecteurs d'ecran n'annoncent pas le changement). */
+.status-message:not(:empty) {
+  color: var(--color-muted);
+  font-style: italic;
+  margin-top: var(--space-4);
+}
+
+.alert:not(:empty) {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  margin-block: var(--space-4);
+}
+
+.alert--error:not(:empty) {
+  color: var(--color-error-fg);
+  background: var(--color-error-bg);
+  border-color: var(--color-error-bd);
+}

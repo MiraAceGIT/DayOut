@@ -3,19 +3,21 @@ declare(strict_types=1);
 
 namespace App\Core\Log;
 
-use App\Core\HttpException;
-use App\Core\Response;
 use Throwable;
 
 /**
- * Gestionnaire global : aucune exception n'a besoin d'etre attrapee dans les controllers.
- *   HttpException -> son statut et son message ; toute autre exception -> log + 500 generique.
- * Capte aussi les warnings PHP et les erreurs fatales.
+ * Filets de securite hors du Kernel (qui rend lui-meme les exceptions des routes) :
+ *   - warnings / notices PHP -> journalises ;
+ *   - exception non rattrapee (ex. config invalide au demarrage) -> journalisee + 500 JSON ;
+ *   - erreur fatale (memoire, timeout) -> journalisee + 500 JSON si rien n'a ete envoye.
+ * Ne depend pas de la couche HTTP : la reponse de secours est ecrite a la main.
  */
 final class ErrorHandler
 {
     /** Types que set_error_handler() ne recoit jamais : visibles seulement au shutdown. */
     private const FATAL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
+
+    private const INTERNAL_ERROR = '{"error":{"code":"INTERNAL_ERROR","message":"Something went wrong"}}';
 
     public static function register(): void
     {
@@ -32,18 +34,14 @@ final class ErrorHandler
         }
         Log::log(self::levelFor($type), $message, ['file' => "$file:$line", 'type' => $type]);
 
-        // En debug, laisser aussi PHP afficher l'erreur.
-        return getenv('APP_DEBUG') !== 'true';
+        // display_errors actif (APP_DEBUG) : laisser aussi PHP afficher l'erreur.
+        return !filter_var(ini_get('display_errors'), FILTER_VALIDATE_BOOLEAN);
     }
 
-    public static function handleException(Throwable $e): never
+    public static function handleException(Throwable $e): void
     {
-        if ($e instanceof HttpException) {
-            Response::error($e->errorCode, $e->getMessage(), $e->status, $e->details);
-        }
-        // Jamais exposer la stack ni le message au client, meme en debug.
-        Log::error('Unhandled exception', ['exception' => $e]);
-        Response::error('INTERNAL_ERROR', 'Something went wrong', 500);
+        Log::critical('Uncaught exception', ['exception' => $e]);
+        self::sendInternalError();
     }
 
     public static function handleShutdown(): void
@@ -53,9 +51,22 @@ final class ErrorHandler
             return;
         }
         Log::critical('Fatal error', ['message' => $error['message'], 'file' => $error['file'] . ':' . $error['line']]);
-        if (!headers_sent()) {
-            http_response_code(500);
+        self::sendInternalError();
+    }
+
+    /** Garde l'enveloppe JSON promise au client, meme sans Response. */
+    private static function sendInternalError(): void
+    {
+        if (headers_sent()) {
+            return;
         }
+        // Jette une eventuelle sortie partielle (HTML d'erreur PHP, JSON tronque).
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo self::INTERNAL_ERROR;
     }
 
     private static function levelFor(int $type): Level

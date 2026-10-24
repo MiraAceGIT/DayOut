@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Core\Orm\Query;
 
 use Closure;
+use InvalidArgumentException;
 
 /** Reserve a QueryBuilder : s'appuie sur sa propriete privee $parts. */
 trait BuildsWhereClauses
@@ -13,8 +14,9 @@ trait BuildsWhereClauses
      * where('col', '>=', $value)      -> col >= ?
      * where('col', null)              -> col IS NULL
      * where(fn ($q) => $q->where(...)->orWhere(...))  -> ( ... ) groupe
+     * where('col', '>', null)         -> InvalidArgumentException (toujours faux en SQL)
      */
-    public function where($column, $operator = null, $value = null, string $boolean = 'AND'): self
+    public function where(Closure|string $column, mixed $operator = null, mixed $value = null, string $boolean = 'AND'): self
     {
         if ($column instanceof Closure) {
             // Builder sans connexion : il ne sert qu'a collecter les conditions.
@@ -38,12 +40,13 @@ trait BuildsWhereClauses
             if ($operator === '<>' || $operator === '!=') {
                 return $this->addWhere(Grammar::wrap($column) . ' IS NOT NULL', [], $boolean);
             }
+            throw new InvalidArgumentException("Cannot compare $column $operator NULL (always false in SQL)");
         }
 
         return $this->addWhere(Grammar::wrap($column) . " $operator ?", [$value], $boolean);
     }
 
-    public function orWhere($column, $operator = null, $value = null): self
+    public function orWhere(Closure|string $column, mixed $operator = null, mixed $value = null): self
     {
         if ($column instanceof Closure || func_num_args() === 3) {
             return $this->where($column, $operator, $value, 'OR');
@@ -77,15 +80,18 @@ trait BuildsWhereClauses
         return $this->addWhere(Grammar::wrap($column) . ' IS NOT NULL', []);
     }
 
-    public function whereBetween(string $column, $min, $max): self
+    public function whereBetween(string $column, mixed $min, mixed $max): self
     {
         return $this->addWhere(Grammar::wrap($column) . ' BETWEEN ? AND ?', [$min, $max]);
     }
 
-    /** SQL brut : ne JAMAIS y concatener d'entree utilisateur, passer par $bindings. */
+    /**
+     * SQL brut : ne JAMAIS y concatener d'entree utilisateur, passer par $bindings.
+     * Toujours entoure de parentheses : un OR dans $sql ne peut pas annuler les autres conditions.
+     */
     public function whereRaw(string $sql, array $bindings = [], string $boolean = 'AND'): self
     {
-        return $this->addWhere($sql, $bindings, $boolean);
+        return $this->addWhere('(' . $sql . ')', $bindings, $boolean);
     }
 
     private function addWhere(string $sql, array $bindings, string $boolean = 'AND'): self

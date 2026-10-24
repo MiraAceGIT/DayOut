@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\Database;
+use App\Core\HttpException;
 use App\Core\Orm\Caster;
 use App\Core\Orm\Connection;
 use App\Core\Orm\Query\QueryBuilder;
@@ -41,13 +42,18 @@ abstract class Model
         $this->connection = $connection ?? Database::orm();
     }
 
-    public function find(int|string $id): ?array
+    /*
+     * find / findMany / all sont protected : ils ignorent les regles de visibilite
+     * (ex. seuls les events `published`). Chaque model expose ses propres methodes
+     * nommees (findPublishedById...) qui les appliquent.
+     */
+    protected function find(int|string $id): ?array
     {
         return $this->query()->where(static::PRIMARY_KEY, $id)->first();
     }
 
     /** @return array<int|string, array<string, mixed>> indexe par cle primaire */
-    public function findMany(array $ids): array
+    protected function findMany(array $ids): array
     {
         $ids = array_values(array_unique($ids));
         if ($ids === []) {
@@ -56,8 +62,8 @@ abstract class Model
         return Rows::keyBy($this->query()->whereIn(static::PRIMARY_KEY, $ids)->get(), static::PRIMARY_KEY);
     }
 
-    /** @return array<int, array<string, mixed>> */
-    public function all(): array
+    /** Sans limite : reserve aux petites tables de referentiel (schools, categories). */
+    protected function all(): array
     {
         return $this->query()->get();
     }
@@ -99,19 +105,19 @@ abstract class Model
         return $this->connection->table(static::TABLE);
     }
 
-    /** $input peut etre vide si $server suffit. */
+    /**
+     * $input vide accepte si $server suffit. Rien a ecrire (body vide ou sans champ
+     * FILLABLE) : erreur du client -> 400, pas un 500.
+     */
     private function row(array $input, array $server): array
     {
-        if ($input === [] && $server !== []) {
-            return $server;
-        }
-        if (static::FILLABLE === []) {
+        if (static::FILLABLE === [] && $input !== []) {
             throw new LogicException(static::class . ' has no FILLABLE columns');
         }
-        $data = array_intersect_key($input, array_flip(static::FILLABLE));
-        if ($data === []) {
-            throw new LogicException('No fillable column in data for ' . static::class);
+        $row = array_merge(array_intersect_key($input, array_flip(static::FILLABLE)), $server);
+        if ($row === []) {
+            throw HttpException::badRequest('Request body has no writable field', ['allowed' => static::FILLABLE]);
         }
-        return array_merge($data, $server);
+        return $row;
     }
 }

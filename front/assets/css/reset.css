@@ -23,6 +23,17 @@ input, button, textarea, select { font: inherit; }
 
 p, h1, h2, h3, h4, h5, h6 { overflow-wrap: break-word; }
 
-a { color: inherit; text-decoration: none; }
+/* Soulignement conserve par defaut (WCAG 1.4.1) : seuls nav/logo le retirent. */
+a { color: inherit; }
 
 ul, ol { list-style: none; }
+
+/* Mouvements reduits a la demande de l'utilisateur */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

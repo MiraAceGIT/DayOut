@@ -27,10 +27,14 @@ final class LoggingTest extends HttpTestCase
     /** @return array<int, array<string, mixed>> */
     private function readLog(string $channel): array
     {
+        // Plusieurs fichiers si la suite traverse minuit UTC (un fichier par jour).
         $files = glob(getenv('TEST_SERVER_LOG_PATH') . "/$channel-*.log") ?: [];
-        $this->assertCount(1, $files, "$channel log file");
+        $this->assertTrue($files !== [], "$channel log file");
 
-        $lines = file($files[0], FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        $lines = array_merge(...array_map(
+            fn (string $file): array => file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [],
+            $files
+        ));
         return array_map(fn (string $line): array => json_decode($line, true), $lines);
     }
 }

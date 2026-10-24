@@ -3,24 +3,34 @@ declare(strict_types=1);
 
 namespace App\Core;
 
-use RuntimeException;
+use App\Core\Http\Middleware;
+use LogicException;
 
 /**
- * Middleware : classe avec handle(array $params): void, instanciee sans argument.
- * Lever une exception ou appeler Response::error() interrompt le dispatch.
+ * Routes : chemin avec {param} ou {param:regex}, handler [Controller::class, 'action'].
+ * Une action recoit la Request (parametres via $request->param()) et renvoie une Response.
+ * Middlewares : instances de Middleware, ou noms de classe instancies sans argument.
+ *
+ *   $router->group('/api/events', [Authenticate::class], function (Router $r) {
+ *       $r->post('', [EventController::class, 'create'], [new RequireRole('organizer')]);
+ *   });
  */
 final class Router
 {
     /**
      * @var array<int, array{
-     *   method:   string,
-     *   regex:    string,
-     *   params:   array<int, string>,
-     *   handler:  array{0: class-string, 1: string},
-     *   middlewares: array<int, class-string>
+     *   method:      string,
+     *   regex:       string,
+     *   handler:     array{0: class-string, 1: string},
+     *   middlewares: array<int, Middleware|class-string<Middleware>>
      * }>
      */
     private array $routes = [];
+
+    private string $prefix = '';
+
+    /** @var array<int, Middleware|class-string<Middleware>> */
+    private array $groupMiddlewares = [];
 
     public function get(string $path, array $handler, array $middlewares = []): void    { $this->add('GET', $path, $handler, $middlewares); }
     public function post(string $path, array $handler, array $middlewares = []): void   { $this->add('POST', $path, $handler, $middlewares); }
@@ -28,16 +38,58 @@ final class Router
     public function patch(string $path, array $handler, array $middlewares = []): void  { $this->add('PATCH', $path, $handler, $middlewares); }
     public function delete(string $path, array $handler, array $middlewares = []): void { $this->add('DELETE', $path, $handler, $middlewares); }
 
+    /** Prefixe et middlewares appliques a toutes les routes declarees dans $routes (imbricable). */
+    public function group(string $prefix, array $middlewares, callable $routes): void
+    {
+        [$previousPrefix, $previousMiddlewares] = [$this->prefix, $this->groupMiddlewares];
+        $this->prefix           .= $prefix;
+        $this->groupMiddlewares  = [...$this->groupMiddlewares, ...$middlewares];
+        try {
+            $routes($this);
+        } finally {
+            [$this->prefix, $this->groupMiddlewares] = [$previousPrefix, $previousMiddlewares];
+        }
+    }
+
+    /** 404 / 405 levees en HttpException, comme toute autre erreur client. */
+    public function dispatch(Request $request): Response
+    {
+        // HEAD = GET sans body (RFC 7231 §4.3.2) : le serveur web retire le body.
+        $method = $request->method === 'HEAD' ? 'GET' : $request->method;
+        $allowed = [];
+
+        foreach ($this->routes as $route) {
+            if (preg_match($route['regex'], $request->path, $matches) !== 1) {
+                continue;
+            }
+            if ($route['method'] !== $method) {
+                $allowed[] = $route['method'];
+                continue;
+            }
+            // Groupes nommes uniquement : un groupe capturant dans une regex de parametre ne decale rien.
+            $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+            return $this->run($route, $request->withParams($params));
+        }
+
+        if ($allowed !== []) {
+            throw HttpException::methodNotAllowed(array_values(array_unique($allowed)));
+        }
+        throw HttpException::notFound('Route not found', ['path' => $request->path]);
+    }
+
     private function add(string $method, string $path, array $handler, array $middlewares): void
     {
-        $params = [];
+        $path = '/' . trim($this->prefix . $path, '/');
+        $names = [];
         // {name} -> [^/]+ ; {name:regex} -> regex fournie
         $regex = preg_replace_callback(
             '#\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]+))?\}#',
-            function (array $m) use (&$params): string {
-                $params[] = $m[1];
-                $pattern  = $m[2] ?? '[^/]+';
-                return '(' . $pattern . ')';
+            function (array $m) use (&$names, $path): string {
+                if (in_array($m[1], $names, true)) {
+                    throw new LogicException("Duplicate route parameter '{$m[1]}' in $path");
+                }
+                $names[] = $m[1];
+                return '(?P<' . $m[1] . '>' . ($m[2] ?? '[^/]+') . ')';
             },
             $path
         );
@@ -45,49 +97,32 @@ final class Router
         $this->routes[] = [
             'method'      => $method,
             'regex'       => '#^' . $regex . '$#',
-            'params'      => $params,
             'handler'     => $handler,
-            'middlewares' => $middlewares,
+            'middlewares' => [...$this->groupMiddlewares, ...$middlewares],
         ];
     }
 
-    public function dispatch(string $method, string $path): void
+    /** Pipeline : middlewares dans l'ordre de declaration, puis l'action. */
+    private function run(array $route, Request $request): Response
     {
-        $path = rtrim($path, '/') ?: '/';
-        // HEAD = GET sans body (RFC 7231 §4.3.2)
-        $lookupMethod = ($method === 'HEAD') ? 'GET' : $method;
-
-        $allowedMethods = [];
-
-        foreach ($this->routes as $route) {
-            if (!preg_match($route['regex'], $path, $matches)) {
-                continue;
+        [$class, $action] = $route['handler'];
+        $next = static function (Request $request) use ($class, $action): Response {
+            $response = (new $class())->$action($request);
+            if (!$response instanceof Response) {
+                throw new LogicException("$class::$action must return a Response");
             }
-            if ($route['method'] !== $lookupMethod) {
-                $allowedMethods[] = $route['method'];
-                continue;
-            }
+            return $response;
+        };
 
-            array_shift($matches);
-            if (count($route['params']) !== count($matches)) {
-                throw new RuntimeException('Router params mismatch for route ' . $path);
+        foreach (array_reverse($route['middlewares']) as $middleware) {
+            $middleware = is_string($middleware) ? new $middleware() : $middleware;
+            if (!$middleware instanceof Middleware) {
+                throw new LogicException($middleware::class . ' must implement ' . Middleware::class);
             }
-            $args = array_combine($route['params'], $matches);
-
-            foreach ($route['middlewares'] as $mw) {
-                (new $mw())->handle($args);
-            }
-
-            [$class, $action] = $route['handler'];
-            (new $class())->$action($args);
-            return;
+            $inner = $next;
+            $next = static fn (Request $request): Response => $middleware->process($request, $inner);
         }
 
-        if ($allowedMethods !== []) {
-            header('Allow: ' . implode(', ', array_unique($allowedMethods)));
-            Response::error('METHOD_NOT_ALLOWED', 'Method not allowed on this route', 405);
-        }
-
-        Response::error('NOT_FOUND', 'Route not found', 404, ['path' => $path]);
+        return $next($request);
     }
 }
