@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Orm\Query;
+namespace App\Core\Orm\Query;
 
-use App\Orm\Connection;
+use App\Core\Orm\Connection;
 use Closure;
 use LogicException;
 
@@ -113,7 +113,7 @@ final class QueryBuilder
         return $this->limit($perPage)->offset((max(1, $page) - 1) * $perPage);
     }
 
-    /** Transformation appliquee a chaque ligne lue (utilise par Repository pour le mapper). */
+    /** Transformation appliquee a chaque ligne lue (utilise par Model pour les casts). */
     public function hydrateWith(?Closure $hydrator): self
     {
         $this->hydrator = $hydrator;

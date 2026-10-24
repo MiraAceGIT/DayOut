@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
-use App\Orm\Connection;
+use App\Core\Orm\Connection;
 use PDO;
 use PDOException;
 use RuntimeException;
@@ -60,7 +60,7 @@ final class Database
 
     /**
      * Connection ORM partagee. Une seule instance par requete HTTP : une
-     * transaction ouverte dessus couvre donc tous les repositories.
+     * transaction ouverte dessus couvre donc tous les models.
      */
     public static function orm(): Connection
     {

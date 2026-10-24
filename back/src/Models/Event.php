@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Mappers;
+namespace App\Models;
 
-use App\Orm\TableMapper;
+use App\Core\Orm\Query\QueryBuilder;
 
 /**
- * Mapper de la table `events` : colonnes exposees, ecriture autorisee et
- * casts necessaires pour un contrat JSON stable. Pas de logique metier ici.
+ * Model Event : table `events`. Seuls les events `published` sont exposes
+ * publiquement. Pas de logique metier ici, uniquement l'acces aux donnees.
  */
-final class EventMapper extends TableMapper
+final class Event extends Model
 {
     protected const TABLE = 'events';
 
@@ -41,4 +41,27 @@ final class EventMapper extends TableMapper
         'published_at'      => 'datetime',
         'created_at'        => 'datetime',
     ];
+
+    /** Liste des events publies, pagination par limit/offset. */
+    public function listPublished(int $limit = 20, int $offset = 0): array
+    {
+        return $this->published()
+            ->orderBy('start_at')
+            ->orderBy('id') // departage les egalites : pas de doublon/trou entre pages
+            ->limit($limit)
+            ->offset($offset)
+            ->get();
+    }
+
+    /** Un event par id, uniquement s'il est publie. */
+    public function findPublishedById(int $id): ?array
+    {
+        return $this->published()->where('id', $id)->first();
+    }
+
+    /** Scope : events visibles publiquement. */
+    private function published(): QueryBuilder
+    {
+        return $this->query()->where('status', 'published');
+    }
 }

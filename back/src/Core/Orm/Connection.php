@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Orm;
+namespace App\Core\Orm;
 
-use App\Orm\Query\QueryBuilder;
+use App\Core\Orm\Query\QueryBuilder;
 use PDO;
 use PDOStatement;
 use Throwable;

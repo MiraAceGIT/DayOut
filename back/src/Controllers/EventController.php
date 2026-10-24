@@ -4,18 +4,17 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
-use App\Core\Database;
 use App\Core\Request;
-use App\Repositories\EventRepository;
+use App\Models\Event;
 
 final class EventController extends Controller
 {
-    private EventRepository $events;
+    private Event $events;
 
     /** Le Router instancie sans argument ; le parametre sert aux tests. */
-    public function __construct(?EventRepository $events = null)
+    public function __construct(?Event $events = null)
     {
-        $this->events = $events ?? new EventRepository(Database::orm());
+        $this->events = $events ?? new Event();
     }
 
     /** GET /api/events?limit=20&offset=0 */

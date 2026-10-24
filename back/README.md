@@ -1,9 +1,10 @@
 # Back — API REST DayOut (PHP + MariaDB)
 
-API REST en PHP vanilla (pas de framework ni Composer). `Controllers`
-orchestrent, `Repositories` exposent l'acces aux donnees par methodes nommees,
-`Mappers` decrivent les tables, `Orm` fournit le query builder, `Core` fournit
-routeur / BDD / request / response / password.
+API REST en PHP vanilla (pas de framework ni Composer). Architecture MVC :
+`Models` decrivent les tables et exposent l'acces aux donnees par methodes
+nommees, `Controllers` orchestrent, la vue est la reponse JSON (`Response`).
+`Core` fournit routeur / BDD / request / response / password et l'ORM maison
+(`Core/Orm`).
 
 ## Structure
 
@@ -14,15 +15,13 @@ back/
 │   └── .htaccess       ← rewrite + headers de securite
 ├── src/
 │   ├── Core/           ← Router, Database, Request, Response, Controller, Password
-│   ├── Orm/            ← ORM maison
-│   │   ├── Connection.php, ValueBinder.php     ← execution PDO + bindings
-│   │   ├── TableMapper.php, Caster.php         ← definition de table + casts
-│   │   ├── Repository.php, Rows.php            ← repository de base + batch anti N+1
-│   │   └── Query/      ← QueryBuilder (+ traits), WhereClause, QueryParts,
+│   │   └── Orm/        ← moteur ORM maison
+│   │       ├── Connection.php, ValueBinder.php  ← execution PDO + bindings
+│   │       ├── Caster.php, Rows.php             ← casts + batch anti N+1
+│   │       └── Query/  ← QueryBuilder (+ traits), WhereClause, QueryParts,
 │   │                     Compiler, Grammar
-│   ├── Mappers/        ← une classe par table (herite de App\Orm\TableMapper)
-│   ├── Repositories/   ← acces aux donnees (herite de App\Orm\Repository)
-│   └── Controllers/    ← logique HTTP (une classe par ressource)
+│   ├── Models/         ← M : Model.php (base) + une classe par table
+│   └── Controllers/    ← C : logique HTTP (une classe par ressource)
 ├── config/config.php   ← charge le .env
 ├── routes/api.php      ← table de routage
 ├── .env.example
@@ -115,10 +114,9 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
 
 ## Ajouter une route
 
-1. Ecrire le `Mapper` dans `src/Mappers/` et le `Repository` dans
-   `src/Repositories/` (voir *ORM* ci-dessous).
+1. Ecrire le `Model` dans `src/Models/` (herite de `App\Models\Model`, voir *ORM* ci-dessous).
 2. Ecrire le `Controller` dans `src/Controllers/` (herite de `App\Core\Controller`) ;
-   il instancie ses repositories dans son constructeur (`new UserRepository(Database::orm())`).
+   il instancie ses models dans son constructeur (`new User()`).
 3. Declarer la route dans `routes/api.php` :
    ```php
    $router->get('/api/users/{id:\d+}', [UserController::class, 'show']);
@@ -130,39 +128,31 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
 
 ## ORM
 
-ORM maison minimal dans `src/Orm/`, en couches a responsabilite unique :
+ORM maison minimal : le moteur est dans `src/Core/Orm/`, les models dans
+`src/Models/`.
 
 | Classe                  | Role                                                                  |
 | ----------------------- | --------------------------------------------------------------------- |
-| `TableMapper`           | definition d'une table (constantes) + `hydrate()` / `extract()`       |
-| `Repository`            | acces aux donnees d'une table, methodes nommees (`find`, `create`...) |
+| `Models\Model`          | base des models : definition de table (constantes), `find`, `create`... |
 | `Query\QueryBuilder`    | requetes fluentes (`where`, `join`, `orderBy`, `get`, `count`...)     |
 | `Query\Compiler`        | assemble le SQL ; `Query\Grammar` valide et quote les identifiants    |
 | `Connection`            | execute le SQL via PDO (bindings, transactions)                       |
+| `Caster`                | casts des lignes lues (`int`, `bool`, `datetime`...)                  |
 | `Rows`                  | `keyBy` / `groupBy` pour assembler des chargements batch              |
 
-Les entites sont des tableaux associatifs deja castes, directement passables
-a `$this->ok()`. `Database::orm()` renvoie la `Connection` partagee : c'est le
-seul appel au singleton, fait dans le constructeur du controller.
+Les lignes sont des tableaux associatifs deja castes, directement passables
+a `$this->ok()`. Un model construit sans argument utilise la `Connection`
+partagee (`Database::orm()`) ; on peut lui en passer une autre pour les tests.
 
-**Declarer un mapper + un repository :**
+**Declarer un model :**
 ```php
-// src/Mappers/UserMapper.php
-final class UserMapper extends TableMapper
+// src/Models/User.php
+final class User extends Model
 {
     protected const TABLE    = 'users';
     protected const COLUMNS  = ['id', 'email', 'first_name', 'last_name', 'role', 'banned', 'created_at'];  // jamais password_hash
     protected const FILLABLE = ['email', 'first_name', 'last_name'];  // saisie client uniquement
     protected const CASTS    = ['banned' => 'bool', 'created_at' => 'datetime'];  // colonnes presentes dans COLUMNS
-}
-
-// src/Repositories/UserRepository.php
-final class UserRepository extends Repository
-{
-    public function __construct(Connection $connection)
-    {
-        parent::__construct($connection, new UserMapper());
-    }
 
     /** Une methode par besoin metier ; query() est protected. */
     public function listAdmins(): array
@@ -172,9 +162,9 @@ final class UserRepository extends Repository
 }
 
 // src/Controllers/UserController.php
-public function __construct(?UserRepository $users = null)
+public function __construct(?User $users = null)
 {
-    $this->users = $users ?? new UserRepository(Database::orm());
+    $this->users = $users ?? new User();
 }
 ```
 
@@ -186,13 +176,13 @@ public function __construct(?UserRepository $users = null)
 | `FILLABLE`    | colonnes de la saisie client acceptees par `create()` / `updateById()`, le reste est ignore |
 | `CASTS`       | `int`, `float`, `bool`, `datetime` (ISO 8601 UTC), `json`            |
 
-**Lire** (methodes publiques heritees + `$this->query()` dans le repository) :
+**Lire** (methodes publiques heritees + `$this->query()` dans le model) :
 ```php
 $users->find(3);                                 // ?array
 $users->findMany([1, 2, 2, 3]);                  // [1 => [...], 2 => [...], 3 => [...]] (1 requete)
 $users->all();
 
-// dans UserRepository :
+// dans le model User :
 $this->query()->where('school_id', 1)->orderBy('last_name')->limit(20)->get();
 $this->query()->where('reliability_score', '<', 40)->count();
 $this->query()->whereIn('id', [1, 2, 3])->pluck('email');
@@ -213,11 +203,11 @@ $users->updateById($id, ['first_name' => 'B']);                                 
 $users->deleteById($id);
 
 // Requete libre (pas de filtre FILLABLE ni de casts) : $this->table() dans un
-// repository, ou Database::orm()->table(...) ailleurs.
+// model, ou Database::orm()->table(...) ailleurs.
 $this->table()->where('event_id', 4)->where('status', 'no_show')->update(['status' => 'cancelled']);
 
-// Transaction : la Connection est partagee, donc tous les repositories
-// construits avec Database::orm() participent a la meme transaction.
+// Transaction : la Connection est partagee, donc tous les models construits
+// sans argument participent a la meme transaction (pas d'imbrication).
 Database::orm()->transaction(function (Connection $db) use ($events, $registrations) {
     // tout ou rien ; la valeur retournee est renvoyee par transaction()
 });
@@ -240,7 +230,7 @@ $this->table()
 Charger les relations en une requete (`findMany` ou `whereIn`), puis les
 rattacher en PHP avec `Rows::keyBy` / `Rows::groupBy` :
 ```php
-// RegistrationRepository
+// Model Registration
 public function listForEvents(array $eventIds): array
 {
     if ($eventIds === []) {
@@ -285,8 +275,8 @@ HTTP -> public/.htaccess -> public/index.php
      -> routes/api.php (declarations)
      -> Router::dispatch (match {param}, middlewares)
      -> Controller::action
-     -> Repository (methode nommee)
+     -> Model (methode nommee)
      -> QueryBuilder -> Compiler (SQL) -> Connection (bindings) -> PDO -> MariaDB
-     -> TableMapper::hydrate (casts de chaque ligne)
+     -> Caster (casts de chaque ligne, d'apres Model::CASTS)
      -> Response::json / Response::error
 ```

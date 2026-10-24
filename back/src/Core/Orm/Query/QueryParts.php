@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Orm\Query;
+namespace App\Core\Orm\Query;
 
 /**
  * Etat mutable d'un SELECT en construction. Tous les fragments stockes ici
