@@ -10,7 +10,19 @@ servers:
   - url: "."
     description: Cette API (relatif a la page de doc)
 
+security:
+  - {}
+  - bearerAuth: []
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: >-
+        Token de connexion, envoye en `Authorization: Bearer <token>`. Le saisir une fois via
+        "Authorize" : il est ajoute a chaque "Try it out" et garde au rechargement de la page.
+
   schemas:
     Error:
       type: object

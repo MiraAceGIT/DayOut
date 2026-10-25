@@ -125,6 +125,18 @@ final class DocsTest extends TestCase
         $this->assertStringContains("'sha256-" . base64_encode(hash('sha256', $m[1], true)) . "'", $csp);
     }
 
+    public function testBearerTokenIsOfferedButOptional(): void
+    {
+        $spec = $this->spec();
+
+        $this->assertSame(['type' => 'http', 'scheme' => 'bearer'], array_intersect_key(
+            $spec['components']['securitySchemes']['bearerAuth'],
+            ['type' => 0, 'scheme' => 0]
+        ));
+        $this->assertSame('{}', json_encode($spec['security'][0]), 'public routes stay callable without token');
+        $this->assertSame(['bearerAuth' => []], $spec['security'][1]);
+    }
+
     public function testMissingSpecIsAServerError(): void
     {
         $this->assertThrows(RuntimeException::class, fn () => (new DocsController('/nope'))->spec(new Request('GET', '/')));

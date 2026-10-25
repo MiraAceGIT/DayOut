@@ -95,6 +95,12 @@ Ouvrir `http://localhost:8000/docs` (sous XAMPP : `.../dayout/back/public/docs`)
 toutes les routes, leurs parametres et les schemas (`Event`, `Category`, `Error`...), avec
 **Try it out** pour appeler l'API depuis la page.
 
+**Authorize** (en haut a droite) : saisir un token une fois, il est envoye en
+`Authorization: Bearer <token>` a chaque **Try it out** et garde au rechargement de la page
+(`persistAuthorization`, stocke dans le navigateur). Declare dans `openapi.yaml`
+(`securitySchemes.bearerAuth`) et facultatif partout (`security: [{}, bearerAuth]`) ; une route
+protegee le rendra obligatoire avec `security: [{ bearerAuth: [] }]` dans son operation.
+
 La source est en YAML dans `docs/openapi/`, un fichier par controller (meme nom que son fichier
 de `routes/`) :
 

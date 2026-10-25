@@ -16,7 +16,7 @@ final class DocsController extends Controller
 
     // Spec cherchee a cote de la page : marche aussi sous un prefixe XAMPP et avec /docs/.
     private const INIT_SCRIPT = 'SwaggerUIBundle({ url: location.pathname.replace(/\/docs\/?$/, "/openapi.json"),'
-        . ' dom_id: "#swagger-ui", deepLinking: true });';
+        . ' dom_id: "#swagger-ui", deepLinking: true, persistAuthorization: true });';
 
     private readonly string $specDir;
 
