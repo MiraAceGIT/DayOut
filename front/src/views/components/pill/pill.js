@@ -1,5 +1,5 @@
-import { h } from "../../../lib/dom.js";
-import { formatPrice, pluralize } from "../../../lib/format.js";
+import { h } from "../../../shared/dom.js";
+import { formatPrice, pluralize } from "../../../shared/format.js";
 import { categoryClass, renderCategoryDot } from "../category/category.js";
 
 /** `category` = { slug, label } normalise par toCategory() ; null -> rien. */

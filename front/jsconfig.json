@@ -18,7 +18,7 @@
     "src/mappers/**/*.js",
     "src/dao/**/*.js",
     "src/models/**/*.js",
-    "src/lib/**/*.js",
+    "src/shared/**/*.js",
     "src/core/**/*.js",
     "tests/**/*.js"
   ]

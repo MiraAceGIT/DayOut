@@ -1,4 +1,4 @@
-import { h } from "../../../lib/dom.js";
+import { h } from "../../../shared/dom.js";
 
 /**
  * Seul endroit qui rattache un slug API a une couleur de la charte (cle `cat--<key>` de category.css).

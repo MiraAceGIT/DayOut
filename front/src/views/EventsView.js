@@ -1,4 +1,4 @@
-import { pluralize } from "../lib/format.js";
+import { pluralize } from "../shared/format.js";
 import { renderEventCard } from "./components/eventCard/eventCard.js";
 
 export class EventsView {

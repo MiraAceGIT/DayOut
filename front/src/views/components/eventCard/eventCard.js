@@ -1,5 +1,5 @@
-import { h } from "../../../lib/dom.js";
-import { formatEventWhen } from "../../../lib/format.js";
+import { h } from "../../../shared/dom.js";
+import { formatEventWhen } from "../../../shared/format.js";
 import { categoryClass, colorCategoryOf } from "../category/category.js";
 import { joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/pill.js";

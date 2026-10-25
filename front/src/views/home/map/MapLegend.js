@@ -1,4 +1,4 @@
-import { h } from "../../../lib/dom.js";
+import { h } from "../../../shared/dom.js";
 import { categoryClass, hasCharterColor, renderCategoryDot } from "../../components/category/category.js";
 
 /** Legende "Categories" (DOM simple, independant de Leaflet). */

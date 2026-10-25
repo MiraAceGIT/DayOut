@@ -1,4 +1,4 @@
-import { h } from "../../../lib/dom.js";
+import { h } from "../../../shared/dom.js";
 import { renderLogo } from "../../components/logo/logo.js";
 
 // TODO : liens FAQ / CGU / Mentions legales / Contact quand ces pages existeront (pas de lien casse d'ici la).

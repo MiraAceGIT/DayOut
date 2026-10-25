@@ -1,4 +1,4 @@
-import { formatCoordinates } from "../../../lib/format.js";
+import { formatCoordinates } from "../../../shared/format.js";
 
 const SOURCE_LABELS = {
   default: "ISEP – Notre-Dame-des-Champs",

@@ -33,7 +33,7 @@ front/
 │   │   └── errors.js             ← messageFor(err), isApiError(err) : messages utilisateur
 │   ├── app/
 │   │   └── boot.js               ← boot({ page }) : header + footer + handler 401
-│   ├── lib/
+│   ├── shared/
 │   │   ├── dom.js                ← h(tag, props, ...children) : DOM sans innerHTML
 │   │   ├── format.js             ← formatDate/Day/Hour, formatEventWhen, formatDistance, formatPrice,
 │   │   │                            formatCoordinates, pluralize
@@ -129,16 +129,16 @@ pages/        -> app/boot.js, controllers/
 controllers/  -> dao/, models/, views/, core/errors.js, core/geolocation.js, core/routes.js (replaceSearchParam)
 dao/          -> core/api.js, mappers/, dto/ (types)
 mappers/      -> models/ (regles de calcul), mappers/, dto/ (types)
-models/       -> models/, lib/geo.js (calcul pur)
-views/        -> views/, lib/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
+models/       -> models/, shared/geo.js (calcul pur)
+views/        -> views/, shared/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
 app/boot.js   -> core/, views/layout/
 core/         -> core/ uniquement
-lib/          -> rien (utilitaires purs)
+shared/       -> rien (utilitaires purs)
 ```
 
 - Rien n'importe `pages/` ; pas de dependance circulaire (`loginUrl` vit dans `core/routes.js` pour que
   le header l'utilise sans importer `app/boot.js`).
-- Une view n'importe ni `models/` ni `core/api.js` ; un model n'importe ni `views/` ni `lib/dom.js`.
+- Une view n'importe ni `models/` ni `core/api.js` ; un model n'importe ni `views/` ni `shared/dom.js`.
   Ce dont une view a besoin cote metier est un champ de l'objet normalise (`event.remainingPlaces`,
   `event.availability`) ou lui est passe par le controleur (categories presentes, resultats).
 - Leaflet n'est lu que dans `views/home/map/LeafletMap.js`.
@@ -204,7 +204,7 @@ cd front && node --test "tests/**/*.test.js"    # Node 22, aucune dependance
   si un champ de `Event` / `Category` manque au typedef de `src/dto/`, n'est pas lu par `toEvent`
   ou pas renvoye par `toEventDto`. Ignore sans PHP, sauf avec `REQUIRE_CONTRACT=1` (CI).
 - Types : `jsconfig.json` active la verification des JSDoc (VS Code en direct, `tsc` en CI) sur
-  `dto/`, `mappers/`, `dao/`, `models/`, `lib/`, `core/` et les tests ; les views ne sont pas
+  `dto/`, `mappers/`, `dao/`, `models/`, `shared/`, `core/` et les tests ; les views ne sont pas
   encore dans le perimetre. Globales des scripts classiques (`DAYOUT_CONFIG`, Leaflet) :
   `src/types/globals.d.ts`. En local, comme en CI : `front/tools/typecheck.sh` (installe TypeScript, version epinglee, dans
   `front/tools/.cache/`, ignore par git).
@@ -259,7 +259,7 @@ export async function fetchEvent(id, { signal } = {}) {
 
 ```js
 // src/views/MaPageView.js : seul fichier qui connait les ids de la page
-import { h } from "../lib/dom.js";
+import { h } from "../shared/dom.js";
 
 export class MaPageView {
   constructor(root = document) {
@@ -338,14 +338,14 @@ new MaPageController().start(new URLSearchParams(location.search).get("id"));
 
 Formulaires : sur `err.isValidation`, `showFieldErrors(form, err.details)` pose
 `aria-invalid` et un `<p id="<champ>-error" class="field-error">` relie par
-`aria-describedby` ; `clearFieldErrors(form)` les retire (`lib/forms.js`). Afficher
+`aria-describedby` ; `clearFieldErrors(form)` les retire (`shared/forms.js`). Afficher
 `messageFor(err)` (`core/errors.js`) dans l'alerte de la page (message utilisateur, avec la
 reference de requete) ; c'est le controleur qui le calcule et le passe a la view.
 
 ## Regles de securite
 
 - **Jamais `innerHTML` (ni `outerHTML`, `insertAdjacentHTML`) avec des donnees.**
-  Construire le DOM avec `h()` (`lib/dom.js`) ou `textContent`. `h()` refuse la prop
+  Construire le DOM avec `h()` (`shared/dom.js`) ou `textContent`. `h()` refuse la prop
   `innerHTML` et n'accepte que des URL http(s) ou relatives pour `href` / `src`.
 - **Construire les URL avec `encodeURIComponent`** pour chaque segment variable
   (`/events/${encodeURIComponent(id)}`) ou `URLSearchParams` pour la query string.

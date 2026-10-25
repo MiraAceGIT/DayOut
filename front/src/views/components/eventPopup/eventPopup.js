@@ -1,7 +1,7 @@
-import { h } from "../../../lib/dom.js";
+import { h } from "../../../shared/dom.js";
 import { frontUrl } from "../../../core/config.js";
 import { loginUrl } from "../../../core/routes.js";
-import { formatEventWhen } from "../../../lib/format.js";
+import { formatEventWhen } from "../../../shared/format.js";
 import { colorCategoryOf } from "../category/category.js";
 import { distanceText, joinMeta, placeOf } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill } from "../pill/pill.js";

@@ -1,4 +1,4 @@
-import { h } from "../../../lib/dom.js";
+import { h } from "../../../shared/dom.js";
 import { frontUrl } from "../../../core/config.js";
 import { loginUrl } from "../../../core/routes.js";
 import { renderLogo } from "../../components/logo/logo.js";

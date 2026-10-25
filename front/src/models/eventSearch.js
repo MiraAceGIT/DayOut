@@ -1,4 +1,4 @@
-import { distanceKm, isLatLng } from "../lib/geo.js";
+import { distanceKm, isLatLng } from "../shared/geo.js";
 import { isUpcoming } from "./Event.js";
 import { matchesCriteria } from "./eventFilters.js";
 

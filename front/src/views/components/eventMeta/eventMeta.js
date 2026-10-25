@@ -1,4 +1,4 @@
-import { formatDistance } from "../../../lib/format.js";
+import { formatDistance } from "../../../shared/format.js";
 
 /** Parties non vides separees par " · " (ligne de details des cartes et de la bulle). */
 export function joinMeta(...parts) {

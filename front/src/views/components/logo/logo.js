@@ -1,4 +1,4 @@
-import { h } from "../../../lib/dom.js";
+import { h } from "../../../shared/dom.js";
 import { frontUrl } from "../../../core/config.js";
 
 // Seul endroit qui connait le fichier du logo (header et footer, tous deux sur fond violet nuit).

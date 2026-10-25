@@ -1,4 +1,4 @@
-import { pluralize } from "../../lib/format.js";
+import { pluralize } from "../../shared/format.js";
 
 /**
  * Texte du statut des resultats (role=status), sans DOM.

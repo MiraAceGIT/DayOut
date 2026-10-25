@@ -1,4 +1,4 @@
-import { h } from "../../../lib/dom.js";
+import { h } from "../../../shared/dom.js";
 import { categoryClass, colorCategoryOf } from "../../components/category/category.js";
 import { renderEventPopup } from "../../components/eventPopup/eventPopup.js";
 import { icon, pinIcon } from "../../components/icon/icon.js";

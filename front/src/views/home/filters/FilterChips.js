@@ -1,4 +1,4 @@
-import { h } from "../../../lib/dom.js";
+import { h } from "../../../shared/dom.js";
 import { categoryClass, renderCategoryDot } from "../../components/category/category.js";
 
 /** Inverse aria-pressed et renvoie le nouvel etat. */

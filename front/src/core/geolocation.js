@@ -1,6 +1,6 @@
 /**
  * Position de l'appareil, demandee uniquement sur action explicite (regle de confidentialite de la spec).
- * Dans core/ et non lib/ : depend de l'API navigateur. Rejette avec
+ * Dans core/ et non shared/ : depend de l'API navigateur. Rejette avec
  * { code: "unsupported" | "denied" | "unavailable" | "timeout" }.
  */
 export function currentPosition({ timeout = 10000 } = {}) {
