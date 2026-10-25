@@ -53,9 +53,29 @@ racine du projet. Si `php` n'est pas dans le PATH, utiliser `/c/xampp/php/php.ex
 - Front et pages : [`front/README.md`](front/README.md)
 - Base de donnees, seed et codes d'erreur des triggers : [`infra/README.md`](infra/README.md)
 
+## Qualite et CI
+
+A chaque push sur `dev` / `main` et a chaque PR, `.github/workflows/ci.yml` lance :
+
+| Job      | Verifie                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------- |
+| Back     | `php -l`, tests unitaires + integration (MariaDB 10.11) sur PHP 8.2 et 8.5, PHPStan niveau 6 |
+| Front    | `node --test` (dont le contrat avec la spec OpenAPI du back), types JSDoc (`tsc`)           |
+| Commits  | (PR) chaque message suit la convention ci-dessous                                            |
+
+Les memes commandes en local :
+
+```bash
+back/tests/run.sh                          # tests back (base dayout_test)
+back/tools/phpstan.sh                      # analyse statique back
+cd front && node --test "tests/**/*.test.js"   # tests front (Node 22)
+front/tools/typecheck.sh                   # types JSDoc du front
+```
+
 ## Conventions
 
-- Fins de ligne LF partout (imposees par `.gitattributes`).
+- Fins de ligne LF partout (imposees par `.gitattributes`) ; indentation et encodage par
+  `.editorconfig` (VS Code : extension *EditorConfig* ; JetBrains : natif).
 - Commentaires et documentation en francais ; messages de l'API, codes et noms en anglais.
 
 ## Convention de commit

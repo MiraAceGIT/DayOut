@@ -17,7 +17,7 @@ switch ($argv[1] ?? '') {
         // E_ERROR "Maximum execution time" : invisible pour set_error_handler.
         echo 'partial output that must be discarded';
         set_time_limit(1);
-        while (true) {
+        while (true) { // @phpstan-ignore while.alwaysTrue (boucle voulue : declenche le timeout)
         }
     default:
         throw new LogicException('Usage: throw.php uncaught|fatal');

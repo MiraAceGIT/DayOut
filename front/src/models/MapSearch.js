@@ -1,7 +1,12 @@
 import { categoriesIn } from "./category.js";
 import { searchEvents } from "./eventSearch.js";
 
-/** Point par defaut de la maquette (ISEP Notre-Dame-des-Champs) ; son libelle est choisi par la vue. */
+/** @typedef {{ lat: number, lng: number, label?: string, source: string }} Origin `source` : default | map | device */
+
+/**
+ * Point par defaut de la maquette (ISEP Notre-Dame-des-Champs) ; son libelle est choisi par la vue.
+ * @type {Origin}
+ */
 export const DEFAULT_ORIGIN = { lat: 48.8455, lng: 2.3275, source: "default" };
 export const DEFAULT_RADIUS_KM = 3;
 

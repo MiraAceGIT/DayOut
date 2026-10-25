@@ -6,7 +6,11 @@ function toDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** Valeur vide ou invalide -> `fallback` (jamais "Invalid Date"). */
+/**
+ * Valeur vide ou invalide -> `fallback` (jamais "Invalid Date").
+ * @param {Date|string|number|null|undefined} value
+ * @param {{ fallback?: string, locale?: string, options?: Intl.DateTimeFormatOptions }} [opts]
+ */
 export function formatDate(value, {
   fallback = "",
   locale = LOCALE,

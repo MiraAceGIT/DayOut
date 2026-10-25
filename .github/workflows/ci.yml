@@ -1,0 +1,109 @@
+# Verifications a chaque push sur dev/main et a chaque PR : rien ne merge sans tests verts.
+# Memes commandes qu'en local (voir back/README.md et front/README.md, section Tests).
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  back:
+    name: Back (PHP ${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.2", "8.5"] # minimum supporte (readonly class) et version de dev
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      # Pas de back/.env en CI : config/config.php et reset_db.sh lisent l'environnement.
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: dayout
+      TEST_DB_NAME: dayout_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring
+          coverage: none
+
+      - name: Client MariaDB (reset_db.sh)
+        run: sudo apt-get update -q && sudo apt-get install -y -q mariadb-client
+
+      - name: Syntaxe PHP
+        run: find back -name '*.php' -not -path '*/tools/.cache/*' -print0 | xargs -0 -n1 php -l > /dev/null
+
+      - name: Tests (unitaires + integration sur dayout_test)
+        run: bash back/tests/run.sh
+
+      - name: Analyse statique (PHPStan)
+        if: matrix.php == '8.5'
+        run: bash back/tools/phpstan.sh
+
+  front:
+    name: Front
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Le test de contrat lit la spec OpenAPI assemblee par le back.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          coverage: none
+
+      - name: Tests (node --test), contrat avec l'API compris
+        working-directory: front
+        env:
+          REQUIRE_CONTRACT: "1"
+        run: node --test "tests/**/*.test.js"
+
+      # Le front reste sans package.json ni build : le script installe tsc dans front/tools/.cache.
+      - name: Verification des types (JSDoc, tsc)
+        run: bash front/tools/typecheck.sh
+
+  commits:
+    name: Messages de commit
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 'Format "type(scope): description" (.githooks/commit-msg)'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          status=0
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            git log -1 --format=%B "$sha" > "$RUNNER_TEMP/msg"
+            sh .githooks/commit-msg "$RUNNER_TEMP/msg" || { echo "  -> commit $sha"; status=1; }
+          done
+          exit $status

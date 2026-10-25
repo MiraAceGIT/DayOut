@@ -23,6 +23,11 @@ export function setUnauthorizedHandler(fn) {
  * .requestId : en-tete X-Request-Id (a communiquer au support).
  */
 export class ApiError extends Error {
+  /**
+   * @param {string} message
+   * @param {{ type?: string, status?: number, code?: string|null, details?: object|null,
+   *           requestId?: string|null, cause?: unknown }} [options]
+   */
   constructor(message, {
     type = "http",
     status = 0,
@@ -83,6 +88,11 @@ function transportError(cause, signal, requestId = null) {
   return new ApiError("Serveur injoignable", { type: "network", requestId, cause });
 }
 
+/**
+ * @param {string} path
+ * @param {{ method?: string, body?: unknown, headers?: Record<string, string>, signal?: AbortSignal,
+ *           timeout?: number }} [options]
+ */
 async function apiFetch(path, {
   method = "GET",
   body,
@@ -103,6 +113,7 @@ async function apiFetch(path, {
   Object.assign(finalHeaders, headers || {});
 
   const finalSignal = buildSignal(signal, timeout);
+  /** @type {RequestInit} */
   const options = {
     method,
     headers: finalHeaders,
@@ -134,6 +145,7 @@ async function apiFetch(path, {
   }
 
   const isJson = res.headers.get("content-type")?.includes("application/json") ?? false;
+  /** @type {any} JSON quelconque : sa forme est verifiee plus bas */
   let payload = text;
   let parseError = null;
   if (isJson) {

@@ -191,6 +191,24 @@ lib/          -> rien (utilitaires purs)
    **Extension VS Code "Live Server"** : clic droit sur `index.html` → *Open with Live Server*
    (le port doit etre autorise par la config CORS du back).
 
+## Tests et types
+
+```bash
+cd front && node --test "tests/**/*.test.js"    # Node 22, aucune dependance
+```
+
+- `tests/*.test.js` (`node:test`) : les couches sans DOM — mappers (aller-retour DTO <-> modele),
+  filtres et recherche de la carte, `isUpcoming`, zone couverte, formats, `resultsMessage`.
+  Donnees communes dans `tests/fixtures.js` (`eventDto()`, `event()`).
+- `tests/contract.test.js` : la spec OpenAPI du back (assemblee par PHP) est la reference ; echoue
+  si un champ de `Event` / `Category` manque au typedef de `src/dto/`, n'est pas lu par `toEvent`
+  ou pas renvoye par `toEventDto`. Ignore sans PHP, sauf avec `REQUIRE_CONTRACT=1` (CI).
+- Types : `jsconfig.json` active la verification des JSDoc (VS Code en direct, `tsc` en CI) sur
+  `dto/`, `mappers/`, `dao/`, `models/`, `lib/`, `core/` et les tests ; les views ne sont pas
+  encore dans le perimetre. Globales des scripts classiques (`DAYOUT_CONFIG`, Leaflet) :
+  `src/types/globals.d.ts`. En local, comme en CI : `front/tools/typecheck.sh` (installe TypeScript, version epinglee, dans
+  `front/tools/.cache/`, ignore par git).
+
 ## Configuration
 
 Une seule source : `src/core/config.js` (`API_BASE_URL`, defaut `http://localhost:8000`).

@@ -1,0 +1,25 @@
+{
+  // Verification des types depuis les JSDoc : VS Code l'applique en direct, la CI lance `tsc -p front/jsconfig.json`.
+  // Perimetre : les couches sans DOM (et ce qu'elles importent). Les views suivront.
+  "compilerOptions": {
+    "checkJs": true,
+    "allowJs": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": false
+  },
+  "include": [
+    "src/types/**/*.d.ts",
+    "src/dto/**/*.js",
+    "src/mappers/**/*.js",
+    "src/dao/**/*.js",
+    "src/models/**/*.js",
+    "src/lib/**/*.js",
+    "src/core/**/*.js",
+    "tests/**/*.js"
+  ]
+}

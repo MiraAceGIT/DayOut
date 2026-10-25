@@ -5,6 +5,7 @@ import { toEvents } from "../mappers/eventMapper.js";
 
 export const MAX_EVENTS_LIMIT = 100;
 
+/** @param {{ limit?: number, signal?: AbortSignal }} [options] */
 export async function fetchUpcomingEvents({ limit = 20, signal } = {}) {
   const query = new URLSearchParams({ limit: String(Math.min(limit, MAX_EVENTS_LIMIT)) });
   /** @type {EventPageDto} */

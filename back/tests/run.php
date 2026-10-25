@@ -27,7 +27,7 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
-$args     = array_slice($argv, 1);
+$args     = array_slice($_SERVER['argv'] ?? [], 1);
 $unitOnly = in_array('--unit', $args, true);
 $filter   = array_values(array_filter($args, fn (string $a): bool => !str_starts_with($a, '--')))[0] ?? '';
 $testDb   = (string) getenv('TEST_DB_NAME');

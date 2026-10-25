@@ -1,0 +1,15 @@
+# Analyse statique : back/tools/phpstan.sh (telecharge PHPStan, version epinglee, sans Composer).
+parameters:
+    level: 6
+    phpVersion: 80200 # minimum supporte (readonly class) ; la CI teste aussi la derniere version
+    paths:
+        - src
+        - routes
+        - config
+        - public
+        - tests
+    bootstrapFiles:
+        - tools/phpstan-bootstrap.php
+    ignoreErrors:
+        # Les tableaux du projet (lignes SQL, JSON) sont des array<string, mixed> : les annoter partout serait du bruit.
+        - identifier: missingType.iterableValue

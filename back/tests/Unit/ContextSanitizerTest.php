@@ -76,7 +76,7 @@ final class ContextSanitizerTest extends TestCase
         } catch (RuntimeException $e) {
             return new RuntimeException('outer', 0, $e);
         }
-        $this->fail('explode() should have thrown');
+        $this->fail('explode() should have thrown'); // @phpstan-ignore deadCode.unreachable (filet si explode() changeait)
     }
 
     private function explode(string $secret): never

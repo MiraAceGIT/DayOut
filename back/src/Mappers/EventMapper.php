@@ -3,7 +3,10 @@ declare(strict_types=1);
 
 namespace App\Mappers;
 
+use App\Core\HttpException;
+use App\Core\Validator;
 use App\Dto\EventDto;
+use App\Dto\EventInputDto;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -46,29 +49,64 @@ final class EventMapper
         );
     }
 
+    /** JSON recu -> EventInputDto ; 422 VALIDATION_ERROR (details par champ) si invalide. */
+    public static function fromInput(array $json): EventInputDto
+    {
+        $v = Validator::check($json, EventInputDto::RULES);
+        if (new DateTimeImmutable($v['end_at']) <= new DateTimeImmutable($v['start_at'])) {
+            throw HttpException::validation(['end_at' => 'Must be after start_at']);
+        }
+
+        return new EventInputDto(
+            title: $v['title'],
+            slug: $v['slug'],
+            description: $v['description'],
+            startAt: $v['start_at'],
+            endAt: $v['end_at'],
+            coverImageUrl: $v['cover_image_url'] ?? null,
+            venueName: $v['venue_name'] ?? null,
+            addressLine: $v['address_line'] ?? null,
+            city: $v['city'] ?? null,
+            postalCode: $v['postal_code'] ?? null,
+            latitude: $v['latitude'] ?? null,
+            longitude: $v['longitude'] ?? null,
+            capacity: $v['capacity'] ?? null,
+            priceCents: $v['price_cents'] ?? 0,
+            currency: $v['currency'] ?? 'EUR',
+            isPaid: $v['is_paid'] ?? false,
+            externalTicketUrl: $v['external_ticket_url'] ?? null,
+            restrictedSchoolId: $v['restricted_school_id'] ?? null,
+        );
+    }
+
     /**
+     * Colonnes de `events` pour Event::create() / updateById() ; creator_id et status vont dans `$server`.
+     *
      * @return array<string, mixed>
      */
-    public static function toRow(EventDto $dto): array
+    public static function toRow(EventInputDto $dto): array
     {
         return [
-            'title'               => $dto->title,
-            'slug'                => $dto->slug,
-            'description'         => $dto->description,
-            'cover_image_url'     => $dto->coverImageUrl,
-            'start_at'            => self::toDbDatetime($dto->startAt),
-            'end_at'              => self::toDbDatetime($dto->endAt),
-            'venue_name'          => $dto->venueName,
-            'address_line'        => $dto->addressLine,
-            'city'                => $dto->city,
-            'postal_code'         => $dto->postalCode,
-            'latitude'            => $dto->latitude,
-            'longitude'           => $dto->longitude,
-            'capacity'            => $dto->capacity,
-            'price_cents'         => $dto->priceCents,
-            'currency'            => $dto->currency,
-            'is_paid'             => $dto->isPaid,
-            'external_ticket_url' => $dto->externalTicketUrl,
+            'title'                => $dto->title,
+            'slug'                 => $dto->slug,
+            'description'          => $dto->description,
+            'cover_image_url'      => $dto->coverImageUrl,
+            'start_at'             => self::toDbDatetime($dto->startAt),
+            'end_at'               => self::toDbDatetime($dto->endAt),
+            'venue_name'           => $dto->venueName,
+            'address_line'         => $dto->addressLine,
+            'city'                 => $dto->city,
+            'postal_code'          => $dto->postalCode,
+            'latitude'             => $dto->latitude,
+            'longitude'            => $dto->longitude,
+            'capacity'             => $dto->capacity,
+            'price_cents'          => $dto->priceCents,
+            'currency'             => $dto->currency,
+            'is_paid'              => $dto->isPaid,
+            'external_ticket_url'  => $dto->externalTicketUrl,
+            // Les deux ensemble : trg_events_bi/bu refuse l'un sans l'autre.
+            'school_restricted'    => $dto->restrictedSchoolId !== null,
+            'restricted_school_id' => $dto->restrictedSchoolId,
         ];
     }
 

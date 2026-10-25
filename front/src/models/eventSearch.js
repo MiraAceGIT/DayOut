@@ -23,6 +23,11 @@ export function countByPosition(items) {
 
 const startTime = (item) => Date.parse(item.event.startAt) || 0;
 
+/**
+ * @param {object[]} events evenements du front (toEvent)
+ * @param {{ origin?: { lat: number, lng: number }, radiusKm?: number, now?: Date, [criterion: string]: unknown }} [options]
+ *        criteres de matchesCriteria en plus (weekend, free, available, categories, query)
+ */
 export function searchEvents(events, { origin, radiusKm, now = new Date(), ...criteria } = {}) {
   const matches = matchesCriteria({ ...criteria, now });
   const items = events

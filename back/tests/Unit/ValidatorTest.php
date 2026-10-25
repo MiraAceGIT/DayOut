@@ -89,6 +89,17 @@ final class ValidatorTest extends TestCase
         }
     }
 
+    public function testNumberAcceptsIntegersDecimalsAndNumericStringsAsFloat(): void
+    {
+        $this->assertSame(['a' => 48.8689], Validator::check(['a' => 48.8689], ['a' => 'number']));
+        $this->assertSame(['a' => 2.0], Validator::check(['a' => 2], ['a' => 'number']));
+        $this->assertSame(['a' => -2.341], Validator::check(['a' => '-2.341'], ['a' => 'number']));
+        $this->assertSame(['a' => 'Must be at least -90'], $this->errors(['a' => -90.5], ['a' => 'number|min:-90']));
+        foreach (['1e3', 'abc', true, '', '1.', [1]] as $value) {
+            $this->assertSame(['a' => 'Must be a number'], $this->errors(['a' => $value], ['a' => 'number']), json_encode($value));
+        }
+    }
+
     public function testBoolAcceptsCommonFormsAndCastsThem(): void
     {
         foreach ([true, 1, '1', 'true'] as $value) {

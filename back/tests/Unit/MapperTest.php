@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Dto\CategoryDto;
+use App\Core\HttpException;
 use App\Mappers\CategoryMapper;
 use App\Mappers\EventMapper;
 use Tests\TestCase;
@@ -60,16 +60,60 @@ final class MapperTest extends TestCase
         $this->assertSame([], EventMapper::toDtos([]));
     }
 
-    public function testEventToRowKeepsOnlyWritableColumnsWithDbDatetimes(): void
+    /** Corps JSON minimal valide d'une creation d'event. */
+    private static function input(array $overrides = []): array
     {
-        $row = EventMapper::toRow(EventMapper::toDto(self::eventRow(['start_at' => '2026-11-07T21:00:00+01:00'])));
+        return $overrides + [
+            'title' => 'Soiree', 'slug' => 'soiree', 'description' => 'Desc',
+            'start_at' => '2026-11-07T21:00:00+01:00', 'end_at' => '2026-11-08T02:00:00Z',
+        ];
+    }
+
+    public function testFromInputAppliesColumnDefaultsAndIgnoresServerFields(): void
+    {
+        $dto = EventMapper::fromInput(self::input([
+            'latitude' => '48.8689', 'id' => 99, 'creator_id' => 1, 'status' => 'published', 'registered_count' => 500,
+        ]));
+
+        $this->assertSame(48.8689, $dto->latitude, 'numeric string cast to float');
+        $this->assertSame(0, $dto->priceCents);
+        $this->assertSame('EUR', $dto->currency);
+        $this->assertSame(false, $dto->isPaid);
+        $this->assertSame(null, $dto->restrictedSchoolId);
+    }
+
+    public function testFromInputRejectsInvalidBodiesWith422PerField(): void
+    {
+        $cases = [
+            'title'        => [self::input(['title' => '']), 'This field is required'],
+            'end_at'       => [self::input(['end_at' => '2026-11-07T19:00:00Z']), 'Must be after start_at'],
+            'latitude'     => [self::input(['latitude' => 91]), 'Must be at most 90'],
+            'currency'     => [self::input(['currency' => 'EURO']), 'Must be at most 3 characters'],
+            'capacity'     => [self::input(['capacity' => 0]), 'Must be at least 1'],
+            'cover_image_url' => [self::input(['cover_image_url' => 'javascript:alert(1)']), 'Must be a valid http(s) URL'],
+        ];
+        foreach ($cases as $field => [$body, $message]) {
+            $e = $this->assertThrows(HttpException::class, fn () => EventMapper::fromInput($body), $field);
+            $this->assertSame(422, $e->status, $field);
+            $this->assertSame($message, $e->details[$field] ?? null, $field);
+        }
+    }
+
+    public function testToRowWritesDbDatetimesAndDerivesSchoolRestriction(): void
+    {
+        $row = EventMapper::toRow(EventMapper::fromInput(self::input()));
 
         $this->assertSame('2026-11-07 20:00:00', $row['start_at'], 'converted to UTC');
-        $this->assertSame('2026-11-08 02:00:00', $row['end_at']);
-        $this->assertSame('Soiree', $row['title']);
-        foreach (['id', 'registered_count', 'school_restricted', 'restricted_school_id', 'creator_id', 'status', 'categories'] as $key) {
+        $this->assertSame('2026-11-08 02:00:00', $row['end_at'], 'Z suffix');
+        $this->assertSame(false, $row['school_restricted']);
+        $this->assertSame(null, $row['restricted_school_id']);
+        foreach (['id', 'registered_count', 'creator_id', 'status', 'categories'] as $key) {
             $this->assertFalse(array_key_exists($key, $row), "toRow writes $key");
         }
+
+        $restricted = EventMapper::toRow(EventMapper::fromInput(self::input(['restricted_school_id' => 3])));
+        $this->assertSame(true, $restricted['school_restricted']);
+        $this->assertSame(3, $restricted['restricted_school_id']);
     }
 
     public function testCategoryRoundTrip(): void
@@ -78,6 +122,6 @@ final class MapperTest extends TestCase
 
         $this->assertSame(['slug' => 'sport', 'label' => 'Sport'], $dto->jsonSerialize());
         $this->assertSame(['slug' => 'sport', 'label' => 'Sport'], CategoryMapper::toRow($dto));
-        $this->assertTrue(CategoryMapper::toDtos([3 => ['slug' => 'a', 'label' => 'A']])[0] instanceof CategoryDto, 'list');
+        $this->assertSame([0], array_keys(CategoryMapper::toDtos([3 => ['slug' => 'a', 'label' => 'A']])), 're-indexed as a list');
     }
 }

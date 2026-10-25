@@ -43,6 +43,8 @@ abstract class HttpTestCase extends TestCase
         ]]);
 
         $content = @file_get_contents(self::baseUrl() . $path, false, $context);
+        // PHP < 8.4 : $http_response_header (absente si la requete echoue) ; PHP 8.4+ : la fonction.
+        // @phpstan-ignore nullCoalesce.variable
         $raw     = function_exists('http_get_last_response_headers') ? http_get_last_response_headers() : ($http_response_header ?? null);
         if ($content === false || !is_array($raw) || $raw === []) {
             throw new RuntimeException("No response for $method $path (test server down?)");

@@ -13,7 +13,7 @@ final class Validator
 
     /** Regle => argument attendu : null (aucun), 'int' (min:3) ou 'list' (in:a,b). */
     private const RULES = [
-        'required' => null, 'nullable' => null, 'string' => null, 'int' => null, 'bool' => null,
+        'required' => null, 'nullable' => null, 'string' => null, 'int' => null, 'number' => null, 'bool' => null,
         'array'    => null, 'email'    => null, 'url'    => null, 'date' => null, 'datetime' => null,
         'min'      => 'int', 'max'     => 'int', 'in'    => 'list',
     ];
@@ -100,6 +100,7 @@ final class Validator
             'required', 'nullable' => null,
             'string'   => is_string($value) ? null : 'Must be a string',
             'int'      => self::toInt($value) ? null : 'Must be an integer',
+            'number'   => self::toNumber($value) ? null : 'Must be a number',
             'bool'     => self::toBool($value) ? null : 'Must be a boolean',
             'array'    => is_array($value) ? null : 'Must be an array',
             'email'    => is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL) !== false
@@ -114,6 +115,7 @@ final class Validator
             'max'      => self::size($value) <= (int) $arg ? null : self::sizeMessage($value, 'at most', $arg),
             'in'       => is_scalar($value) && in_array((string) $value, explode(',', (string) $arg), true)
                 ? null : 'Must be one of: ' . str_replace(',', ', ', (string) $arg),
+            default    => throw new LogicException("Rule '$rule' is declared in RULES but not implemented"),
         };
     }
 
@@ -134,6 +136,20 @@ final class Validator
                 $value = $int;
                 return true;
             }
+        }
+        return false;
+    }
+
+    /** Accepte 48.85, 2 et "48.85" (caste en float) ; refuse "1e3", "", true. */
+    private static function toNumber(mixed &$value): bool
+    {
+        if (is_int($value) || is_float($value)) {
+            $value = (float) $value;
+            return is_finite($value);
+        }
+        if (is_string($value) && preg_match('/^-?\d+(\.\d+)?$/', $value) === 1) {
+            $value = (float) $value;
+            return true;
         }
         return false;
     }

@@ -1,0 +1,30 @@
+# Regles d'edition communes (VS Code : extension EditorConfig ; JetBrains : natif).
+# Complete .gitattributes, qui ne corrige les fins de ligne qu'au commit.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# PSR-12
+[*.php]
+indent_size = 4
+
+[*.sql]
+indent_size = 2
+
+# Deux espaces en fin de ligne = saut de ligne en Markdown.
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{png,jpg,jpeg,gif,ico,webp,pdf,svg,xlsx,woff,woff2}]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset

@@ -211,6 +211,19 @@ Assertions : `assertSame`, `assertTrue` / `assertFalse`, `assertCount`, `assertA
 `assertStringContains`, `assertThrows` ; en HTTP `assertStatus`, `assertError`, et
 `get` / `post` / `request` qui renvoient un `TestResponse` (`status`, `header()`, `json()`).
 
+### Analyse statique (PHPStan)
+
+```bash
+back/tools/phpstan.sh                # config : back/phpstan.neon
+```
+
+Sans Composer : le script telecharge `phpstan.phar` (version epinglee) dans `tools/.cache/`
+(ignore par git) et verifie son empreinte SHA-256 avant chaque lancement. Niveau 6 (types des
+parametres et retours, code mort, `match` non exhaustif...), avec `phpVersion: 80200` pour
+refuser toute syntaxe plus recente que le minimum supporte. Seule exception globale :
+le type des valeurs des tableaux (`array<string, mixed>`), trop verbeux pour des lignes SQL et du JSON.
+Ignorer une ligne precise : `// @phpstan-ignore <identifiant> (raison)`.
+
 ### A la main
 
 ```bash
@@ -227,8 +240,16 @@ curl http://localhost:8000/events/abc    # 404 NOT_FOUND (regex)
 1. Ecrire le `Model` dans `src/Models/` (herite de `App\Models\Model`, voir *ORM* ci-dessous).
 2. Ecrire le DTO dans `src/Dto/` (`final readonly class ... implements JsonSerializable` :
    proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case, et seulement
-   les champs a exposer) et son mapper dans `src/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`, `toRow($dto)`
-   si la ressource est ecrite). Le controller ne renvoie jamais une ligne brute du Model.
+   les champs a exposer) et son mapper dans `src/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`).
+   Le controller ne renvoie jamais une ligne brute du Model.
+   Si la ressource est ecrite : un DTO d'entree **distinct** (ex. `EventInputDto`), qui porte ses
+   regles de validation (`RULES`) et ne contient que ce qu'un client peut envoyer (ni id, ni compteurs,
+   ni champs serveur). Le mapper le construit depuis le JSON (`fromInput($json)` : valide, 422 sinon)
+   et en tire les colonnes (`toRow($inputDto)`) :
+   ```php
+   $input = EventMapper::fromInput($request->json());
+   $id    = $this->events->create(EventMapper::toRow($input), ['creator_id' => $userId, 'status' => 'draft']);
+   ```
 3. Ecrire le `Controller` dans `src/Controllers/` (herite de `App\Core\Controller`) ;
    il instancie ses models dans son constructeur (`new User()`). Chaque action recoit
    la `Request` et **renvoie** une `Response` :
@@ -564,6 +585,7 @@ Reponse en cas d'erreur (une erreur par champ, la premiere regle qui echoue) :
 | `nullable` | `null` autorise (les autres regles sont alors ignorees)              |
 | `string`   | chaine                                                               |
 | `int`      | entier ou chaine d'entier (`"12"`, utile pour la query), caste en int |
+| `number`   | entier, decimal ou chaine decimale (`"48.85"`), caste en float (coordonnees) |
 | `bool`     | `true`/`false`, `1`/`0`, `"true"`/`"false"`, `"1"`/`"0"`, caste en bool |
 | `array`    | tableau                                                              |
 | `email`    | adresse email valide                                                 |
