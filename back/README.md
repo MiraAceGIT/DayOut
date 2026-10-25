@@ -2,7 +2,9 @@
 
 API REST en PHP vanilla (pas de framework ni Composer). Architecture MVC :
 `Models` decrivent les tables et exposent l'acces aux donnees par methodes
-nommees, `Controllers` orchestrent, la vue est la reponse JSON (`Response`).
+nommees (DAO), `Controllers` orchestrent, la vue est la reponse JSON (`Response`).
+Ce qui sort dans le JSON est fixe par les `Dto` (noms publics, champs exposes) ;
+les `Mappers` passent d'une ligne du Model a un DTO (`toDto`, `toDtos` pour une liste) et inversement (`toRow`).
 `Core` fournit routeur / BDD / request / response / password et l'ORM maison
 (`Core/Orm`).
 
@@ -24,7 +26,9 @@ back/
 │   │       ├── Caster.php, Rows.php             ← casts + batch anti N+1
 │   │       └── Query/  ← QueryBuilder (+ traits), WhereClause, QueryParts,
 │   │                     Compiler, Grammar
-│   ├── Models/         ← M : Model.php (base) + une classe par table
+│   ├── Models/         ← M : Model.php (base) + une classe par table (DAO)
+│   ├── Dto/            ← contrat JSON : un objet immuable par ressource exposee (jsonSerialize)
+│   ├── Mappers/        ← ligne du Model <-> DTO (toDto / toDtos / toRow)
 │   └── Controllers/    ← C : logique HTTP (une classe par ressource)
 ├── config/config.php   ← charge le .env, construit et renvoie la Config
 ├── routes/            ← un fichier de routes par ressource (charges par api.php)
@@ -81,11 +85,10 @@ des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
 | GET     | `/api/events`        | `limit` (1-100, def. 20), `offset` (def. 0)    | `{ items: Event[], limit, offset }`   | —                                         |
 | GET     | `/api/events/{id}`   | — (`id` entier obligatoire via regex `\d+`)    | `Event`                               | `404 NOT_FOUND`, `404` si `{id}` non num. |
 
-**Shape `Event`** (contrat JSON stable) :
+**Shape `Event`** (contrat JSON stable, fixe par `App\Dto\EventDto`) :
 ```json
 {
   "id": 1,
-  "creator_id": 2,
   "title": "...",
   "slug": "...",
   "description": "...",
@@ -105,10 +108,6 @@ des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
   "is_paid": true,
   "external_ticket_url": null,
   "school_restricted": true,
-  "restricted_school_id": 1,
-  "status": "published",
-  "published_at": "2026-10-01T09:00:00+00:00",
-  "created_at":   "2026-10-01T09:00:00+00:00",
   "categories": [
     { "slug": "bde",    "label": "BDE / Assoc" },
     { "slug": "soiree", "label": "Soiree" }
@@ -121,7 +120,8 @@ Types garantis : `is_paid` et `school_restricted` en `bool`, entiers en `int`,
 UTC (`DateTime::ATOM`). `categories` : liste de `{ slug, label }` triee par `label`
 puis `id`, categories actives uniquement, `[]` si aucune ; chargees en une seule
 requete pour toute la page (`Category::listActiveByEvent`). Seuls les events
-`status='published'` sont exposes.
+`status='published'` sont exposes. Colonnes lues mais jamais exposees :
+`creator_id`, `restricted_school_id`, `status`, `published_at`, `created_at`.
 
 ## Tester
 
@@ -137,7 +137,7 @@ back/tests/run.sh --unit        # unitaires seuls, sans BDD
 
 - `tests/Unit/` : classes testees directement, sans serveur : Router (middlewares, groupes),
   Kernel (rendu des erreurs, CORS, en-tetes), Request / Response, QueryBuilder (SQL genere),
-  Caster, Model et Category (sur SQLite en memoire), Validator, ContextSanitizer, et les filets d'ErrorHandler
+  Caster, Model et Category (sur SQLite en memoire), Mappers (DTO exposes, toRow), Validator, ContextSanitizer, et les filets d'ErrorHandler
   (dans un processus a part).
 - `tests/Http/` : vraies requetes HTTP. `run.sh` remet a zero la base **`dayout_test`**
   (`infra/sql/reset_db.sh`, schema + seed), puis lance `php -S` sur un port libre
@@ -178,20 +178,24 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
 ## Ajouter une route
 
 1. Ecrire le `Model` dans `src/Models/` (herite de `App\Models\Model`, voir *ORM* ci-dessous).
-2. Ecrire le `Controller` dans `src/Controllers/` (herite de `App\Core\Controller`) ;
+2. Ecrire le DTO dans `src/Dto/` (`final readonly class ... implements JsonSerializable` :
+   proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case, et seulement
+   les champs a exposer) et son mapper dans `src/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`, `toRow($dto)`
+   si la ressource est ecrite). Le controller ne renvoie jamais une ligne brute du Model.
+3. Ecrire le `Controller` dans `src/Controllers/` (herite de `App\Core\Controller`) ;
    il instancie ses models dans son constructeur (`new User()`). Chaque action recoit
    la `Request` et **renvoie** une `Response` :
    ```php
    public function show(Request $request): Response
    {
        $id = (int) $request->param('id');
-       return $this->ok($this->found($this->users->findPublicById($id), 'User', $id));
+       return $this->ok(UserMapper::toDto($this->found($this->users->findPublicById($id), 'User', $id)));
    }
    ```
    Helpers : `ok($data, $status)`, `noContent()`, `validate($request, $rules)`,
    `found($row, 'Resource', $id)` (404 si `null`). Pour echouer : `throw HttpException`.
    Requete : `param('id')`, `json()`, `query()`, `queryInt()`, `header()`, `attribute('user')`.
-3. Declarer les routes dans `routes/<ressource>.php` (ex. `routes/users.php`),
+4. Declarer les routes dans `routes/<ressource>.php` (ex. `routes/users.php`),
    charge automatiquement par `routes/api.php` :
    ```php
    <?php
@@ -202,7 +206,7 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
    /** @var \App\Core\Router $router */
    $router->get('/api/users/{id:\d+}', [UserController::class, 'show']);
    ```
-4. Routes protegees : des middlewares (`App\Core\Http\Middleware`), par route ou par groupe.
+5. Routes protegees : des middlewares (`App\Core\Http\Middleware`), par route ou par groupe.
    Un groupe applique son prefixe et ses middlewares a toutes ses routes (imbricable) :
    ```php
    $router->group('/api/events', [Authenticate::class], function (Router $r) {
@@ -274,7 +278,7 @@ public function __construct(?User $users = null)
 | ------------- | -------------------------------------------------------------------- |
 | `TABLE`       | nom de la table (obligatoire)                                        |
 | `PRIMARY_KEY` | `id` par defaut                                                      |
-| `COLUMNS`     | colonnes lues par defaut (contrat API) — `*` par defaut              |
+| `COLUMNS`     | colonnes lues par defaut (le contrat API, lui, est dans `Dto/`) — `*` par defaut |
 | `FILLABLE`    | colonnes de la saisie client acceptees par `create()` / `updateById()`, le reste est ignore |
 | `CASTS`       | `int`, `float`, `bool`, `datetime` (ISO 8601 UTC), `json`            |
 

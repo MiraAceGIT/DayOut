@@ -23,7 +23,6 @@ final class EventsTest extends HttpTestCase
         $ids = array_column($data['items'], 'id');
         sort($ids);
         $this->assertSame([1, 2, 3, 4, 5, 6, 7], $ids);
-        $this->assertSame(['published'], array_values(array_unique(array_column($data['items'], 'status'))));
 
         $starts = array_column($data['items'], 'start_at');
         $sorted = $starts;
@@ -65,6 +64,17 @@ final class EventsTest extends HttpTestCase
         $this->assertSame(false, $event['is_paid']);
         $this->assertSame(true, $event['school_restricted']);
         $this->assertSame('2026-11-07T20:00:00+00:00', $event['start_at']);
+    }
+
+    public function testInternalColumnsAreNotExposed(): void
+    {
+        $events = [$this->get('/api/events/1')->json()['data'], ...$this->get('/api/events')->json()['data']['items']];
+
+        foreach ($events as $event) {
+            foreach (['creator_id', 'restricted_school_id', 'status', 'published_at', 'created_at', 'updated_at'] as $key) {
+                $this->assertFalse(array_key_exists($key, $event), "event {$event['id']} exposes $key");
+            }
+        }
     }
 
     public function testShowUnknownEventReturns404(): void

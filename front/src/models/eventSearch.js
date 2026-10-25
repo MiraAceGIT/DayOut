@@ -23,12 +23,6 @@ export function countByPosition(items) {
 
 const startTime = (item) => Date.parse(item.event.startAt) || 0;
 
-/**
- * Recherche de la carte, appliquee cote client aux evenements deja charges.
- * Les evenements termines sont toujours exclus (regle metier, pas un critere) : l'API ne filtre pas par date.
- * `criteria` : { origin {lat,lng}, radiusKm, now, ...criteres de matchesCriteria }.
- * Renvoie { items: [{ event, distanceKm }] tries par date, inCircle, withoutPosition }.
- */
 export function searchEvents(events, { origin, radiusKm, now = new Date(), ...criteria } = {}) {
   const matches = matchesCriteria({ ...criteria, now });
   const items = events

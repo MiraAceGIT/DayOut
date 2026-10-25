@@ -11,14 +11,13 @@ use App\Core\Orm\Query\QueryBuilder;
 use App\Core\Orm\Rows;
 use LogicException;
 
-/** query() reste protected : les controllers ne construisent pas de SQL. */
 abstract class Model
 {
     protected const TABLE = '';
 
     protected const PRIMARY_KEY = 'id';
 
-    /** Contrat API. Eviter '*' sur les tables sensibles. */
+    /** Colonnes lues ; le contrat API est fixe par les DTO (src/Dto). Eviter '*' sur les tables sensibles. */
     protected const COLUMNS = ['*'];
 
     /** Saisie client uniquement (anti mass-assignment) ; champs serveur via le 2e argument de create()/updateById(). */

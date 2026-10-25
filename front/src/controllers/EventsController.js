@@ -1,5 +1,5 @@
 import { isApiError, messageFor } from "../core/errors.js";
-import { fetchUpcomingEvents } from "../models/Event.js";
+import { fetchUpcomingEvents } from "../dao/eventDao.js";
 import { EventsView } from "../views/EventsView.js";
 
 export class EventsController {

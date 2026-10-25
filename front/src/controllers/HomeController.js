@@ -1,7 +1,7 @@
 import { isApiError, messageFor } from "../core/errors.js";
 import { currentPosition } from "../core/geolocation.js";
 import { replaceSearchParam } from "../core/routes.js";
-import { MAX_EVENTS_LIMIT, fetchUpcomingEvents } from "../models/Event.js";
+import { MAX_EVENTS_LIMIT, fetchUpcomingEvents } from "../dao/eventDao.js";
 import { MapSearch } from "../models/MapSearch.js";
 import { SERVICE_AREA, isInServiceArea } from "../models/serviceArea.js";
 import { HomeView } from "../views/home/HomeView.js";

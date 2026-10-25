@@ -39,9 +39,19 @@ front/
 │   │   │                            formatCoordinates, pluralize
 │   │   ├── geo.js                ← distanceKm (haversine), isLatLng (calcul pur)
 │   │   └── forms.js              ← showFieldErrors, clearFieldErrors
-│   ├── models/                   ← sans DOM : donnees, regles metier, etat
-│   │   ├── Event.js              ← fetchUpcomingEvents, toEvent (remainingPlaces, availability), isUpcoming
-│   │   ├── category.js           ← toCategory, categoriesIn (aucune notion de couleur)
+│   ├── dto/                      ← typedefs du JSON de l'API (snake_case), un fichier par ressource
+│   │   ├── eventDto.js           ← EventDto, EventPageDto (GET /api/events)
+│   │   └── categoryDto.js        ← CategoryDto
+│   ├── mappers/                  ← seuls a lire les noms du JSON : DTO <-> modele (camelCase)
+│   │   ├── eventMapper.js        ← toEvent(dto), toEvents(dtos), toEventDto(event)
+│   │   └── categoryMapper.js     ← toCategory(dto), toCategoryDto(category)
+│   ├── dao/
+│   │   └── eventDao.js           ← fetchUpcomingEvents (GET /api/events -> toEvents), MAX_EVENTS_LIMIT
+│   ├── models/                   ← sans DOM : regles metier, etat
+│   │   ├── Event.js              ← remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD, isUpcoming
+│   │   ├── category.js           ← categoriesIn (aucune notion de couleur)
+│   │   ├── serviceArea.js        ← SERVICE_AREA (Ile-de-France), isInServiceArea (contour exact)
+│   │   ├── ileDeFranceOutline.js ← contour de la region (genere, ~300 m)
 │   │   ├── eventFilters.js       ← un predicat par critere (gratuit, places, categories, week-end, texte),
 │   │   │                            USER_FILTERS, matchesCriteria, weekendRange
 │   │   ├── eventSearch.js        ← searchEvents : a venir + criteres + distance/rayon + tri + comptes
@@ -88,10 +98,15 @@ front/
 
 ### Architecture MVC
 
-- **models/** : acces cote client a l'API REST (appels via `core/api.js`), normalisation
-  des reponses (snake_case -> camelCase), regles metier (a venir, places restantes, "dernieres places",
-  filtres) et etat d'une page (`MapSearch`). Aucun DOM, aucun texte affiche, aucune couleur.
-  A ne pas confondre avec `back/src/Models` (acces base de donnees cote serveur).
+- **dto/** : forme exacte du JSON echange avec l'API, dans la convention du back (snake_case),
+  miroir de `back/src/Dto`. Typedefs JSDoc uniquement, aucun code.
+- **mappers/** : seuls a connaitre les noms du JSON. `toEvent(dto)` construit l'objet du front (camelCase,
+  `position: {lat, lng}`, places restantes et disponibilite calculees) ; `toEventDto(event)` fait l'inverse
+  pour un envoi (les champs calcules ne repartent pas). Renommer un champ cote API ne touche qu'ici.
+- **dao/** : acces a l'API REST (appels via `core/api.js`), renvoie des modeles via les mappers.
+  Equivalent cote client de `back/src/Models` (acces base de donnees cote serveur).
+- **models/** : regles metier (a venir, places restantes, "dernieres places", filtres, zone couverte)
+  et etat d'une page (`MapSearch`). Aucun DOM, aucun texte affiche, aucune couleur, aucun nom du JSON.
 - **views/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes
   et choix d'affichage (messages, couleurs de categorie). Aucun appel API, aucune regle metier : elles
   recoivent des objets normalises. Une view de page (`HomeView`, `MapView`, `EventsView`) est seule a
@@ -111,8 +126,10 @@ front/
 
 ```
 pages/        -> app/boot.js, controllers/
-controllers/  -> models/, views/, core/errors.js, core/geolocation.js, core/routes.js (replaceSearchParam)
-models/       -> core/api.js, models/, lib/geo.js (calcul pur)
+controllers/  -> dao/, models/, views/, core/errors.js, core/geolocation.js, core/routes.js (replaceSearchParam)
+dao/          -> core/api.js, mappers/, dto/ (types)
+mappers/      -> models/ (regles de calcul), mappers/, dto/ (types)
+models/       -> models/, lib/geo.js (calcul pur)
 views/        -> views/, lib/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
 app/boot.js   -> core/, views/layout/
 core/         -> core/ uniquement
@@ -215,7 +232,7 @@ un 404 dans l'onglet Reseau, sans effet : les valeurs par defaut s'appliquent.
 ```
 
 ```js
-// src/models/Event.js : acces API + normalisation, sans DOM
+// src/dao/eventDao.js : acces API ; le mapper transforme l'EventDto en modele
 export async function fetchEvent(id, { signal } = {}) {
   return toEvent(await api.get(`/api/events/${encodeURIComponent(id)}`, { signal }));
 }
@@ -252,7 +269,7 @@ export class MaPageView {
 ```js
 // src/controllers/MaPageController.js : orchestre, ne touche pas le DOM
 import { isApiError, messageFor } from "../core/errors.js";
-import { fetchEvent } from "../models/Event.js";
+import { fetchEvent } from "../dao/eventDao.js";
 import { MaPageView } from "../views/MaPageView.js";
 
 export class MaPageController {

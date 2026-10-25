@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
+use App\Mappers\EventMapper;
 use App\Models\Category;
 use App\Models\Event;
 
@@ -26,8 +27,10 @@ final class EventController extends Controller
         $limit  = $request->queryInt('limit',  20, 1, 100);
         $offset = $request->queryInt('offset',  0, 0, 10_000);
 
+        $rows = $this->events->listPublished($limit, $offset);
+
         return $this->ok([
-            'items'  => $this->withCategories($this->events->listPublished($limit, $offset)),
+            'items'  => EventMapper::toDtos($rows, $this->categoriesOf($rows)),
             'limit'  => $limit,
             'offset' => $offset,
         ]);
@@ -37,17 +40,16 @@ final class EventController extends Controller
     {
         $id    = (int) $request->param('id');
         $event = $this->found($this->events->findPublishedById($id), 'Event', $id);
-        return $this->ok($this->withCategories([$event])[0]);
+        return $this->ok(EventMapper::toDto($event, $this->categoriesOf([$event])[$id] ?? []));
     }
 
-    /** 1 requete pour toute la page, quel que soit le nombre d'events. */
-    private function withCategories(array $events): array
+    /**
+     * 1 requete pour toute la page, quel que soit le nombre d'events.
+     *
+     * @return array<int, array<int, array{slug: string, label: string}>> event_id => categories
+     */
+    private function categoriesOf(array $rows): array
     {
-        $byEvent = $this->categories->listActiveByEvent(array_column($events, 'id'));
-        foreach ($events as &$event) {
-            $event['categories'] = $byEvent[$event['id']] ?? [];
-        }
-        unset($event);
-        return $events;
+        return $this->categories->listActiveByEvent(array_column($rows, 'id'));
     }
 }
