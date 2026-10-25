@@ -30,10 +30,12 @@ export class LeafletMap {
   }
 
   /**
+   * `area` : { south, west, north, east, outline }, zone hors de laquelle on ne peut pas naviguer ;
+   * `outline` ([lat, lng]) est dessine, le reste du monde voile.
    * `handlers` : onPick({lat,lng}), onSelect(id), onLocate().
    * Renvoie "ready", "unavailable" (Leaflet absent : conteneur marque) ou "absent" (pas de conteneur).
    */
-  init({ origin, radiusKm, handlers }) {
+  init({ origin, radiusKm, area, handlers }) {
     if (!this.containerEl) return "absent";
     if (!this.L) {
       this.containerEl.classList.add("map-view__map--unavailable");
@@ -42,11 +44,20 @@ export class LeafletMap {
     const L = this.L;
     this.handlers = handlers;
 
+    // Marge de 20 % autour de la zone : un cercle de 20 km pose en bordure reste visible en entier,
+    // et on voit les alentours (voiles par le masque) plutot qu'un bord net.
+    const bounds = L.latLngBounds([area.south, area.west], [area.north, area.east]).pad(0.2);
+
     // Vue initiale obligatoire avant d'ajouter des couches : sans elle, circle.getBounds() echoue.
-    this.map = L.map(this.containerEl, { zoomControl: false, attributionControl: true })
-      .setView([origin.lat, origin.lng], 14);
+    this.map = L.map(this.containerEl, {
+      zoomControl: false,
+      attributionControl: true,
+      maxBounds: bounds,
+      maxBoundsViscosity: 1, // bord dur : on ne glisse pas hors de la zone
+      minZoom: 9,            // a 9, l'Ile-de-France tient a peu pres dans la carte : pas de vue France ou monde
+    }).setView([origin.lat, origin.lng], 14);
     this.map.attributionControl.setPrefix(false);
-    L.tileLayer(TILE_URL, { maxZoom: 19, attribution: ATTRIBUTION }).addTo(this.map);
+    L.tileLayer(TILE_URL, { maxZoom: 19, noWrap: true, attribution: ATTRIBUTION }).addTo(this.map);
     L.control.zoom({ position: "topright", zoomInTitle: "Zoomer", zoomOutTitle: "Dézoomer" }).addTo(this.map);
     this.addLocateControl();
 
@@ -54,6 +65,8 @@ export class LeafletMap {
     this.containerEl.setAttribute("role", "region");
     this.containerEl.setAttribute("aria-label",
       "Carte des événements. Flèches pour se déplacer, + et − pour zoomer, Entrée pour placer le point au centre.");
+
+    this.addAreaMask(area.outline);
 
     const action = token("--color-action");
     this.circle = L.circle([origin.lat, origin.lng], {
@@ -90,16 +103,38 @@ export class LeafletMap {
         popupOpenAtPress = false;
         return;
       }
-      const p = e.latlng.wrap(); // longitude ramenee dans [-180, 180] apres un tour du monde
-      handlers.onPick({ lat: p.lat, lng: p.lng });
+      handlers.onPick({ lat: e.latlng.lat, lng: e.latlng.lng });
     });
     // Alternative clavier au clic : Entree sur la carte (pas sur un controle) choisit le centre.
     this.containerEl.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.target !== this.containerEl) return;
-      const c = this.map.getCenter().wrap();
+      const c = this.map.getCenter();
       handlers.onPick({ lat: c.lat, lng: c.lng });
     });
     return "ready";
+  }
+
+  /**
+   * Voile hors zone : un polygone couvrant le monde, troue par le contour de la zone, puis le contour seul en liseré.
+   * Non interactifs : un clic dessus remonte a la carte, qui refuse le point et l'explique.
+   */
+  addAreaMask(outline) {
+    const L = this.L;
+    const brand = token("--color-brand");
+    const world = [[-90, -180], [90, -180], [90, 180], [-90, 180]];
+    L.polygon([world, outline], {
+      stroke: false,
+      fillColor: brand,
+      fillOpacity: .35,
+      interactive: false,
+    }).addTo(this.map);
+    L.polygon(outline, {
+      color: brand,
+      weight: 2,
+      opacity: .7,
+      fill: false,
+      interactive: false,
+    }).addTo(this.map);
   }
 
   addLocateControl() {

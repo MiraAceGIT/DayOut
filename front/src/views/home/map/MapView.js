@@ -64,6 +64,10 @@ export class MapView {
     this.status.located();
   }
 
+  showOutOfArea(areaName, from) {
+    this.status.outOfArea(areaName, from);
+  }
+
   /** `code` : code de rejet de core/geolocation.js. */
   showLocateError(code) {
     this.status.locateFailed(code);

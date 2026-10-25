@@ -3,6 +3,7 @@ import { currentPosition } from "../core/geolocation.js";
 import { replaceSearchParam } from "../core/routes.js";
 import { MAX_EVENTS_LIMIT, fetchUpcomingEvents } from "../models/Event.js";
 import { MapSearch } from "../models/MapSearch.js";
+import { SERVICE_AREA, isInServiceArea } from "../models/serviceArea.js";
 import { HomeView } from "../views/home/HomeView.js";
 import { MapView } from "../views/home/map/MapView.js";
 import { SearchBox } from "../views/layout/header/searchBox.js";
@@ -49,6 +50,7 @@ export class HomeController {
     this.map.init({
       origin,
       radiusKm,
+      area: SERVICE_AREA,
       handlers: {
         onPick: (point) => this.pick(point),
         onSelect: (id) => this.select(id, { from: "map" }),
@@ -116,6 +118,11 @@ export class HomeController {
   /** Choix manuel (clic, Entree) : invalide toute localisation en cours. */
   pick(point) {
     this.pickSeq += 1;
+    // La carte laisse voir une marge autour de la zone : un clic dans cette marge garde l'ancien point.
+    if (!isInServiceArea(point)) {
+      this.map.showOutOfArea(SERVICE_AREA.name, "map");
+      return;
+    }
     this.map.clearMessage();
     this.applyOrigin(point);
   }
@@ -133,6 +140,10 @@ export class HomeController {
     try {
       const position = await this.getPosition();
       if (seq !== this.pickSeq) return; // un autre point a ete choisi entre-temps
+      if (!isInServiceArea(position)) {
+        this.map.showOutOfArea(SERVICE_AREA.name, "device");
+        return;
+      }
       this.applyOrigin({ ...position, source: "device" });
       this.map.showLocated();
     } catch (err) {

@@ -40,6 +40,13 @@ export class MapStatus {
     this.show("Point placé sur ta position.");
   }
 
+  /** `from` : "map" (clic, Entree) ou "device" (localisation). */
+  outOfArea(areaName, from) {
+    this.show(from === "device"
+      ? `Tu sembles être hors ${areaName} : DayOut ne couvre que cette région. Clique sur la carte pour choisir un point.`
+      : `DayOut ne couvre que l'${areaName} : choisis un point dans la région.`);
+  }
+
   locateFailed(code) {
     this.show(LOCATE_ERRORS[code] ?? LOCATE_ERRORS.unavailable);
   }
