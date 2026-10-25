@@ -14,7 +14,7 @@ final class DocsController extends Controller
     private const SWAGGER_UI_CSS_SRI = 'sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn';
     private const SWAGGER_UI_JS_SRI  = 'sha384-wmyclcVGX/WhUkdkATwhaK1X1JtiNrr2EoYJ+diV3vj4v6OC5yCeSu+yW13SYJep';
 
-    // Spec cherchee a cote de la page : marche aussi sous un prefixe XAMPP et avec /api/docs/.
+    // Spec cherchee a cote de la page : marche aussi sous un prefixe XAMPP et avec /docs/.
     private const INIT_SCRIPT = 'SwaggerUIBundle({ url: location.pathname.replace(/\/docs\/?$/, "/openapi.json"),'
         . ' dom_id: "#swagger-ui", deepLinking: true });';
 

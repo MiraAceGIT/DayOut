@@ -54,7 +54,7 @@ back/
    L'API ecoute sur `http://localhost:8000`.
 
    **B. XAMPP Apache** — placer le projet dans `C:\xampp\htdocs\dayout`
-   puis ouvrir `http://localhost/dayout/back/public/api/health`. Le prefixe
+   puis ouvrir `http://localhost/dayout/back/public/health`. Le prefixe
    `/dayout/back/public` est retire automatiquement du chemin (deduit de `SCRIPT_NAME`).
 
 Au demarrage, `config/config.php` valide le `.env` : une variable `DB_*` manquante,
@@ -83,15 +83,15 @@ des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
 
 | Methode | Chemin               | Query params                                   | 200 — shape (sous `data`)             | Erreurs                                   |
 | ------- | -------------------- | ---------------------------------------------- | ------------------------------------- | ----------------------------------------- |
-| GET     | `/api/health`        | —                                              | `{ api, db, time }`                   | —                                         |
-| GET     | `/api/events`        | `limit` (1-100, def. 20), `offset` (def. 0)    | `{ items: Event[], limit, offset }`   | —                                         |
-| GET     | `/api/events/{id}`   | — (`id` entier obligatoire via regex `\d+`)    | `Event`                               | `404 NOT_FOUND`, `404` si `{id}` non num. |
-| GET     | `/api/docs`          | —                                              | page HTML Swagger UI (hors enveloppe) | —                                         |
-| GET     | `/api/openapi.json`  | —                                              | spec OpenAPI 3 brute (hors enveloppe) | —                                         |
+| GET     | `/health`            | —                                              | `{ api, db, time }`                   | —                                         |
+| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (def. 0)    | `{ items: Event[], limit, offset }`   | —                                         |
+| GET     | `/events/{id}`       | — (`id` entier obligatoire via regex `\d+`)    | `Event`                               | `404 NOT_FOUND`, `404` si `{id}` non num. |
+| GET     | `/docs`              | —                                              | page HTML Swagger UI (hors enveloppe) | —                                         |
+| GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | —                                         |
 
 ### Documentation interactive (Swagger)
 
-Ouvrir `http://localhost:8000/api/docs` (sous XAMPP : `.../dayout/back/public/api/docs`) :
+Ouvrir `http://localhost:8000/docs` (sous XAMPP : `.../dayout/back/public/docs`) :
 toutes les routes, leurs parametres et les schemas (`Event`, `Category`, `Error`...), avec
 **Try it out** pour appeler l'API depuis la page.
 
@@ -101,13 +101,13 @@ de `routes/`) :
 ```
 docs/openapi/
 ├── openapi.yaml   ← en-tete (info, servers) + composants communs (Error, NotFound, InternalError)
-├── events.yaml    ← EventController : tags, paths /api/events*, schemas Event, Category, EventPage
-└── health.yaml    ← HealthController : /api/health, schema Health
+├── events.yaml    ← EventController : tags, paths /events*, schemas Event, Category, EventPage
+└── health.yaml    ← HealthController : /health, schema Health
 ```
 
 Un fichier de controller ne contient que `tags`, `paths` et `components` ; `App\Docs\OpenApiSpec`
 les fusionne dans `openapi.yaml` (une route ou un composant defini deux fois est une erreur) et
-`/api/openapi.json` sert le resultat en JSON, relu a chaque appel. Un `$ref` vers un composant
+`/openapi.json` sert le resultat en JSON, relu a chaque appel. Un `$ref` vers un composant
 d'un autre fichier marche (`#/components/schemas/Error`) : apres fusion, tout est dans le meme document.
 
 Le YAML est lu par `App\Core\Yaml` (pas de Composer ni d'extension `yaml`), qui ne prend qu'un
@@ -195,7 +195,7 @@ final class EventsTest extends HttpTestCase
 {
     public function testShowUnknownEventReturns404(): void
     {
-        $error = $this->assertError(404, 'NOT_FOUND', $this->get('/api/events/99999'));
+        $error = $this->assertError(404, 'NOT_FOUND', $this->get('/events/99999'));
         $this->assertSame(['id' => 99999], $error['details']);
     }
 }
@@ -208,12 +208,12 @@ Assertions : `assertSame`, `assertTrue` / `assertFalse`, `assertCount`, `assertA
 ### A la main
 
 ```bash
-curl http://localhost:8000/api/health
-curl http://localhost:8000/api/events
-curl 'http://localhost:8000/api/events?limit=5&offset=0'
-curl http://localhost:8000/api/events/1
-curl http://localhost:8000/api/events/9999   # 404 NOT_FOUND
-curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
+curl http://localhost:8000/health
+curl http://localhost:8000/events
+curl 'http://localhost:8000/events?limit=5&offset=0'
+curl http://localhost:8000/events/1
+curl http://localhost:8000/events/9999   # 404 NOT_FOUND
+curl http://localhost:8000/events/abc    # 404 NOT_FOUND (regex)
 ```
 
 ## Ajouter une route
@@ -246,12 +246,12 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
    use App\Controllers\UserController;
 
    /** @var \App\Core\Router $router */
-   $router->get('/api/users/{id:\d+}', [UserController::class, 'show']);
+   $router->get('/users/{id:\d+}', [UserController::class, 'show']);
    ```
 6. Routes protegees : des middlewares (`App\Core\Http\Middleware`), par route ou par groupe.
    Un groupe applique son prefixe et ses middlewares a toutes ses routes (imbricable) :
    ```php
-   $router->group('/api/events', [Authenticate::class], function (Router $r) {
+   $router->group('/events', [Authenticate::class], function (Router $r) {
        $r->post('', [EventController::class, 'create'], [new RequireRole('creator')]);
        $r->delete('/{id:\d+}', [EventController::class, 'delete'], [new RequireRole('admin')]);
    });
@@ -425,7 +425,7 @@ du jour. Dossier : `LOG_PATH` (defaut `back/storage/logs`).
 
 **Format** : une ligne JSON par entree.
 ```json
-{"timestamp":"2026-10-24T09:12:03.481Z","level":"error","channel":"error","message":"Database error","requestId":"9f2c4e1a7b3d5f60","userId":null,"method":"GET","path":"/api/events","context":{"exception":{"class":"PDOException","message":"...","code":"42S22","file":"...:42","trace":["..."]}}}
+{"timestamp":"2026-10-24T09:12:03.481Z","level":"error","channel":"error","message":"Database error","requestId":"9f2c4e1a7b3d5f60","userId":null,"method":"GET","path":"/events","context":{"exception":{"class":"PDOException","message":"...","code":"42S22","file":"...:42","trace":["..."]}}}
 ```
 `requestId` est commun a toutes les entrees d'une requete et renvoye au client
 dans l'en-tete `X-Request-Id` : le citer suffit pour retrouver un incident.
@@ -458,7 +458,7 @@ Garde-fous :
 - PDO `ERRMODE_EXCEPTION` + `EMULATE_PREPARES=false` + placeholders `?` bindes (anti-SQLi)
 - CORS whitelist via `CORS_ORIGIN` (plus `*` avec credentials)
 - Headers : `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
-  `Permissions-Policy`, `CSP` (API-only ; `/api/docs` a la sienne), envoyes par PHP sur toutes les reponses,
+  `Permissions-Policy`, `CSP` (API-only ; `/docs` a la sienne), envoyes par PHP sur toutes les reponses,
   erreurs comprises (`App\Core\Http\SecurityHeaders`, identiques sous Apache et `php -S`)
 - `.htaccess` bloque les dotfiles et extensions sensibles (`.env`, `.sql`, …)
 - Variables d'env validees au demarrage par `App\Core\Config` (`DB_HOST`, `DB_PORT`,

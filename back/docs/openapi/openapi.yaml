@@ -7,7 +7,7 @@ info:
     `{ "error": { code, message, details? } }` en erreur. Dates en ISO 8601 UTC.
     Le contrat des ressources est fixe par les DTO du back (`src/Dto`).
 servers:
-  - url: ".."
+  - url: "."
     description: Cette API (relatif a la page de doc)
 
 components:

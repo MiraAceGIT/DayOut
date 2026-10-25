@@ -26,7 +26,7 @@
  */
 
 /**
- * Reponse de GET /api/events (EventController::index).
+ * Reponse de GET /events (EventController::index).
  * @typedef {object} EventPageDto
  * @property {EventDto[]} items
  * @property {number} limit

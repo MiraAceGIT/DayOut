@@ -3,7 +3,7 @@ tags:
     description: Etat du service
 
 paths:
-  /api/health:
+  /health:
     get:
       tags: [health]
       summary: Etat de l'API et de la base

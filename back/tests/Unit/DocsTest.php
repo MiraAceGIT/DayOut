@@ -18,7 +18,7 @@ use Tests\TestCase;
 /** La spec OpenAPI doit suivre le code : routes declarees et champs des DTO. */
 final class DocsTest extends TestCase
 {
-    private const DOC_ROUTES = ['/api/docs', '/api/openapi.json'];
+    private const DOC_ROUTES = ['/docs', '/openapi.json'];
 
     private const SPEC_DIR = APP_ROOT . '/docs/openapi';
 
@@ -55,7 +55,7 @@ final class DocsTest extends TestCase
         return (new ReflectionProperty(Router::class, 'routes'))->getValue($this->router());
     }
 
-    /** "/api/events/{id}" -> "/api/events/1" : chemin concret a tester contre les regex du Router. */
+    /** "/events/{id}" -> "/events/1" : chemin concret a tester contre les regex du Router. */
     private static function sample(string $path): string
     {
         return (string) preg_replace('#\{[^}]+\}#', '1', $path);
@@ -108,12 +108,12 @@ final class DocsTest extends TestCase
     {
         $kernel = new Kernel($this->router(), new Config());
 
-        $spec = $kernel->handle(new Request('GET', '/api/openapi.json'));
+        $spec = $kernel->handle(new Request('GET', '/openapi.json'));
         $this->assertSame(200, $spec->status);
         $this->assertStringContains('application/json', (string) $spec->header('Content-Type'));
         $this->assertSame('3.0.3', json_decode((string) $spec->body(), true)['openapi'], 'not wrapped in data');
 
-        $ui = $kernel->handle(new Request('GET', '/api/docs'));
+        $ui = $kernel->handle(new Request('GET', '/docs'));
         $csp = (string) $ui->header('Content-Security-Policy');
         $this->assertStringContains('text/html', (string) $ui->header('Content-Type'));
         $this->assertStringContains("default-src 'none'", $csp);

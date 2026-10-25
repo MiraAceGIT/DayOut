@@ -40,13 +40,13 @@ front/
 │   │   ├── geo.js                ← distanceKm (haversine), isLatLng (calcul pur)
 │   │   └── forms.js              ← showFieldErrors, clearFieldErrors
 │   ├── dto/                      ← typedefs du JSON de l'API (snake_case), un fichier par ressource
-│   │   ├── eventDto.js           ← EventDto, EventPageDto (GET /api/events)
+│   │   ├── eventDto.js           ← EventDto, EventPageDto (GET /events)
 │   │   └── categoryDto.js        ← CategoryDto
 │   ├── mappers/                  ← seuls a lire les noms du JSON : DTO <-> modele (camelCase)
 │   │   ├── eventMapper.js        ← toEvent(dto), toEvents(dtos), toEventDto(event)
 │   │   └── categoryMapper.js     ← toCategory(dto), toCategoryDto(category)
 │   ├── dao/
-│   │   └── eventDao.js           ← fetchUpcomingEvents (GET /api/events -> toEvents), MAX_EVENTS_LIMIT
+│   │   └── eventDao.js           ← fetchUpcomingEvents (GET /events -> toEvents), MAX_EVENTS_LIMIT
 │   ├── models/                   ← sans DOM : regles metier, etat
 │   │   ├── Event.js              ← remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD, isUpcoming
 │   │   ├── category.js           ← categoriesIn (aucune notion de couleur)
@@ -156,7 +156,7 @@ lib/          -> rien (utilitaires purs)
   carte focusable (fleches, +/−, **Entree** = placer le point au centre). Le statut `role="status"` annonce le compte.
 - Evenements termines (fin, ou debut a defaut, passee ; `isUpcoming`) exclus cote client : l'API trie par date sans filtrer et
   plafonne a 100. Si la reponse atteint ce plafond, le statut precise "au moins 100 evenements charges, liste
-  peut-etre incomplete". TODO back : parametre `from` (date) sur `GET /api/events` pour ne renvoyer que l'a venir.
+  peut-etre incomplete". TODO back : parametre `from` (date) sur `GET /events` pour ne renvoyer que l'a venir.
 - Les controles memorisent les criteres pendant le chargement mais la liste n'est dessinee qu'une fois les
   donnees chargees (jamais "Aucun evenement" pendant le chargement ou apres une erreur).
 - Statut `role="status"` mis a jour 400 ms apres la derniere frappe / le dernier cran du curseur (la liste,
@@ -234,7 +234,7 @@ un 404 dans l'onglet Reseau, sans effet : les valeurs par defaut s'appliquent.
 ```js
 // src/dao/eventDao.js : acces API ; le mapper transforme l'EventDto en modele
 export async function fetchEvent(id, { signal } = {}) {
-  return toEvent(await api.get(`/api/events/${encodeURIComponent(id)}`, { signal }));
+  return toEvent(await api.get(`/events/${encodeURIComponent(id)}`, { signal }));
 }
 // api.post(path, body, { signal, timeout }) ; api.put / api.patch / api.del
 ```
@@ -330,7 +330,7 @@ reference de requete) ; c'est le controleur qui le calcule et le passe a la view
   Construire le DOM avec `h()` (`lib/dom.js`) ou `textContent`. `h()` refuse la prop
   `innerHTML` et n'accepte que des URL http(s) ou relatives pour `href` / `src`.
 - **Construire les URL avec `encodeURIComponent`** pour chaque segment variable
-  (`/api/events/${encodeURIComponent(id)}`) ou `URLSearchParams` pour la query string.
+  (`/events/${encodeURIComponent(id)}`) ou `URLSearchParams` pour la query string.
 
 ## Accessibilite
 

@@ -16,7 +16,7 @@ final class SecurityHeaders
         'X-Frame-Options'         => 'DENY',
         'Referrer-Policy'         => 'strict-origin-when-cross-origin',
         'Permissions-Policy'      => 'camera=(), microphone=(), geolocation=()',
-        // L'API ne sert que du JSON (hors /api/docs) : CSP tres restrictive.
+        // L'API ne sert que du JSON (hors /docs) : CSP tres restrictive.
         'Content-Security-Policy' => "default-src 'none'; frame-ancestors 'none'",
     ];
 

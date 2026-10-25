@@ -13,7 +13,7 @@ final class EventsTest extends HttpTestCase
 {
     public function testListReturnsOnlyPublishedEventsSortedByStartDate(): void
     {
-        $response = $this->get('/api/events');
+        $response = $this->get('/events');
 
         $this->assertStatus(200, $response);
         $data = $response->json()['data'];
@@ -32,8 +32,8 @@ final class EventsTest extends HttpTestCase
 
     public function testPagesDoNotOverlap(): void
     {
-        $first  = $this->get('/api/events?limit=3&offset=0')->json()['data'];
-        $second = $this->get('/api/events?limit=3&offset=3')->json()['data'];
+        $first  = $this->get('/events?limit=3&offset=0')->json()['data'];
+        $second = $this->get('/events?limit=3&offset=3')->json()['data'];
 
         $this->assertSame(3, $first['limit']);
         $this->assertSame(3, $second['offset']);
@@ -44,17 +44,17 @@ final class EventsTest extends HttpTestCase
 
     public function testOutOfRangePaginationFallsBackToDefaults(): void
     {
-        $data = $this->get('/api/events?limit=500&offset=-1')->json()['data'];
+        $data = $this->get('/events?limit=500&offset=-1')->json()['data'];
         $this->assertSame(20, $data['limit']);
         $this->assertSame(0, $data['offset']);
 
-        $data = $this->get('/api/events?limit=abc')->json()['data'];
+        $data = $this->get('/events?limit=abc')->json()['data'];
         $this->assertSame(20, $data['limit']);
     }
 
     public function testShowReturnsEventWithCastTypes(): void
     {
-        $response = $this->get('/api/events/1');
+        $response = $this->get('/events/1');
 
         $this->assertStatus(200, $response);
         $event = $response->json()['data'];
@@ -68,7 +68,7 @@ final class EventsTest extends HttpTestCase
 
     public function testInternalColumnsAreNotExposed(): void
     {
-        $events = [$this->get('/api/events/1')->json()['data'], ...$this->get('/api/events')->json()['data']['items']];
+        $events = [$this->get('/events/1')->json()['data'], ...$this->get('/events')->json()['data']['items']];
 
         foreach ($events as $event) {
             foreach (['creator_id', 'restricted_school_id', 'status', 'published_at', 'created_at', 'updated_at'] as $key) {
@@ -79,7 +79,7 @@ final class EventsTest extends HttpTestCase
 
     public function testShowUnknownEventReturns404(): void
     {
-        $error = $this->assertError(404, 'NOT_FOUND', $this->get('/api/events/99999'));
+        $error = $this->assertError(404, 'NOT_FOUND', $this->get('/events/99999'));
         $this->assertSame('Event not found', $error['message']);
         $this->assertSame(['id' => 99999], $error['details']);
     }
@@ -87,13 +87,13 @@ final class EventsTest extends HttpTestCase
     public function testDraftAndArchivedEventsAreNotExposed(): void
     {
         foreach ([8, 9, 10] as $id) {
-            $this->assertError(404, 'NOT_FOUND', $this->get("/api/events/$id"));
+            $this->assertError(404, 'NOT_FOUND', $this->get("/events/$id"));
         }
     }
 
     public function testListItemsExposeCoordinatesAndCategories(): void
     {
-        $items = $this->get('/api/events')->json()['data']['items'];
+        $items = $this->get('/events')->json()['data']['items'];
 
         foreach ($items as $event) {
             $this->assertMapFields($event);
@@ -111,7 +111,7 @@ final class EventsTest extends HttpTestCase
 
     public function testShowExposesCoordinatesAndCategories(): void
     {
-        $event = $this->get('/api/events/7')->json()['data'];
+        $event = $this->get('/events/7')->json()['data'];
 
         $this->assertMapFields($event);
         $this->assertSame(48.8315, $event['latitude']);
@@ -121,8 +121,8 @@ final class EventsTest extends HttpTestCase
 
     public function testEventWithoutCoordinatesNorActiveCategory(): void
     {
-        $fromShow = $this->get('/api/events/6')->json()['data'];
-        $fromList = array_column($this->get('/api/events')->json()['data']['items'], null, 'id')[6];
+        $fromShow = $this->get('/events/6')->json()['data'];
+        $fromList = array_column($this->get('/events')->json()['data']['items'], null, 'id')[6];
 
         foreach ([$fromShow, $fromList] as $event) {
             $this->assertMapFields($event);
@@ -134,11 +134,11 @@ final class EventsTest extends HttpTestCase
 
     public function testCategoriesFollowPagination(): void
     {
-        $page = $this->get('/api/events?limit=2&offset=1')->json()['data']['items'];
+        $page = $this->get('/events?limit=2&offset=1')->json()['data']['items'];
 
         $this->assertCount(2, $page);
         foreach ($page as $event) {
-            $this->assertSame($event['categories'], $this->get('/api/events/' . $event['id'])->json()['data']['categories']);
+            $this->assertSame($event['categories'], $this->get('/events/' . $event['id'])->json()['data']['categories']);
         }
     }
 

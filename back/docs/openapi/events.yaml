@@ -3,7 +3,7 @@ tags:
     description: Evenements publies
 
 paths:
-  /api/events:
+  /events:
     get:
       tags: [events]
       summary: Liste des evenements publies
@@ -32,7 +32,7 @@ paths:
                   data: { $ref: "#/components/schemas/EventPage" }
         "500": { $ref: "#/components/responses/InternalError" }
 
-  /api/events/{id}:
+  /events/{id}:
     get:
       tags: [events]
       summary: Detail d'un evenement publie

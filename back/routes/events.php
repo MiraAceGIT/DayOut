@@ -5,5 +5,5 @@ use App\Controllers\EventController;
 
 /** @var \App\Core\Router $router */
 
-$router->get('/api/events',          [EventController::class, 'index']);
-$router->get('/api/events/{id:\d+}', [EventController::class, 'show']);
+$router->get('/events',          [EventController::class, 'index']);
+$router->get('/events/{id:\d+}', [EventController::class, 'show']);

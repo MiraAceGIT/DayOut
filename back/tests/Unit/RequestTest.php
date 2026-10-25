@@ -59,7 +59,7 @@ final class RequestTest extends TestCase
         try {
             $_SERVER = [
                 'REQUEST_METHOD' => 'get',
-                'REQUEST_URI'    => '/dayout/back/public/api/events/3/?token=x',
+                'REQUEST_URI'    => '/dayout/back/public/events/3/?token=x',
                 'SCRIPT_NAME'    => '/dayout/back/public/index.php',
                 'HTTP_ORIGIN'    => 'http://front.test',
                 'CONTENT_TYPE'   => 'application/json',
@@ -68,13 +68,13 @@ final class RequestTest extends TestCase
 
             $request = Request::fromGlobals();
             $this->assertSame('GET', $request->method);
-            $this->assertSame('/api/events/3', $request->path);
+            $this->assertSame('/events/3', $request->path);
             $this->assertSame('http://front.test', $request->header('Origin'));
             $this->assertSame('application/json', $request->header('Content-Type'));
 
-            $_SERVER['REQUEST_URI'] = '/api/health';
+            $_SERVER['REQUEST_URI'] = '/health';
             $_SERVER['SCRIPT_NAME'] = '/index.php'; // php -S
-            $this->assertSame('/api/health', Request::fromGlobals()->path);
+            $this->assertSame('/health', Request::fromGlobals()->path);
         } finally {
             [$_SERVER, $_GET] = $backup;
         }

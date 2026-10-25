@@ -36,7 +36,7 @@ racine du projet. Si `php` n'est pas dans le PATH, utiliser `/c/xampp/php/php.ex
    ```bash
    php -S localhost:8000 -t back/public
    ```
-   Verifier : `curl http://localhost:8000/api/health` doit repondre `"db":"up"`.
+   Verifier : `curl http://localhost:8000/health` doit repondre `"db":"up"`.
 3. **Front** (autre terminal) :
    ```bash
    php -S localhost:5500 -t front

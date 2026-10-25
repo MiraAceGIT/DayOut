@@ -5,4 +5,4 @@ use App\Controllers\HealthController;
 
 /** @var \App\Core\Router $router */
 
-$router->get('/api/health', [HealthController::class, 'index']);
+$router->get('/health', [HealthController::class, 'index']);
