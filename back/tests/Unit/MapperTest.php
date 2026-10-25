@@ -10,8 +10,8 @@ use Tests\TestCase;
 
 final class MapperTest extends TestCase
 {
-    /** Ligne telle que la renvoie Event (DAO) apres le Caster, colonnes internes comprises. */
-    private function row(array $overrides = []): array
+    /** Ligne telle que la renvoie Event (DAO) apres le Caster, colonnes internes comprises. Reprise par DocsTest. */
+    public static function eventRow(array $overrides = []): array
     {
         return $overrides + [
             'id' => 1, 'creator_id' => 2, 'title' => 'Soiree', 'slug' => 'soiree', 'description' => 'Desc',
@@ -26,7 +26,7 @@ final class MapperTest extends TestCase
 
     public function testEventDtoExposesOnlyPublicFieldsInSnakeCase(): void
     {
-        $json = EventMapper::toDto($this->row(), [['slug' => 'bde', 'label' => 'BDE / Assoc']])->jsonSerialize();
+        $json = EventMapper::toDto(self::eventRow(), [['slug' => 'bde', 'label' => 'BDE / Assoc']])->jsonSerialize();
 
         $this->assertSame([
             'id', 'title', 'slug', 'description', 'cover_image_url', 'start_at', 'end_at', 'venue_name',
@@ -40,7 +40,7 @@ final class MapperTest extends TestCase
 
     public function testEventWithoutCategoriesNorCoordinates(): void
     {
-        $dto = EventMapper::toDto($this->row(['latitude' => null, 'longitude' => null, 'capacity' => null]));
+        $dto = EventMapper::toDto(self::eventRow(['latitude' => null, 'longitude' => null, 'capacity' => null]));
 
         $this->assertSame([], $dto->categories);
         $this->assertSame(null, $dto->latitude);
@@ -50,7 +50,7 @@ final class MapperTest extends TestCase
     public function testToDtosAttachesEachEventItsCategories(): void
     {
         $dtos = EventMapper::toDtos(
-            [5 => $this->row(['id' => 1]), 9 => $this->row(['id' => 2])],
+            [5 => self::eventRow(['id' => 1]), 9 => self::eventRow(['id' => 2])],
             [2 => [['slug' => 'sport', 'label' => 'Sport']], 99 => [['slug' => 'x', 'label' => 'X']]]
         );
 
@@ -62,7 +62,7 @@ final class MapperTest extends TestCase
 
     public function testEventToRowKeepsOnlyWritableColumnsWithDbDatetimes(): void
     {
-        $row = EventMapper::toRow(EventMapper::toDto($this->row(['start_at' => '2026-11-07T21:00:00+01:00'])));
+        $row = EventMapper::toRow(EventMapper::toDto(self::eventRow(['start_at' => '2026-11-07T21:00:00+01:00'])));
 
         $this->assertSame('2026-11-07 20:00:00', $row['start_at'], 'converted to UTC');
         $this->assertSame('2026-11-08 02:00:00', $row['end_at']);

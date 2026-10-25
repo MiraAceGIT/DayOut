@@ -1,0 +1,47 @@
+openapi: "3.0.3"
+info:
+  title: DayOut API
+  version: "1.0.0"
+  description: >-
+    API REST de DayOut. Toute reponse est en JSON : `{ "data": ... }` en succes,
+    `{ "error": { code, message, details? } }` en erreur. Dates en ISO 8601 UTC.
+    Le contrat des ressources est fixe par les DTO du back (`src/Dto`).
+servers:
+  - url: ".."
+    description: Cette API (relatif a la page de doc)
+
+components:
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: >-
+                BAD_REQUEST, NOT_FOUND, METHOD_NOT_ALLOWED, VALIDATION_ERROR, CONFLICT, codes metier des
+                triggers (EVENT_FULL, USER_BANNED...), INTERNAL_ERROR, ENCODING_ERROR.
+              example: NOT_FOUND
+            message:
+              type: string
+              example: Event not found
+            details:
+              type: object
+              additionalProperties: true
+              example: { id: 42 }
+
+  responses:
+    NotFound:
+      description: Ressource ou route introuvable
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InternalError:
+      description: Erreur serveur (cause journalisee, jamais renvoyee)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

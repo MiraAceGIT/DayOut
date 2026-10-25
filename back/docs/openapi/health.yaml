@@ -1,0 +1,31 @@
+tags:
+  - name: health
+    description: Etat du service
+
+paths:
+  /api/health:
+    get:
+      tags: [health]
+      summary: Etat de l'API et de la base
+      description: "Repond toujours 200, meme base indisponible (`db: down`)."
+      operationId: getHealth
+      responses:
+        "200":
+          description: Etat du service
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Health" }
+
+components:
+  schemas:
+    Health:
+      type: object
+      required: [api, db, time]
+      properties:
+        api: { type: string, enum: [up] }
+        db: { type: string, enum: [up, down] }
+        time: { type: string, format: date-time }

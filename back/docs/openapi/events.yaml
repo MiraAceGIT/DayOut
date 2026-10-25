@@ -1,0 +1,137 @@
+tags:
+  - name: events
+    description: Evenements publies
+
+paths:
+  /api/events:
+    get:
+      tags: [events]
+      summary: Liste des evenements publies
+      description: >-
+        Tries par `start_at` puis `id`. Les evenements passes sont inclus (pas de filtre de date).
+        Une valeur de pagination hors bornes ou invalide retombe sur sa valeur par defaut.
+      operationId: listEvents
+      parameters:
+        - name: limit
+          in: query
+          description: Taille de page (1 a 100).
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          description: Nombre d'evenements a sauter (0 a 10000).
+          schema: { type: integer, minimum: 0, maximum: 10000, default: 0 }
+      responses:
+        "200":
+          description: Une page d'evenements
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/EventPage" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/events/{id}:
+    get:
+      tags: [events]
+      summary: Detail d'un evenement publie
+      operationId: getEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifiant numerique (un `id` non numerique donne aussi 404).
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: L'evenement
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Event" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  schemas:
+    Category:
+      type: object
+      description: CategoryDto. Seules les categories actives sont exposees.
+      required: [slug, label]
+      properties:
+        slug: { type: string, example: soiree }
+        label: { type: string, example: Soiree }
+
+    Event:
+      type: object
+      description: EventDto. Seuls les evenements `published` sont exposes.
+      required:
+        - id
+        - title
+        - slug
+        - description
+        - cover_image_url
+        - start_at
+        - end_at
+        - venue_name
+        - address_line
+        - city
+        - postal_code
+        - latitude
+        - longitude
+        - capacity
+        - registered_count
+        - price_cents
+        - currency
+        - is_paid
+        - external_ticket_url
+        - school_restricted
+        - categories
+      properties:
+        id: { type: integer, example: 1 }
+        title: { type: string, example: Soiree de rentree ISEP 2026 }
+        slug: { type: string, example: soiree-rentree-isep-2026 }
+        description: { type: string }
+        cover_image_url: { type: string, format: uri, nullable: true }
+        start_at: { type: string, format: date-time, example: "2026-11-07T20:00:00+00:00" }
+        end_at: { type: string, format: date-time, example: "2026-11-08T02:00:00+00:00" }
+        venue_name: { type: string, nullable: true, example: Le Rooftop }
+        address_line: { type: string, nullable: true }
+        city: { type: string, nullable: true, example: Paris }
+        postal_code: { type: string, nullable: true, example: "75002" }
+        latitude:
+          type: number
+          format: double
+          nullable: true
+          description: null = non geolocalise
+          example: 48.8689
+        longitude: { type: number, format: double, nullable: true, example: 2.341 }
+        capacity:
+          type: integer
+          nullable: true
+          description: null = capacite illimitee
+          example: 250
+        registered_count: { type: integer, minimum: 0, example: 12 }
+        price_cents: { type: integer, minimum: 0, example: 1500 }
+        currency: { type: string, minLength: 3, maxLength: 3, example: EUR }
+        is_paid: { type: boolean }
+        external_ticket_url: { type: string, format: uri, nullable: true }
+        school_restricted: { type: boolean, description: Reserve aux etudiants d'une ecole }
+        categories:
+          type: array
+          description: Triees par `label` puis `id` ; [] si aucune.
+          items: { $ref: "#/components/schemas/Category" }
+
+    EventPage:
+      type: object
+      required: [items, limit, offset]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Event" }
+        limit: { type: integer, example: 20 }
+        offset: { type: integer, example: 0 }

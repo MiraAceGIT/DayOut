@@ -13,12 +13,19 @@ final class Response
         public readonly int $status,
         private readonly ?array $payload,
         private readonly array $headers = [],
+        private readonly ?string $body = null,
     ) {
     }
 
     public static function json(mixed $data, int $status = 200): self
     {
         return new self($status, ['data' => $data]);
+    }
+
+    /** Body envoye tel quel, hors enveloppe `data` (page HTML, document OpenAPI). */
+    public static function raw(string $body, string $contentType, int $status = 200): self
+    {
+        return new self($status, null, ['Content-Type' => $contentType], $body);
     }
 
     public static function error(string $code, string $message, int $status, array $details = []): self
@@ -37,7 +44,12 @@ final class Response
 
     public function withHeader(string $name, string $value): self
     {
-        return new self($this->status, $this->payload, [$name => $value] + $this->headers);
+        return new self($this->status, $this->payload, [$name => $value] + $this->headers, $this->body);
+    }
+
+    public function body(): ?string
+    {
+        return $this->body;
     }
 
     public function header(string $name): ?string
@@ -77,6 +89,8 @@ final class Response
         if ($body !== null) {
             header('Content-Type: application/json; charset=utf-8');
             echo $body;
+        } elseif ($this->body !== null) {
+            echo $this->body; // Content-Type pose par raw()
         }
     }
 }

@@ -17,7 +17,7 @@ back/
 │   └── .htaccess       ← rewrite + blocage des fichiers sensibles
 ├── src/
 │   ├── Core/           ← Config, Router, Request, Response, Controller, Database,
-│   │                     Validator, HttpException, Password
+│   │                     Validator, HttpException, Password, Yaml (lecteur YAML minimal)
 │   │   ├── Http/       ← Kernel, Middleware, ExceptionRenderer, DbErrorMapper,
 │   │   │                 Cors, SecurityHeaders
 │   │   ├── Log/        ← journalisation (error / info / audit) + filets ErrorHandler
@@ -29,9 +29,11 @@ back/
 │   ├── Models/         ← M : Model.php (base) + une classe par table (DAO)
 │   ├── Dto/            ← contrat JSON : un objet immuable par ressource exposee (jsonSerialize)
 │   ├── Mappers/        ← ligne du Model <-> DTO (toDto / toDtos / toRow)
+│   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
 │   └── Controllers/    ← C : logique HTTP (une classe par ressource)
 ├── config/config.php   ← charge le .env, construit et renvoie la Config
 ├── routes/            ← un fichier de routes par ressource (charges par api.php)
+├── docs/openapi/       ← spec OpenAPI 3 en YAML : openapi.yaml (commun) + un fichier par controller
 ├── storage/logs/       ← fichiers de logs (crees a la volee, ignores par git)
 ├── tests/              ← runner maison : Unit/ (sans BDD), Http/ (integration)
 ├── autoload.php        ← autoload PSR-4 App\ -> src/
@@ -84,6 +86,45 @@ des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
 | GET     | `/api/health`        | —                                              | `{ api, db, time }`                   | —                                         |
 | GET     | `/api/events`        | `limit` (1-100, def. 20), `offset` (def. 0)    | `{ items: Event[], limit, offset }`   | —                                         |
 | GET     | `/api/events/{id}`   | — (`id` entier obligatoire via regex `\d+`)    | `Event`                               | `404 NOT_FOUND`, `404` si `{id}` non num. |
+| GET     | `/api/docs`          | —                                              | page HTML Swagger UI (hors enveloppe) | —                                         |
+| GET     | `/api/openapi.json`  | —                                              | spec OpenAPI 3 brute (hors enveloppe) | —                                         |
+
+### Documentation interactive (Swagger)
+
+Ouvrir `http://localhost:8000/api/docs` (sous XAMPP : `.../dayout/back/public/api/docs`) :
+toutes les routes, leurs parametres et les schemas (`Event`, `Category`, `Error`...), avec
+**Try it out** pour appeler l'API depuis la page.
+
+La source est en YAML dans `docs/openapi/`, un fichier par controller (meme nom que son fichier
+de `routes/`) :
+
+```
+docs/openapi/
+├── openapi.yaml   ← en-tete (info, servers) + composants communs (Error, NotFound, InternalError)
+├── events.yaml    ← EventController : tags, paths /api/events*, schemas Event, Category, EventPage
+└── health.yaml    ← HealthController : /api/health, schema Health
+```
+
+Un fichier de controller ne contient que `tags`, `paths` et `components` ; `App\Docs\OpenApiSpec`
+les fusionne dans `openapi.yaml` (une route ou un composant defini deux fois est une erreur) et
+`/api/openapi.json` sert le resultat en JSON, relu a chaque appel. Un `$ref` vers un composant
+d'un autre fichier marche (`#/components/schemas/Error`) : apres fusion, tout est dans le meme document.
+
+Le YAML est lu par `App\Core\Yaml` (pas de Composer ni d'extension `yaml`), qui ne prend qu'un
+sous-ensemble : mappings / listes en blocs, `[a, b]` et `{ k: v }` sur une ligne, scalaires simples
+ou entre guillemets, blocs `|` et `>`, commentaires. Refuses avec fichier et ligne : ancres / alias,
+tags `!`, tabulations, scalaire simple sur plusieurs lignes (utiliser `>-`). Mettre entre guillemets
+une valeur qui commence par `` ` ``, `@`, `*`, `&`, `!` ou qui contient `: ` ou ` #`.
+
+`tests/Unit/DocsTest.php` echoue si la spec derive du code : route declaree mais non documentee
+(ou l'inverse), fichier de `routes/` sans son YAML, champs du schema `Event` / `Category`
+differents de `EventDto` / `CategoryDto`.
+
+Swagger UI est charge depuis jsDelivr en version epinglee avec SRI (`DocsController`) : pour
+monter de version, changer l'URL et recalculer les deux hashes
+(`openssl dgst -sha384 -binary fichier | openssl base64 -A`). La page a sa propre CSP
+(scripts du CDN + script d'init autorise par son hash) ; toutes les autres reponses gardent
+`default-src 'none'`.
 
 **Shape `Event`** (contrat JSON stable, fixe par `App\Dto\EventDto`) :
 ```json
@@ -137,7 +178,7 @@ back/tests/run.sh --unit        # unitaires seuls, sans BDD
 
 - `tests/Unit/` : classes testees directement, sans serveur : Router (middlewares, groupes),
   Kernel (rendu des erreurs, CORS, en-tetes), Request / Response, QueryBuilder (SQL genere),
-  Caster, Model et Category (sur SQLite en memoire), Mappers (DTO exposes, toRow), Validator, ContextSanitizer, et les filets d'ErrorHandler
+  Caster, Model et Category (sur SQLite en memoire), Mappers (DTO exposes, toRow), Docs (spec OpenAPI = routes + DTO), Yaml, OpenApiSpec (fusion), Validator, ContextSanitizer, et les filets d'ErrorHandler
   (dans un processus a part).
 - `tests/Http/` : vraies requetes HTTP. `run.sh` remet a zero la base **`dayout_test`**
   (`infra/sql/reset_db.sh`, schema + seed), puis lance `php -S` sur un port libre
@@ -195,7 +236,8 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
    Helpers : `ok($data, $status)`, `noContent()`, `validate($request, $rules)`,
    `found($row, 'Resource', $id)` (404 si `null`). Pour echouer : `throw HttpException`.
    Requete : `param('id')`, `json()`, `query()`, `queryInt()`, `header()`, `attribute('user')`.
-4. Declarer les routes dans `routes/<ressource>.php` (ex. `routes/users.php`),
+4. Documenter la route et ses schemas dans `docs/openapi/<ressource>.yaml` (sinon `DocsTest` echoue).
+5. Declarer les routes dans `routes/<ressource>.php` (ex. `routes/users.php`),
    charge automatiquement par `routes/api.php` :
    ```php
    <?php
@@ -206,7 +248,7 @@ curl http://localhost:8000/api/events/abc    # 404 NOT_FOUND (regex)
    /** @var \App\Core\Router $router */
    $router->get('/api/users/{id:\d+}', [UserController::class, 'show']);
    ```
-5. Routes protegees : des middlewares (`App\Core\Http\Middleware`), par route ou par groupe.
+6. Routes protegees : des middlewares (`App\Core\Http\Middleware`), par route ou par groupe.
    Un groupe applique son prefixe et ses middlewares a toutes ses routes (imbricable) :
    ```php
    $router->group('/api/events', [Authenticate::class], function (Router $r) {
@@ -416,7 +458,7 @@ Garde-fous :
 - PDO `ERRMODE_EXCEPTION` + `EMULATE_PREPARES=false` + placeholders `?` bindes (anti-SQLi)
 - CORS whitelist via `CORS_ORIGIN` (plus `*` avec credentials)
 - Headers : `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
-  `Permissions-Policy`, `CSP` (API-only), envoyes par PHP sur toutes les reponses,
+  `Permissions-Policy`, `CSP` (API-only ; `/api/docs` a la sienne), envoyes par PHP sur toutes les reponses,
   erreurs comprises (`App\Core\Http\SecurityHeaders`, identiques sous Apache et `php -S`)
 - `.htaccess` bloque les dotfiles et extensions sensibles (`.env`, `.sql`, …)
 - Variables d'env validees au demarrage par `App\Core\Config` (`DB_HOST`, `DB_PORT`,
