@@ -18,7 +18,7 @@ dayout/
 ├── front/          ← app statique HTML/CSS/JS      → voir front/README.md
 ├── back/           ← API REST PHP (MVC) + tests     → voir back/README.md
 ├── infra/
-│   ├── sql/        ← schema, seed, reset_db.sh     → voir infra/README.md
+│   ├── sql/        ← schema, migrations, seed      → voir infra/README.md
 │   └── README.md
 └── docs/           ← MCD-MLD, cahier des charges, fonctionnalites (non versionne)
 ```
@@ -32,6 +32,8 @@ racine du projet. Si `php` n'est pas dans le PATH, utiliser `/c/xampp/php/php.ex
    ```bash
    ./infra/sql/reset_db.sh
    ```
+   Ensuite, apres chaque `git pull` qui amene des migrations : `./infra/sql/migrate.sh`
+   (la base garde ses donnees).
 2. **Back** : copier `back/.env.example` en `back/.env`, puis
    ```bash
    php -S localhost:8000 -t back/public
@@ -86,7 +88,8 @@ Types acceptes : `feat`, `fix`, `refacto`, `refactor`, `docs`, `style`, `test`, 
 
 Exemples : `feat: add login page`, `fix(api): handle null user`, `refacto(front): split header`.
 
-Activer le hook (une fois apres le clone) :
+Activer les hooks (une fois apres le clone) : `commit-msg` verifie ce format, `post-merge`
+signale les nouvelles migrations de BDD apres un `git pull` (`./infra/sql/migrate.sh`).
 
 ```bash
 git config core.hooksPath .githooks

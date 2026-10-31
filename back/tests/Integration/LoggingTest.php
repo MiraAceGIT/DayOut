@@ -14,14 +14,27 @@ final class LoggingTest extends HttpTestCase
 
         $entries = array_values(array_filter(
             $this->readLog('info'),
-            fn (array $entry): bool => $entry['requestId'] === $requestId
+            fn (array $entry): bool => $entry['requestId'] === $requestId && $entry['message'] === 'HTTP request'
         ));
 
         $this->assertCount(1, $entries);
-        $this->assertSame('HTTP request', $entries[0]['message']);
         $this->assertSame('GET', $entries[0]['method']);
         $this->assertSame('/events/99999', $entries[0]['path'], 'query string stripped');
         $this->assertSame(404, $entries[0]['context']['status']);
+    }
+
+    public function testBusinessExceptionIsLoggedWithItsRequestId(): void
+    {
+        $requestId = (string) $this->get('/events/99999')->header('X-Request-Id');
+
+        $entries = array_values(array_filter(
+            $this->readLog('info'),
+            fn (array $entry): bool => $entry['requestId'] === $requestId && $entry['message'] === 'Business rule violated'
+        ));
+
+        $this->assertCount(1, $entries);
+        $this->assertSame('EVENT_NOT_FOUND', $entries[0]['context']['code']);
+        $this->assertSame(99999, $entries[0]['context']['id']);
     }
 
     /** @return array<int, array<string, mixed>> */

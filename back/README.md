@@ -191,7 +191,7 @@ back/tests/run.sh --integration   # integration seule (remet dayout_test a zero)
   Caster, Model, Category et EventService (sur SQLite en memoire), Mappers (DTO exposes, toRow), Docs (spec OpenAPI = routes + DTO), Yaml, OpenApiSpec (fusion), Validator, ContextSanitizer, et les filets d'ErrorHandler
   (dans un processus a part).
 - `tests/Integration/` (tests d'integration) : vraies requetes HTTP sur l'application complete. `run.sh` remet a zero la base **`dayout_test`**
-  (`infra/sql/reset_db.sh`, schema + seed), puis lance `php -S` sur un port libre
+  (`infra/sql/reset_db.sh` : schema, migrations, seed), puis lance `php -S` sur un port libre
   branche sur cette base, avec des logs dans un dossier temporaire. La base de dev
   et `storage/logs/` ne sont jamais touches. Autre base : `TEST_DB_NAME=... back/tests/run.sh`.
 - PHP : `php` du PATH, sinon `C:\xampp\php\php.exe` (ou `PHP=/chemin/php`).

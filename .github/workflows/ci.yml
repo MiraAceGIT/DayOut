@@ -48,7 +48,7 @@ jobs:
           extensions: pdo_mysql, mbstring
           coverage: none
 
-      - name: Client MariaDB (reset_db.sh)
+      - name: Client MariaDB (reset_db.sh, migrate.sh)
         run: sudo apt-get update -q && sudo apt-get install -y -q mariadb-client
 
       - name: Syntaxe PHP
@@ -59,6 +59,10 @@ jobs:
 
       - name: Tests d'integration (dayout_test)
         run: bash back/tests/run.sh --integration
+
+      # run.sh a monte dayout_test par les migrations : les rejouer ne doit rien changer.
+      - name: Migrations rejouables
+        run: bash infra/sql/migrate.sh dayout_test | tee "$RUNNER_TEMP/migrate.out" && grep -qx "Base 'dayout_test' a jour." "$RUNNER_TEMP/migrate.out"
 
       - name: Analyse statique (PHPStan)
         if: matrix.php == '8.5'
@@ -89,6 +93,29 @@ jobs:
       # Le front reste sans package.json ni build : le script installe tsc dans front/tools/.cache.
       - name: Verification des types (JSDoc, tsc)
         run: bash front/tools/typecheck.sh
+
+  migrations:
+    name: Migrations deja mergees intactes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Une migration deja jouee sur une base ne l'est plus jamais : la modifier ne changerait
+      # que les nouvelles bases. Idem pour schema/, base de depart gelee. Seuls les ajouts passent.
+      - name: Aucun fichier existant de schema/ ou migrations/ modifie ni supprime
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only --diff-filter=DMR "$BASE...$HEAD" -- infra/sql/schema infra/sql/migrations)
+          if [ -n "$changed" ]; then
+            echo "Fichiers deja mergees modifies ou supprimes (ecrire une nouvelle migration a la place) :"
+            echo "$changed"
+            exit 1
+          fi
 
   commits:
     name: Messages de commit

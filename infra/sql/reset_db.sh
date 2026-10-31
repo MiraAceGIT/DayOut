@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Recree une base vide, joue schema/*.sql puis seed.sql.
+# Recree une base vide, la monte a jour (migrate.sh : schema/ + migrations/) puis joue seed.sql.
 #   ./infra/sql/reset_db.sh [--yes] [--no-seed] [base]   (defaut : DB_NAME de back/.env)
-# Connexion : DB_* de $ENV_FILE (defaut back/.env, relatif a infra/sql/), surchargeables par l'environnement.
+# Connexion : voir lib.sh.
 set -euo pipefail
 cd "$(dirname "$0")"
+source ./lib.sh
 
 YES=0
 SEED=1
@@ -16,55 +17,15 @@ for arg in "$@"; do
         *)         DB_ARG="$arg" ;;
     esac
 done
-
-# Lit KEY sans sourcer le fichier. `|| true` : grep sort en 1 sans correspondance (set -e + pipefail).
-ENV_FILE="${ENV_FILE:-../../back/.env}"
-env_value() {
-    [ -f "$ENV_FILE" ] || return 0
-    { grep -E "^[[:space:]]*$1[[:space:]]*=" "$ENV_FILE" || true; } | tail -n 1 | cut -d= -f2- \
-        | tr -d '\r' | sed -E "s/^[[:space:]\"']+//; s/[[:space:]\"']+\$//"
-}
-
-DB_HOST="${DB_HOST:-$(env_value DB_HOST)}"
-DB_PORT="${DB_PORT:-$(env_value DB_PORT)}"
-DB_USER="${DB_USER:-$(env_value DB_USER)}"
-DB_PASSWORD="${DB_PASSWORD:-$(env_value DB_PASSWORD)}"
-DB_NAME="${DB_ARG:-${DB_NAME:-$(env_value DB_NAME)}}"
-DB_HOST="${DB_HOST:-127.0.0.1}"
-DB_PORT="${DB_PORT:-3306}"
-DB_USER="${DB_USER:-root}"
-DB_NAME="${DB_NAME:-dayout}"
-
-if ! [[ "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]]; then
-    echo "Nom de base invalide : $DB_NAME" >&2
-    exit 2
-fi
-
-if [ -n "${MYSQL:-}" ]; then
-    :
-elif command -v mysql >/dev/null 2>&1; then
-    MYSQL=mysql
-elif [ -x /c/xampp/mysql/bin/mysql.exe ]; then
-    MYSQL=/c/xampp/mysql/bin/mysql.exe
-else
-    echo "Client mysql introuvable : l'ajouter au PATH ou definir MYSQL=/chemin/vers/mysql" >&2
-    exit 1
-fi
+load_db_config "$DB_ARG"
 
 if [ "$YES" -eq 0 ]; then
     read -r -p "La base '$DB_NAME' sur $DB_HOST:$DB_PORT va etre supprimee puis recreee. Continuer ? [y/N] " answer
     [[ "$answer" =~ ^[yYoO]$ ]] || { echo "Annule."; exit 1; }
 fi
 
-# Mot de passe par variable d'environnement : invisible dans la liste des processus.
-export MYSQL_PWD="$DB_PASSWORD"
-run_mysql() {
-    "$MYSQL" --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --default-character-set=utf8mb4 "$@"
-}
-
 run_mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-cat schema/*.sql | run_mysql "$DB_NAME"
-echo "Schema importe dans '$DB_NAME' ($(ls schema/*.sql | wc -l) fichiers)"
+./migrate.sh "$DB_NAME"
 
 if [ "$SEED" -eq 1 ]; then
     run_mysql "$DB_NAME" < seed.sql

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Apres un git pull / merge : rappelle de migrer la base locale si des migrations sont arrivees.
+# Ne touche jamais a la base (MySQL peut etre arrete) ; n'echoue jamais.
+
+new=$(git diff --name-only --diff-filter=A ORIG_HEAD HEAD -- infra/sql/migrations 2>/dev/null | grep '\.sql$')
+[ -z "$new" ] && exit 0
+
+echo ""
+echo "Nouvelles migrations de base de donnees :"
+echo "$new" | sed 's/^/  /'
+echo "Mettre ta base a jour : ./infra/sql/migrate.sh"
+echo ""
+exit 0

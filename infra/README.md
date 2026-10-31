@@ -2,7 +2,7 @@
 
 Installation locale de la base DayOut via **XAMPP** (Apache + MariaDB + PHP + phpMyAdmin).
 
-Le schéma est découpé par domaine dans `infra/sql/schema/` (un fichier par groupe de tables, triggers à part). Les fichiers sont numérotés et doivent être joués **dans l'ordre** sur une base `dayout` fraîche.
+Le schéma de départ est découpé par domaine dans `infra/sql/schema/` (un fichier par groupe de tables, triggers à part). Il est **gelé** : toute modification de la base passe ensuite par un fichier de `infra/sql/migrations/`, appliqué sur chaque environnement par `migrate.sh` (voir *Migrations*).
 
 ## Prérequis
 
@@ -22,7 +22,7 @@ Ouvrir http://localhost/phpmyadmin dans un navigateur, puis :
 
 ### 2. Importer le schéma
 
-phpMyAdmin n'importe qu'un fichier à la fois : on regroupe d'abord les fichiers de `schema/` en un seul (depuis Git Bash) :
+phpMyAdmin n'importe qu'un fichier à la fois : on regroupe d'abord `schema/` et `migrations/` en un seul (depuis Git Bash) :
 
 ```bash
 ./infra/sql/build_schema.sh   # génère infra/sql/dist/schema.sql (non versionné)
@@ -35,7 +35,7 @@ Puis :
 3. Choisir le fichier `infra/sql/dist/schema.sql`
 4. Cliquer sur *Exécuter* (en bas)
 
-> Après toute modification d'un fichier de `schema/`, relancer `build_schema.sh` avant de réimporter.
+> Le fichier généré remplit aussi le journal `schema_migrations` : par la suite, `./infra/sql/migrate.sh` suffit à appliquer les nouvelles migrations.
 
 Résultat attendu : 21 tables + 1 vue créées, 13 fonctions/procédures (`09_routines.sql`) et 22 triggers métier installés.
 
@@ -73,17 +73,16 @@ HAVING e.registered_count <> COUNT(r.id);
 Si tu as un terminal avec `mysql` dans le PATH (dans Git Bash ou PowerShell) :
 
 ```bash
-cd infra/sql
 mysql -u root -e "CREATE DATABASE dayout CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-cat schema/*.sql | mysql -u root dayout
-mysql -u root dayout < seed.sql
+./infra/sql/migrate.sh                       # schema/ puis migrations/
+mysql -u root dayout < infra/sql/seed.sql
 ```
 
 Le binaire `mysql` est fourni par XAMPP dans `C:\xampp\mysql\bin\mysql.exe`.
 
 ## Reset complet
 
-Pour repartir d'une base propre (après avoir modifié un script par exemple), depuis Git Bash :
+Pour repartir d'une base propre (seed modifié, base locale incohérente...), depuis Git Bash :
 
 ```bash
 ./infra/sql/reset_db.sh                # base de back/.env (dayout), demande confirmation
@@ -92,7 +91,7 @@ Pour repartir d'une base propre (après avoir modifié un script par exemple), d
 ./infra/sql/reset_db.sh --no-seed      # schéma seul
 ```
 
-Le script supprime et recrée la base, joue `schema/*.sql` dans l'ordre puis `seed.sql`, et
+Le script supprime et recrée la base, la monte à jour avec `migrate.sh` (`schema/` puis `migrations/`), joue `seed.sql`, et
 affiche les comptages attendus. Connexion lue dans `back/.env` (`DB_HOST`, `DB_PORT`,
 `DB_USER`, `DB_PASSWORD`). Client : `mysql` du PATH, sinon `C:\xampp\mysql\bin\mysql.exe`
 (ou `MYSQL=/chemin/mysql`). MySQL doit être démarré dans XAMPP.
@@ -107,9 +106,69 @@ Ou en ligne de commande :
 
 ```bash
 mysql -u root -e "DROP DATABASE dayout; CREATE DATABASE dayout CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-cat schema/*.sql | mysql -u root dayout
-mysql -u root dayout < seed.sql
+./infra/sql/migrate.sh
+mysql -u root dayout < infra/sql/seed.sql
 ```
+
+## Migrations
+
+Une modification de la base (table, colonne, index, trigger, données à corriger) est un
+**fichier de migration**, jamais une édition de `schema/` : les bases existantes (la tienne,
+celles des autres, `dayout_test`, la CI, une future prod) ne rejouent pas `schema/`, elles
+n'appliquent que les migrations qui leur manquent.
+
+### Écrire une migration
+
+```bash
+./infra/sql/migrate.sh --new add_event_tagline
+# -> infra/sql/migrations/20261031193000_add_event_tagline.sql (horodatage UTC)
+```
+
+```sql
+-- add_event_tagline
+ALTER TABLE events ADD COLUMN tagline VARCHAR(160) NULL AFTER title;
+UPDATE events SET tagline = LEFT(description, 160) WHERE tagline IS NULL;
+```
+
+- SQL MariaDB normal, `DELIMITER $` autorisé pour un trigger ou une procédure (remplacer un
+  trigger : `DROP TRIGGER IF EXISTS ...` puis `CREATE TRIGGER`, dans la même migration).
+- Session identique à `schema/` : UTC, `sql_mode` strict, utf8mb4.
+- Penser aux lignes existantes : une colonne `NOT NULL` ajoutée sur une table remplie prend un
+  `DEFAULT` ou une mise à jour juste après.
+- Mettre à jour `seed.sql` si besoin : il est joué après toutes les migrations.
+- Nouvelle règle de trigger : son `errno` va aussi dans le tableau *Codes d'erreur des triggers*.
+- Tester : `./infra/sql/migrate.sh` sur ta base, puis `back/tests/run.sh` (qui recrée
+  `dayout_test` en passant par toutes les migrations).
+
+**Une migration mergée ne se modifie plus** : elle a déjà été jouée ailleurs, la changer ne
+changerait que les nouvelles bases. Pour corriger, écrire une nouvelle migration. Le
+`checksum` enregistré le détecte (`migrate.sh` refuse de continuer) et la CI refuse une PR qui
+modifie ou supprime un fichier existant de `schema/` ou de `migrations/`.
+
+### Appliquer
+
+```bash
+./infra/sql/migrate.sh --status        # appliquées [x] / en attente [ ], ne modifie rien
+./infra/sql/migrate.sh                 # base de back/.env
+./infra/sql/migrate.sh dayout_test     # une autre base
+```
+
+| Environnement           | Quand                                    | Comment                                      |
+| ----------------------- | ---------------------------------------- | -------------------------------------------- |
+| Base locale de chacun   | après un `git pull` qui amène des migrations (le hook `post-merge` le signale) | `./infra/sql/migrate.sh` |
+| `dayout_test`           | à chaque `back/tests/run.sh`              | recréée par `reset_db.sh`, donc migrée       |
+| CI                      | chaque push / PR                         | idem, puis vérifie qu'une 2e passe ne change rien |
+| Serveur (si un jour)    | à chaque déploiement, avant le code      | `DB_HOST=... DB_NAME=... ./infra/sql/migrate.sh` |
+
+Le journal est la table `schema_migrations` (`version`, `checksum`, `applied_at`) ;
+`schema/` y figure sous la version `00000000000000_baseline`. Sur une base créée avant les
+migrations (tables présentes, pas de journal), le premier `migrate.sh` la rattache à
+`schema/` sans rien rejouer, puis applique les migrations. Dans le doute sur son état,
+`reset_db.sh`.
+
+Une migration en échec n'est pas enregistrée, mais MariaDB n'annule pas le DDL déjà exécuté
+(un `ALTER` passé reste) : corriger la base à la main ou, en local, `reset_db.sh`, puis relancer.
+Garder des migrations courtes limite ce cas.
 
 ## Compteur `events.registered_count`
 
@@ -122,7 +181,8 @@ La place est réservée sous verrou (`SELECT ... FOR UPDATE` sur la ligne `event
 simultanées à la dernière place sont sérialisées, la seconde reçoit `50304 Event is full`.
 
 Après un reset complet (`reset_db.sh`), les compteurs sont toujours justes : le seed passe par les
-triggers. Si on modifie un trigger, rejouer le reset suffit à les recalculer.
+triggers. Une migration qui change la définition d'une inscription active doit aussi recalculer
+`registered_count` sur les lignes existantes.
 
 ## Écoles : désactiver, ne jamais supprimer
 
@@ -217,7 +277,7 @@ En XAMPP par défaut, `root` n'a **pas** de mot de passe. En environnement parta
 infra/
 ├── README.md             ← ce fichier
 └── sql/
-    ├── schema/
+    ├── schema/           ← schéma de départ, gelé (modifications : migrations/)
     │   ├── 00_reset.sql                  ← paramètres de session + DROP (rejouable)
     │   ├── 01_referentiels.sql           ← schools, categories
     │   ├── 02_users.sql                  ← users, email_verifications, creator_profiles, user_interests
@@ -233,12 +293,14 @@ infra/
     │   ├── 12_triggers_registrations.sql ← contrôles d'inscription + registered_count
     │   ├── 13_triggers_admin_roles.sql   ← FK vers users réservées aux admins
     │   └── 14_triggers_fk_checks.sql     ← règles impossibles en CHECK sur une FK (MariaDB #1901)
-    ├── build_schema.sh   ← concatène schema/*.sql → dist/schema.sql
-    ├── reset_db.sh       ← recrée une base + schéma + seed en une commande
+    ├── migrations/       ← une modification de la base par fichier (AAAAMMJJHHMMSS_nom.sql)
+    ├── migrate.sh        ← applique schema/ puis les migrations manquantes (journal schema_migrations)
+    ├── build_schema.sh   ← concatène schema/ + migrations/ → dist/schema.sql (phpMyAdmin)
+    ├── reset_db.sh       ← recrée une base, migrate.sh, puis seed, en une commande
+    ├── lib.sh            ← connexion BDD et journal, partagés par les scripts
     └── seed.sql          ← données de test (écoles, users, events…)
 
-Ajouter une table : la placer dans le fichier de son domaine (en respectant l'ordre des FK) et ajouter son `DROP TABLE IF EXISTS` dans `00_reset.sql`.
-Ajouter une fonction/procédure : dans `09_routines.sql`, avec son `DROP ... IF EXISTS` dans `00_reset.sql`.
+Ajouter une table, une colonne, une fonction ou un trigger : une migration (`migrate.sh --new`), jamais `schema/`.
 ```
 
 Documentation du modèle de données : [`docs/MCD-MLD.md`](../docs/MCD-MLD.md).
