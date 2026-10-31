@@ -1,5 +1,5 @@
-import { categoriesIn } from "./category.js";
-import { searchEvents } from "./eventSearch.js";
+import { categoriesIn } from "../domain/category.js";
+import { searchEvents } from "../domain/eventSearch.js";
 
 /** @typedef {{ lat: number, lng: number, label?: string, source: string }} Origin `source` : default | map | device */
 

@@ -2,8 +2,8 @@ import { isApiError, messageFor } from "../core/errors.js";
 import { currentPosition } from "../core/geolocation.js";
 import { replaceSearchParam } from "../core/routes.js";
 import { MAX_EVENTS_LIMIT, fetchUpcomingEvents } from "../model/services/eventService.js";
-import { MapSearch } from "../model/domain/MapSearch.js";
-import { SERVICE_AREA, isInServiceArea } from "../model/domain/serviceArea.js";
+import { MapSearch } from "../model/state/MapSearch.js";
+import { COVERAGE_AREA, isInCoverageArea } from "../model/domain/coverageArea.js";
 import { HomeView } from "../view/home/HomeView.js";
 import { MapView } from "../view/home/map/MapView.js";
 import { SearchBox } from "../view/layout/header/searchBox.js";
@@ -50,7 +50,7 @@ export class HomeController {
     this.map.init({
       origin,
       radiusKm,
-      area: SERVICE_AREA,
+      area: COVERAGE_AREA,
       handlers: {
         onPick: (point) => this.pick(point),
         onSelect: (id) => this.select(id, { from: "map" }),
@@ -119,8 +119,8 @@ export class HomeController {
   pick(point) {
     this.pickSeq += 1;
     // La carte laisse voir une marge autour de la zone : un clic dans cette marge garde l'ancien point.
-    if (!isInServiceArea(point)) {
-      this.map.showOutOfArea(SERVICE_AREA.name, "map");
+    if (!isInCoverageArea(point)) {
+      this.map.showOutOfArea(COVERAGE_AREA.name, "map");
       return;
     }
     this.map.clearMessage();
@@ -140,8 +140,8 @@ export class HomeController {
     try {
       const position = await this.getPosition();
       if (seq !== this.pickSeq) return; // un autre point a ete choisi entre-temps
-      if (!isInServiceArea(position)) {
-        this.map.showOutOfArea(SERVICE_AREA.name, "device");
+      if (!isInCoverageArea(position)) {
+        this.map.showOutOfArea(COVERAGE_AREA.name, "device");
         return;
       }
       this.applyOrigin({ ...position, source: "device" });

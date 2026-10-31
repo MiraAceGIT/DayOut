@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { formatCoordinates, formatDistance, formatEventWhen, formatHour, formatPrice, pluralize } from "../src/shared/format.js";
 import { distanceKm, isLatLng } from "../src/shared/geo.js";
-import { isInServiceArea } from "../src/model/domain/serviceArea.js";
+import { isInCoverageArea } from "../src/model/domain/coverageArea.js";
 import { resultsMessage } from "../src/view/home/resultsMessage.js";
 import { spaces } from "./fixtures.js";
 
@@ -52,14 +52,14 @@ describe("geo", () => {
   });
 });
 
-describe("serviceArea", () => {
+describe("coverageArea", () => {
   it("suit le contour de l'Ile-de-France, pas son rectangle", () => {
-    const at = (lat, lng) => isInServiceArea({ lat, lng });
+    const at = (lat, lng) => isInCoverageArea({ lat, lng });
     assert.equal(at(48.8455, 2.3275), true, "Paris");
     assert.equal(at(48.404, 2.7), true, "Fontainebleau");
     assert.equal(at(49.19, 2.47), false, "Chantilly (Oise), dans le rectangle");
     assert.equal(at(45.76, 4.83), false, "Lyon");
-    assert.equal(isInServiceArea(null), false);
+    assert.equal(isInCoverageArea(null), false);
   });
 });
 

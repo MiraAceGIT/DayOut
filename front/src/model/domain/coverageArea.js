@@ -5,7 +5,7 @@ import { ILE_DE_FRANCE_OUTLINE } from "./ileDeFranceOutline.js";
  * Zone couverte par DayOut : l'Ile-de-France. `outline` = son contour [lat, lng] ;
  * south/west/north/east = son rectangle englobant, pour cadrer la carte et ecarter vite les points lointains.
  */
-export const SERVICE_AREA = Object.freeze({
+export const COVERAGE_AREA = Object.freeze({
   name: "Île-de-France",
   outline: ILE_DE_FRANCE_OUTLINE,
   south: 48.12,
@@ -28,7 +28,7 @@ function insideRing({ lat, lng }, ring) {
 }
 
 /** Vrai si `point` = { lat, lng } est dans la zone couverte. */
-export function isInServiceArea(point, area = SERVICE_AREA) {
+export function isInCoverageArea(point, area = COVERAGE_AREA) {
   return isLatLng(point)
     && point.lat >= area.south && point.lat <= area.north
     && point.lng >= area.west && point.lng <= area.east

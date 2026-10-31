@@ -46,16 +46,17 @@ front/
 │   │   ├── mappers/              ← seuls a lire les noms du JSON : DTO <-> modele (camelCase)
 │   │   │   ├── eventMapper.js    ← toEvent(dto), toEvents(dtos), toEventDto(event)
 │   │   │   └── categoryMapper.js ← toCategory(dto), toCategoryDto(category)
-│   │   ├── services/             ← appels a l'API REST
+│   │   ├── services/             ← appels a l'API REST, un service par ressource appelee
 │   │   │   └── eventService.js   ← fetchUpcomingEvents (GET /events -> toEvents), MAX_EVENTS_LIMIT
-│   │   └── domain/               ← regles metier pures et etat de page (ni reseau, ni DOM)
-│   │       ├── Event.js          ← remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD, isUpcoming
-│   │       ├── category.js       ← categoriesIn (aucune notion de couleur)
-│   │       ├── serviceArea.js    ← SERVICE_AREA (Ile-de-France), isInServiceArea (contour exact)
-│   │       ├── ileDeFranceOutline.js ← contour de la region (genere, ~300 m)
-│   │       ├── eventFilters.js   ← un predicat par critere (gratuit, places, categories, week-end, texte),
-│   │       │                        USER_FILTERS, matchesCriteria, weekendRange
-│   │       ├── eventSearch.js    ← searchEvents : a venir + criteres + distance/rayon + tri + comptes
+│   │   ├── domain/               ← regles metier pures (ni reseau, ni DOM, ni etat)
+│   │   │   ├── Event.js          ← remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD, isUpcoming
+│   │   │   ├── category.js       ← categoriesIn (aucune notion de couleur)
+│   │   │   ├── coverageArea.js   ← COVERAGE_AREA (Ile-de-France), isInCoverageArea (contour exact)
+│   │   │   ├── ileDeFranceOutline.js ← contour de la region (genere, ~300 m)
+│   │   │   ├── eventFilters.js   ← un predicat par critere (gratuit, places, categories, week-end, texte),
+│   │   │   │                        USER_FILTERS, matchesCriteria, weekendRange
+│   │   │   └── eventSearch.js    ← searchEvents : a venir + criteres + distance/rayon + tri + comptes
+│   │   └── state/                ← etat d'une page (une classe par page qui en a besoin)
 │   │       └── MapSearch.js      ← etat de la page carte (criteres, chargement, selection), DEFAULT_ORIGIN
 │   ├── view/                     ← V : un dossier par composant, son JS + sa feuille CSS
 │   │   ├── layout/header/        ← renderHeader({ current }), NAV_ITEMS
@@ -109,10 +110,13 @@ transverses (points d'entree, demarrage, infrastructure, utilitaires).
     `position: {lat, lng}`, places restantes et disponibilite calculees) ; `toEventDto(event)` fait l'inverse
     pour un envoi (les champs calcules ne repartent pas). Renommer un champ cote API ne touche qu'ici.
   - **model/services/** : acces a l'API REST (appels via `core/api.js`), renvoie des modeles via les mappers.
-    Equivalent cote client de l'acces base de donnees de `back/src/Model/Dao`.
-  - **model/domain/** : regles metier (a venir, places restantes, "dernieres places", filtres, zone couverte)
-    et etat d'une page (`MapSearch`). Aucun DOM, aucun texte affiche, aucune couleur, aucun nom du JSON,
-    aucun appel reseau.
+    Equivalent cote client de l'acces base de donnees de `back/src/Model/Dao`. Un service par ressource
+    appelee (`/events` -> `eventService.js`), pas par modele : les categories arrivent dans les evenements.
+  - **model/domain/** : regles metier pures (a venir, places restantes, "dernieres places", filtres,
+    zone couverte), un fichier par sujet. Aucun DOM, aucun texte affiche, aucune couleur, aucun nom du JSON,
+    aucun appel reseau, aucun etat.
+  - **model/state/** : etat d'une page (`MapSearch` : evenements charges, criteres, selection), qui
+    s'appuie sur `domain/` pour calculer les resultats. Memes interdits que `domain/`.
 - **view/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes
   et choix d'affichage (messages, couleurs de categorie). Aucun appel API, aucune regle metier : elles
   recoivent des objets normalises. Une view de page (`HomeView`, `MapView`, `EventsView`) est seule a
@@ -132,9 +136,10 @@ transverses (points d'entree, demarrage, infrastructure, utilitaires).
 
 ```
 pages/           -> app/boot.js, controller/
-controller/      -> model/services/, model/domain/, view/, core/errors.js, core/geolocation.js, core/routes.js (replaceSearchParam)
+controller/      -> model/services/, model/state/, model/domain/, view/, core/errors.js, core/geolocation.js, core/routes.js (replaceSearchParam)
 model/services/  -> core/api.js, model/mappers/, model/dto/ (types)
 model/mappers/   -> model/domain/ (regles de calcul), model/mappers/, model/dto/ (types)
+model/state/     -> model/domain/
 model/domain/    -> model/domain/, shared/geo.js (calcul pur)
 view/            -> view/, shared/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
 app/boot.js      -> core/, view/layout/
