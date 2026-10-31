@@ -5,7 +5,7 @@ namespace Tests\Unit;
 
 use App\Core\HttpException;
 use App\Core\Orm\Connection;
-use App\Models\Model;
+use App\Model\Dao\Model;
 use PDO;
 use Tests\TestCase;
 

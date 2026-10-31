@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Dto;
+namespace App\Model\Dto;
 
 /**
  * Event tel qu'un client peut l'ecrire (creation). Distinct d'EventDto (lecture) : ni id, ni registered_count,

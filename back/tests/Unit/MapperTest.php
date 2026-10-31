@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Core\HttpException;
-use App\Mappers\CategoryMapper;
-use App\Mappers\EventMapper;
+use App\Model\Mappers\CategoryMapper;
+use App\Model\Mappers\EventMapper;
 use Tests\TestCase;
 
 final class MapperTest extends TestCase

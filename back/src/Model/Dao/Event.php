@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Models;
+namespace App\Model\Dao;
 
 use App\Core\Orm\Query\QueryBuilder;
 

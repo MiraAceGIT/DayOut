@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Models;
+namespace App\Model\Dao;
 
 use App\Core\Database;
 use App\Core\HttpException;
@@ -17,7 +17,7 @@ abstract class Model
 
     protected const PRIMARY_KEY = 'id';
 
-    /** Colonnes lues ; le contrat API est fixe par les DTO (src/Dto). Eviter '*' sur les tables sensibles. */
+    /** Colonnes lues ; le contrat API est fixe par les DTO (src/Model/Dto). Eviter '*' sur les tables sensibles. */
     protected const COLUMNS = ['*'];
 
     /** Saisie client uniquement (anti mass-assignment) ; champs serveur via le 2e argument de create()/updateById(). */

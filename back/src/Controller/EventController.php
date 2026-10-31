@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Controllers;
+namespace App\Controller;
 
 use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
-use App\Mappers\EventMapper;
-use App\Models\Category;
-use App\Models\Event;
+use App\Model\Mappers\EventMapper;
+use App\Model\Dao\Category;
+use App\Model\Dao\Event;
 
 final class EventController extends Controller
 {

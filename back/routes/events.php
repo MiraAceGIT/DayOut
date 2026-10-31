@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-use App\Controllers\EventController;
+use App\Controller\EventController;
 
 /** @var \App\Core\Router $router */
 

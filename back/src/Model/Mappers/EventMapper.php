@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Mappers;
+namespace App\Model\Mappers;
 
 use App\Core\HttpException;
 use App\Core\Validator;
-use App\Dto\EventDto;
-use App\Dto\EventInputDto;
+use App\Model\Dto\EventDto;
+use App\Model\Dto\EventInputDto;
 use DateTimeImmutable;
 use DateTimeZone;
 

@@ -3,14 +3,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Controllers\DocsController;
+use App\Controller\DocsController;
 use App\Core\Config;
 use App\Core\Http\Kernel;
 use App\Core\Request;
 use App\Core\Router;
 use App\Docs\OpenApiSpec;
-use App\Dto\CategoryDto;
-use App\Mappers\EventMapper;
+use App\Model\Dto\CategoryDto;
+use App\Model\Mappers\EventMapper;
 use ReflectionProperty;
 use RuntimeException;
 use Tests\TestCase;

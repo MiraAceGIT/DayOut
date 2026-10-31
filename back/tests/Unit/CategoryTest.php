@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Core\Orm\Connection;
-use App\Models\Category;
+use App\Model\Dao\Category;
 use PDO;
 use PDOStatement;
 use Tests\TestCase;

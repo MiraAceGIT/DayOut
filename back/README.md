@@ -1,10 +1,10 @@
 # Back — API REST DayOut (PHP + MariaDB)
 
-API REST en PHP vanilla (pas de framework ni Composer). Architecture MVC :
-`Models` decrivent les tables et exposent l'acces aux donnees par methodes
-nommees (DAO), `Controllers` orchestrent, la vue est la reponse JSON (`Response`).
-Ce qui sort dans le JSON est fixe par les `Dto` (noms publics, champs exposes) ;
-les `Mappers` passent d'une ligne du Model a un DTO (`toDto`, `toDtos` pour une liste) et inversement (`toRow`).
+API REST en PHP vanilla (pas de framework ni Composer). Architecture MVC, un dossier par couche :
+`Model/` decrit les tables et expose l'acces aux donnees par methodes
+nommees (DAO, `Model/Dao`), `Controller/` orchestre, la vue est la reponse JSON (`Response`, pas de dossier dedie).
+Ce qui sort dans le JSON est fixe par les DTO (`Model/Dto`, noms publics, champs exposes) ;
+les mappers (`Model/Mappers`) passent d'une ligne du Model a un DTO (`toDto`, `toDtos` pour une liste) et inversement (`toRow`).
 `Core` fournit routeur / BDD / request / response / password et l'ORM maison
 (`Core/Orm`).
 
@@ -26,11 +26,12 @@ back/
 │   │       ├── Caster.php, Rows.php             ← casts + batch anti N+1
 │   │       └── Query/  ← QueryBuilder (+ traits), WhereClause, QueryParts,
 │   │                     Compiler, Grammar
-│   ├── Models/         ← M : Model.php (base) + une classe par table (DAO)
-│   ├── Dto/            ← contrat JSON : un objet immuable par ressource exposee (jsonSerialize)
-│   ├── Mappers/        ← ligne du Model <-> DTO (toDto / toDtos / toRow)
+│   ├── Model/          ← M
+│   │   ├── Dao/        ← acces BDD : Model.php (base) + une classe par table
+│   │   ├── Dto/        ← contrat JSON : un objet immuable par ressource exposee (jsonSerialize)
+│   │   └── Mappers/    ← ligne du Model <-> DTO (toDto / toDtos / toRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
-│   └── Controllers/    ← C : logique HTTP (une classe par ressource)
+│   └── Controller/     ← C : logique HTTP (une classe par ressource)
 ├── config/config.php   ← charge le .env, construit et renvoie la Config
 ├── routes/            ← un fichier de routes par ressource (charges par api.php)
 ├── docs/openapi/       ← spec OpenAPI 3 en YAML : openapi.yaml (commun) + un fichier par controller
@@ -237,10 +238,10 @@ curl http://localhost:8000/events/abc    # 404 NOT_FOUND (regex)
 
 ## Ajouter une route
 
-1. Ecrire le `Model` dans `src/Models/` (herite de `App\Models\Model`, voir *ORM* ci-dessous).
-2. Ecrire le DTO dans `src/Dto/` (`final readonly class ... implements JsonSerializable` :
+1. Ecrire le `Model` dans `src/Model/Dao/` (herite de `App\Model\Dao\Model`, voir *ORM* ci-dessous).
+2. Ecrire le DTO dans `src/Model/Dto/` (`final readonly class ... implements JsonSerializable` :
    proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case, et seulement
-   les champs a exposer) et son mapper dans `src/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`).
+   les champs a exposer) et son mapper dans `src/Model/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`).
    Le controller ne renvoie jamais une ligne brute du Model.
    Si la ressource est ecrite : un DTO d'entree **distinct** (ex. `EventInputDto`), qui porte ses
    regles de validation (`RULES`) et ne contient que ce qu'un client peut envoyer (ni id, ni compteurs,
@@ -250,7 +251,7 @@ curl http://localhost:8000/events/abc    # 404 NOT_FOUND (regex)
    $input = EventMapper::fromInput($request->json());
    $id    = $this->events->create(EventMapper::toRow($input), ['creator_id' => $userId, 'status' => 'draft']);
    ```
-3. Ecrire le `Controller` dans `src/Controllers/` (herite de `App\Core\Controller`) ;
+3. Ecrire le `Controller` dans `src/Controller/` (herite de `App\Core\Controller`) ;
    il instancie ses models dans son constructeur (`new User()`). Chaque action recoit
    la `Request` et **renvoie** une `Response` :
    ```php
@@ -270,7 +271,7 @@ curl http://localhost:8000/events/abc    # 404 NOT_FOUND (regex)
    <?php
    declare(strict_types=1);
 
-   use App\Controllers\UserController;
+   use App\Controller\UserController;
 
    /** @var \App\Core\Router $router */
    $router->get('/users/{id:\d+}', [UserController::class, 'show']);
@@ -304,11 +305,11 @@ curl http://localhost:8000/events/abc    # 404 NOT_FOUND (regex)
 ## ORM
 
 ORM maison minimal : le moteur est dans `src/Core/Orm/`, les models dans
-`src/Models/`.
+`src/Model/Dao/`.
 
 | Classe                  | Role                                                                  |
 | ----------------------- | --------------------------------------------------------------------- |
-| `Models\Model`          | base des models : definition de table (constantes), `find`, `create`... |
+| `Dao\Model`             | base des models : definition de table (constantes), `find`, `create`... |
 | `Query\QueryBuilder`    | requetes fluentes (`where`, `join`, `orderBy`, `get`, `count`...)     |
 | `Query\Compiler`        | assemble le SQL ; `Query\Grammar` valide et quote les identifiants    |
 | `Connection`            | execute le SQL via PDO (bindings, transactions)                       |
@@ -321,7 +322,7 @@ partagee (`Database::orm()`) ; on peut lui en passer une autre pour les tests.
 
 **Declarer un model :**
 ```php
-// src/Models/User.php
+// src/Model/Dao/User.php
 final class User extends Model
 {
     protected const TABLE    = 'users';
@@ -336,7 +337,7 @@ final class User extends Model
     }
 }
 
-// src/Controllers/UserController.php
+// src/Controller/UserController.php
 public function __construct(?User $users = null)
 {
     $this->users = $users ?? new User();
@@ -347,7 +348,7 @@ public function __construct(?User $users = null)
 | ------------- | -------------------------------------------------------------------- |
 | `TABLE`       | nom de la table (obligatoire)                                        |
 | `PRIMARY_KEY` | `id` par defaut                                                      |
-| `COLUMNS`     | colonnes lues par defaut (le contrat API, lui, est dans `Dto/`) — `*` par defaut |
+| `COLUMNS`     | colonnes lues par defaut (le contrat API, lui, est dans `Model/Dto/`) — `*` par defaut |
 | `FILLABLE`    | colonnes de la saisie client acceptees par `create()` / `updateById()`, le reste est ignore |
 | `CASTS`       | `int`, `float`, `bool`, `datetime` (ISO 8601 UTC), `json`            |
 

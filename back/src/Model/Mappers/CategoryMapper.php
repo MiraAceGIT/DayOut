@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Mappers;
+namespace App\Model\Mappers;
 
-use App\Dto\CategoryDto;
+use App\Model\Dto\CategoryDto;
 
 final class CategoryMapper
 {

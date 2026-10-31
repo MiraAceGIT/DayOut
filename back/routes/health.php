@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-use App\Controllers\HealthController;
+use App\Controller\HealthController;
 
 /** @var \App\Core\Router $router */
 
