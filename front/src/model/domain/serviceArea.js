@@ -1,4 +1,4 @@
-import { isLatLng } from "../shared/geo.js";
+import { isLatLng } from "../../shared/geo.js";
 import { ILE_DE_FRANCE_OUTLINE } from "./ileDeFranceOutline.js";
 
 /**

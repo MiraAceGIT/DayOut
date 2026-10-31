@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { formatCoordinates, formatDistance, formatEventWhen, formatHour, formatPrice, pluralize } from "../src/shared/format.js";
 import { distanceKm, isLatLng } from "../src/shared/geo.js";
-import { isInServiceArea } from "../src/models/serviceArea.js";
-import { resultsMessage } from "../src/views/home/resultsMessage.js";
+import { isInServiceArea } from "../src/model/domain/serviceArea.js";
+import { resultsMessage } from "../src/view/home/resultsMessage.js";
 import { spaces } from "./fixtures.js";
 
 describe("format", () => {

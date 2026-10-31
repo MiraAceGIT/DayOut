@@ -6,11 +6,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { toCategory } from "../src/mappers/categoryMapper.js";
-import { toEvent, toEventDto } from "../src/mappers/eventMapper.js";
+import { toCategory } from "../src/model/mappers/categoryMapper.js";
+import { toEvent, toEventDto } from "../src/model/mappers/eventMapper.js";
 
 const BACK = fileURLToPath(new URL("../../back/", import.meta.url));
-const DTO_FILE = new URL("../src/dto/", import.meta.url);
+const DTO_FILE = new URL("../src/model/dto/", import.meta.url);
 
 function loadSpec() {
   const php = [process.env.PHP, "php", "C:/xampp/php/php.exe"].filter(Boolean)
@@ -24,7 +24,7 @@ function loadSpec() {
   }
 }
 
-/** Noms des @property du typedef `name` dans src/dto/<file>. */
+/** Noms des @property du typedef `name` dans src/model/dto/<file>. */
 function typedefProperties(file, name) {
   const source = readFileSync(new URL(file, DTO_FILE), "utf8");
   const block = source.match(new RegExp(`@typedef \\{object\\} ${name}\\b([\\s\\S]*?)\\*/`))?.[1] ?? "";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { toCategory, toCategoryDto } from "../src/mappers/categoryMapper.js";
-import { toEvent, toEventDto, toEvents } from "../src/mappers/eventMapper.js";
+import { toCategory, toCategoryDto } from "../src/model/mappers/categoryMapper.js";
+import { toEvent, toEventDto, toEvents } from "../src/model/mappers/eventMapper.js";
 import { eventDto } from "./fixtures.js";
 
 describe("toEvent", () => {

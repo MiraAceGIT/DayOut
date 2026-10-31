@@ -1,5 +1,5 @@
 /* Ordre significatif : reset -> tokens -> base -> layout -> composants.
-   Les composants rendus par une view ont leur feuille a cote de leur JS, dans src/views/. */
+   Les composants rendus par une view ont leur feuille a cote de leur JS, dans src/view/. */
 @import url("reset.css");
 @import url("tokens.css");
 @import url("base.css");
@@ -7,23 +7,23 @@
 
 @import url("components/skip-link.css");
 @import url("components/button.css");
-@import url("../../src/views/components/category/category.css");
+@import url("../../src/view/components/category/category.css");
 @import url("components/card-grid.css");
 @import url("components/feedback.css");
 @import url("components/form.css");
 
-@import url("../../src/views/components/pill/pill.css");
-@import url("../../src/views/components/logo/logo.css");
-@import url("../../src/views/layout/header/header.css");
-@import url("../../src/views/layout/header/searchBox.css");
-@import url("../../src/views/layout/footer/footer.css");
-@import url("../../src/views/components/eventCard/eventCard.css");
-@import url("../../src/views/components/eventRow/eventRow.css");
-@import url("../../src/views/components/eventPopup/eventPopup.css");
-@import url("../../src/views/components/tabs/tabs.css");
-@import url("../../src/views/home/home.css");
-@import url("../../src/views/home/pointCard/pointCard.css");
-@import url("../../src/views/home/filters/filters.css");
-@import url("../../src/views/home/resultsList/resultsList.css");
-@import url("../../src/views/home/map/map.css");
-@import url("../../src/views/home/map/mapLegend.css");
+@import url("../../src/view/components/pill/pill.css");
+@import url("../../src/view/components/logo/logo.css");
+@import url("../../src/view/layout/header/header.css");
+@import url("../../src/view/layout/header/searchBox.css");
+@import url("../../src/view/layout/footer/footer.css");
+@import url("../../src/view/components/eventCard/eventCard.css");
+@import url("../../src/view/components/eventRow/eventRow.css");
+@import url("../../src/view/components/eventPopup/eventPopup.css");
+@import url("../../src/view/components/tabs/tabs.css");
+@import url("../../src/view/home/home.css");
+@import url("../../src/view/home/pointCard/pointCard.css");
+@import url("../../src/view/home/filters/filters.css");
+@import url("../../src/view/home/resultsList/resultsList.css");
+@import url("../../src/view/home/map/map.css");
+@import url("../../src/view/home/map/mapLegend.css");

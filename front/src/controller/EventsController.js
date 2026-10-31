@@ -1,6 +1,6 @@
 import { isApiError, messageFor } from "../core/errors.js";
-import { fetchUpcomingEvents } from "../dao/eventDao.js";
-import { EventsView } from "../views/EventsView.js";
+import { fetchUpcomingEvents } from "../model/services/eventService.js";
+import { EventsView } from "../view/EventsView.js";
 
 export class EventsController {
   /** `loadEvents({ limit })` : source des evenements (API par defaut, remplacable pour les tests). */

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isUpcoming } from "../src/models/Event.js";
-import { matchesCriteria, normalize, weekendRange } from "../src/models/eventFilters.js";
-import { searchEvents } from "../src/models/eventSearch.js";
+import { isUpcoming } from "../src/model/domain/Event.js";
+import { matchesCriteria, normalize, weekendRange } from "../src/model/domain/eventFilters.js";
+import { searchEvents } from "../src/model/domain/eventSearch.js";
 import { event } from "./fixtures.js";
 
 const NOW = new Date("2026-11-04T12:00:00Z");

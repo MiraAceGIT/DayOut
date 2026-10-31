@@ -1,4 +1,4 @@
-import { availabilityOf, remainingPlaces } from "../models/Event.js";
+import { availabilityOf, remainingPlaces } from "../domain/Event.js";
 import { toCategory, toCategoryDto } from "./categoryMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventDto} EventDto */

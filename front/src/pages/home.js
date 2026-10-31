@@ -1,5 +1,5 @@
 import { boot } from "../app/boot.js";
-import { HomeController } from "../controllers/HomeController.js";
+import { HomeController } from "../controller/HomeController.js";
 
 boot({ page: "home" });
 

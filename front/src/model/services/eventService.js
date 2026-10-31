@@ -1,4 +1,4 @@
-import { api } from "../core/api.js";
+import { api } from "../../core/api.js";
 import { toEvents } from "../mappers/eventMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */

@@ -1,5 +1,5 @@
 // Donnees partagees par les tests : un EventDto tel que le renvoie l'API, et son evenement du front.
-import { toEvent } from "../src/mappers/eventMapper.js";
+import { toEvent } from "../src/model/mappers/eventMapper.js";
 
 /** EventDto complet (GET /events/1), surcharges par `overrides`. */
 export function eventDto(overrides = {}) {

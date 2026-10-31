@@ -1,4 +1,4 @@
-// Format JSON de l'API (snake_case), miroir de back/src/Dto/CategoryDto.php.
+// Format JSON de l'API (snake_case), miroir de back/src/Model/Dto/CategoryDto.php.
 
 /**
  * @typedef {object} CategoryDto

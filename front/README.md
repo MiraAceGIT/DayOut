@@ -39,24 +39,25 @@ front/
 │   │   │                            formatCoordinates, pluralize
 │   │   ├── geo.js                ← distanceKm (haversine), isLatLng (calcul pur)
 │   │   └── forms.js              ← showFieldErrors, clearFieldErrors
-│   ├── dto/                      ← typedefs du JSON de l'API (snake_case), un fichier par ressource
-│   │   ├── eventDto.js           ← EventDto, EventPageDto (GET /events)
-│   │   └── categoryDto.js        ← CategoryDto
-│   ├── mappers/                  ← seuls a lire les noms du JSON : DTO <-> modele (camelCase)
-│   │   ├── eventMapper.js        ← toEvent(dto), toEvents(dtos), toEventDto(event)
-│   │   └── categoryMapper.js     ← toCategory(dto), toCategoryDto(category)
-│   ├── dao/
-│   │   └── eventDao.js           ← fetchUpcomingEvents (GET /events -> toEvents), MAX_EVENTS_LIMIT
-│   ├── models/                   ← sans DOM : regles metier, etat
-│   │   ├── Event.js              ← remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD, isUpcoming
-│   │   ├── category.js           ← categoriesIn (aucune notion de couleur)
-│   │   ├── serviceArea.js        ← SERVICE_AREA (Ile-de-France), isInServiceArea (contour exact)
-│   │   ├── ileDeFranceOutline.js ← contour de la region (genere, ~300 m)
-│   │   ├── eventFilters.js       ← un predicat par critere (gratuit, places, categories, week-end, texte),
-│   │   │                            USER_FILTERS, matchesCriteria, weekendRange
-│   │   ├── eventSearch.js        ← searchEvents : a venir + criteres + distance/rayon + tri + comptes
-│   │   └── MapSearch.js          ← etat de la page carte (criteres, chargement, selection), DEFAULT_ORIGIN
-│   ├── views/                    ← un dossier par composant : son JS + sa feuille CSS
+│   ├── model/                    ← M : sans DOM (donnees, acces API, regles metier, etat)
+│   │   ├── dto/                  ← typedefs du JSON de l'API (snake_case), un fichier par ressource
+│   │   │   ├── eventDto.js       ← EventDto, EventPageDto (GET /events)
+│   │   │   └── categoryDto.js    ← CategoryDto
+│   │   ├── mappers/              ← seuls a lire les noms du JSON : DTO <-> modele (camelCase)
+│   │   │   ├── eventMapper.js    ← toEvent(dto), toEvents(dtos), toEventDto(event)
+│   │   │   └── categoryMapper.js ← toCategory(dto), toCategoryDto(category)
+│   │   ├── services/             ← appels a l'API REST
+│   │   │   └── eventService.js   ← fetchUpcomingEvents (GET /events -> toEvents), MAX_EVENTS_LIMIT
+│   │   └── domain/               ← regles metier pures et etat de page (ni reseau, ni DOM)
+│   │       ├── Event.js          ← remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD, isUpcoming
+│   │       ├── category.js       ← categoriesIn (aucune notion de couleur)
+│   │       ├── serviceArea.js    ← SERVICE_AREA (Ile-de-France), isInServiceArea (contour exact)
+│   │       ├── ileDeFranceOutline.js ← contour de la region (genere, ~300 m)
+│   │       ├── eventFilters.js   ← un predicat par critere (gratuit, places, categories, week-end, texte),
+│   │       │                        USER_FILTERS, matchesCriteria, weekendRange
+│   │       ├── eventSearch.js    ← searchEvents : a venir + criteres + distance/rayon + tri + comptes
+│   │       └── MapSearch.js      ← etat de la page carte (criteres, chargement, selection), DEFAULT_ORIGIN
+│   ├── view/                     ← V : un dossier par composant, son JS + sa feuille CSS
 │   │   ├── layout/header/        ← renderHeader({ current }), NAV_ITEMS
 │   │   │   └── searchBox.js      ← renderSearchBox(), SearchBox (setQuery, bindLive) : seul a connaitre l'id du champ
 │   │   ├── layout/footer/        ← renderFooter() dans footer[data-layout]
@@ -86,7 +87,7 @@ front/
 │   │   │   │   └── map.css, mapLegend.css
 │   │   │   └── home.css          ← mise en page de la page carte
 │   │   └── EventsView.js         ← #events-list / -error / -status
-│   ├── controllers/              ← mediateurs minces
+│   ├── controller/               ← C : mediateurs minces
 │   │   ├── HomeController.js     ← views -> MapSearch -> rendu ; chargement, geolocalisation, ?q=
 │   │   └── EventsController.js
 │   └── pages/
@@ -98,22 +99,27 @@ front/
 
 ### Architecture MVC
 
-- **dto/** : forme exacte du JSON echange avec l'API, dans la convention du back (snake_case),
-  miroir de `back/src/Dto`. Typedefs JSDoc uniquement, aucun code.
-- **mappers/** : seuls a connaitre les noms du JSON. `toEvent(dto)` construit l'objet du front (camelCase,
-  `position: {lat, lng}`, places restantes et disponibilite calculees) ; `toEventDto(event)` fait l'inverse
-  pour un envoi (les champs calcules ne repartent pas). Renommer un champ cote API ne touche qu'ici.
-- **dao/** : acces a l'API REST (appels via `core/api.js`), renvoie des modeles via les mappers.
-  Equivalent cote client de `back/src/Models` (acces base de donnees cote serveur).
-- **models/** : regles metier (a venir, places restantes, "dernieres places", filtres, zone couverte)
-  et etat d'une page (`MapSearch`). Aucun DOM, aucun texte affiche, aucune couleur, aucun nom du JSON.
-- **views/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes
+Un dossier par couche : `model/`, `view/`, `controller/`. `pages/`, `app/`, `core/` et `shared/` sont
+transverses (points d'entree, demarrage, infrastructure, utilitaires).
+
+- **model/** : tout ce qui est sans DOM.
+  - **model/dto/** : forme exacte du JSON echange avec l'API, dans la convention du back (snake_case),
+    miroir de `back/src/Model/Dto`. Typedefs JSDoc uniquement, aucun code.
+  - **model/mappers/** : seuls a connaitre les noms du JSON. `toEvent(dto)` construit l'objet du front (camelCase,
+    `position: {lat, lng}`, places restantes et disponibilite calculees) ; `toEventDto(event)` fait l'inverse
+    pour un envoi (les champs calcules ne repartent pas). Renommer un champ cote API ne touche qu'ici.
+  - **model/services/** : acces a l'API REST (appels via `core/api.js`), renvoie des modeles via les mappers.
+    Equivalent cote client de l'acces base de donnees de `back/src/Model/Dao`.
+  - **model/domain/** : regles metier (a venir, places restantes, "dernieres places", filtres, zone couverte)
+    et etat d'une page (`MapSearch`). Aucun DOM, aucun texte affiche, aucune couleur, aucun nom du JSON,
+    aucun appel reseau.
+- **view/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes
   et choix d'affichage (messages, couleurs de categorie). Aucun appel API, aucune regle metier : elles
   recoivent des objets normalises. Une view de page (`HomeView`, `MapView`, `EventsView`) est seule a
   connaitre ses ids et les passe a des sous-vues sans id (`PointCard`, `ResultsList`...), reutilisables.
   Une view ne pilote jamais le DOM d'une autre : elle passe par son API (ex. `SearchBox` du header).
   Chaque composant a son dossier, avec son JS et sa feuille CSS cote a cote.
-- **controllers/** : mediateurs minces : relaient les evenements des views vers le model, puis
+- **controller/** : mediateurs minces : relaient les evenements des views vers le model, puis
   redessinent. Ne touchent jamais le DOM, ne contiennent ni texte affiche ni regle metier.
   Dependances injectables par le constructeur (views, `loadEvents`, `getPosition`...) avec valeurs par defaut :
   pas de conteneur d'injection.
@@ -125,29 +131,29 @@ front/
 ### Regle de dependances
 
 ```
-pages/        -> app/boot.js, controllers/
-controllers/  -> dao/, models/, views/, core/errors.js, core/geolocation.js, core/routes.js (replaceSearchParam)
-dao/          -> core/api.js, mappers/, dto/ (types)
-mappers/      -> models/ (regles de calcul), mappers/, dto/ (types)
-models/       -> models/, shared/geo.js (calcul pur)
-views/        -> views/, shared/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
-app/boot.js   -> core/, views/layout/
-core/         -> core/ uniquement
-shared/       -> rien (utilitaires purs)
+pages/           -> app/boot.js, controller/
+controller/      -> model/services/, model/domain/, view/, core/errors.js, core/geolocation.js, core/routes.js (replaceSearchParam)
+model/services/  -> core/api.js, model/mappers/, model/dto/ (types)
+model/mappers/   -> model/domain/ (regles de calcul), model/mappers/, model/dto/ (types)
+model/domain/    -> model/domain/, shared/geo.js (calcul pur)
+view/            -> view/, shared/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
+app/boot.js      -> core/, view/layout/
+core/            -> core/ uniquement
+shared/          -> rien (utilitaires purs)
 ```
 
 - Rien n'importe `pages/` ; pas de dependance circulaire (`loginUrl` vit dans `core/routes.js` pour que
   le header l'utilise sans importer `app/boot.js`).
-- Une view n'importe ni `models/` ni `core/api.js` ; un model n'importe ni `views/` ni `shared/dom.js`.
+- Une view n'importe ni `model/` ni `core/api.js` ; un model n'importe ni `view/` ni `shared/dom.js`.
   Ce dont une view a besoin cote metier est un champ de l'objet normalise (`event.remainingPlaces`,
   `event.availability`) ou lui est passe par le controleur (categories presentes, resultats).
-- Leaflet n'est lu que dans `views/home/map/LeafletMap.js`.
+- Leaflet n'est lu que dans `view/home/map/LeafletMap.js`.
 
 ## Page carte (index.html)
 
 - Les evenements sont charges une fois (`limit=100`, plafond du back) puis filtres **cote client**
-  (`models/eventSearch.js`) : distance haversine au point choisi, rayon 1–20 km, puis les criteres de
-  `models/eventFilters.js` : "Ce week-end" (samedi 0 h -> lundi 0 h), "Gratuit", "Places disponibles",
+  (`model/domain/eventSearch.js`) : distance haversine au point choisi, rayon 1–20 km, puis les criteres de
+  `model/domain/eventFilters.js` : "Ce week-end" (samedi 0 h -> lundi 0 h), "Gratuit", "Places disponibles",
   categories (OU), recherche du header (titre, lieu, ville ; sans accents ni casse). Ajouter un filtre =
   un predicat + une entree dans `USER_FILTERS` (+ son drapeau dans `MapSearch`, sa puce dans index.html).
 - Un evenement **sans coordonnees** reste dans la liste ("position inconnue"), n'est pas dessine et ne
@@ -168,7 +174,7 @@ shared/       -> rien (utilitaires purs)
   (SRI) : un `import` ESM depuis un CDN ne peut pas porter d'empreinte. `LeafletMap` lit `window.L` ; s'il manque
   (hors ligne, bloque), un message s'affiche et la liste reste utilisable. Tuiles OpenStreetMap, attribution
   "Leaflet · © contributeurs OpenStreetMap" (lien de copyright exige par OSM).
-- Categories : le referentiel du back ne recoupe la charte qu'en partie. `views/components/category/category.js` rattache
+- Categories : le referentiel du back ne recoupe la charte qu'en partie. `view/components/category/category.js` rattache
   `soiree`, `sport`, `conference`, `culture`, `tech` (-> Hackathon) et `forum-entreprises` (pas encore en base)
   a leur couleur ; les autres slugs (`concert`, `gaming`, `bde`, `exterieur`, `gastronomie`) sont gris
   (texte secondaire) et regroupes sous "Autres" dans la legende. Libelles affiches tels que renvoyes par l'API.
@@ -201,10 +207,10 @@ cd front && node --test "tests/**/*.test.js"    # Node 22, aucune dependance
   filtres et recherche de la carte, `isUpcoming`, zone couverte, formats, `resultsMessage`.
   Donnees communes dans `tests/fixtures.js` (`eventDto()`, `event()`).
 - `tests/contract.test.js` : la spec OpenAPI du back (assemblee par PHP) est la reference ; echoue
-  si un champ de `Event` / `Category` manque au typedef de `src/dto/`, n'est pas lu par `toEvent`
+  si un champ de `Event` / `Category` manque au typedef de `src/model/dto/`, n'est pas lu par `toEvent`
   ou pas renvoye par `toEventDto`. Ignore sans PHP, sauf avec `REQUIRE_CONTRACT=1` (CI).
 - Types : `jsconfig.json` active la verification des JSDoc (VS Code en direct, `tsc` en CI) sur
-  `dto/`, `mappers/`, `dao/`, `models/`, `shared/`, `core/` et les tests ; les views ne sont pas
+  `model/`, `shared/`, `core/` et les tests ; les views ne sont pas
   encore dans le perimetre. Globales des scripts classiques (`DAYOUT_CONFIG`, Leaflet) :
   `src/types/globals.d.ts`. En local, comme en CI : `front/tools/typecheck.sh` (installe TypeScript, version epinglee, dans
   `front/tools/.cache/`, ignore par git).
@@ -250,7 +256,7 @@ un 404 dans l'onglet Reseau, sans effet : les valeurs par defaut s'appliquent.
 ```
 
 ```js
-// src/dao/eventDao.js : acces API ; le mapper transforme l'EventDto en modele
+// src/model/services/eventService.js : acces API ; le mapper transforme l'EventDto en modele
 export async function fetchEvent(id, { signal } = {}) {
   return toEvent(await api.get(`/events/${encodeURIComponent(id)}`, { signal }));
 }
@@ -258,7 +264,7 @@ export async function fetchEvent(id, { signal } = {}) {
 ```
 
 ```js
-// src/views/MaPageView.js : seul fichier qui connait les ids de la page
+// src/view/MaPageView.js : seul fichier qui connait les ids de la page
 import { h } from "../shared/dom.js";
 
 export class MaPageView {
@@ -285,10 +291,10 @@ export class MaPageView {
 ```
 
 ```js
-// src/controllers/MaPageController.js : orchestre, ne touche pas le DOM
+// src/controller/MaPageController.js : orchestre, ne touche pas le DOM
 import { isApiError, messageFor } from "../core/errors.js";
-import { fetchEvent } from "../dao/eventDao.js";
-import { MaPageView } from "../views/MaPageView.js";
+import { fetchEvent } from "../model/services/eventService.js";
+import { MaPageView } from "../view/MaPageView.js";
 
 export class MaPageController {
   // Dependances injectables (tests, autre source) ; valeurs par defaut = l'application reelle.
@@ -316,9 +322,9 @@ export class MaPageController {
 ```js
 // src/pages/ma-page.js : point d'entree mince
 import { boot } from "../app/boot.js";
-import { MaPageController } from "../controllers/MaPageController.js";
+import { MaPageController } from "../controller/MaPageController.js";
 
-boot({ page: "ma-page" });          // ajouter l'entree dans NAV_ITEMS (views/layout/header/header.js) si besoin
+boot({ page: "ma-page" });          // ajouter l'entree dans NAV_ITEMS (view/layout/header/header.js) si besoin
 
 new MaPageController().start(new URLSearchParams(location.search).get("id"));
 ```
@@ -383,13 +389,13 @@ Tokens dans `assets/css/tokens.css` ; repartition d'un ecran : 70 % neutres / 20
 ### Logo
 
 Fichier unique `assets/img/dayout-logo-light.svg` (blanc + orange, pour fond violet nuit), reference **seulement**
-dans `views/components/logo/logo.js` (`renderLogo()`, alt "DayOut", 96 px de large minimum). Pour changer de
+dans `view/components/logo/logo.js` (`renderLogo()`, alt "DayOut", 96 px de large minimum). Pour changer de
 fichier ou de variante, modifier `LOGO_LIGHT` (et `LOGO_RATIO` si le viewBox change). Jamais de logo G4B dans le
 header ; "Realise par G4B Digital" dans le footer uniquement.
 
 ### Footer
 
-`views/layout/footer/footer.js` remplit `<footer class="site-footer" data-layout>` (logo, accroche, credit),
+`view/layout/footer/footer.js` remplit `<footer class="site-footer" data-layout>` (logo, accroche, credit),
 comme le header, avec un fallback `<noscript>` statique. Absent de la page carte (plein ecran). Liens FAQ / CGU /
 Mentions legales / Contact a ajouter quand ces pages existeront (pas de lien casse d'ici la).
 
@@ -406,6 +412,6 @@ Mentions legales / Contact a ajouter quand ces pages existeront (pas de lien cas
   - etat : `.is-*` (ex. `.is-open`) **uniquement** si aucun attribut ARIA ne l'exprime ;
     sinon styler l'attribut (`[aria-current="page"]`, `[aria-busy="true"]`, `[aria-invalid="true"]`).
 - Composant rendu ou pilote par une view : sa feuille vit a cote de son JS
-  (`src/views/components/eventCard/eventCard.css`, `src/views/home/pointCard/pointCard.css`) ; quand une
+  (`src/view/components/eventCard/eventCard.css`, `src/view/home/pointCard/pointCard.css`) ; quand une
   view est decoupee, sa feuille l'est aussi. Composant purement HTML/CSS : feuille dans
   `assets/css/components/`. Dans les deux cas, ajoutee par `@import` dans `assets/css/main.css`.
