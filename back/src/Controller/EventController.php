@@ -7,19 +7,15 @@ use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
 use App\Model\Mappers\EventMapper;
-use App\Model\Dao\Category;
-use App\Model\Dao\Event;
+use App\Model\Services\EventService;
 
 final class EventController extends Controller
 {
-    private Event $events;
-    private Category $categories;
+    private EventService $events;
 
-    /** Le Router instancie sans argument ; les parametres servent aux tests. */
-    public function __construct(?Event $events = null, ?Category $categories = null)
+    public function __construct(?EventService $events = null)
     {
-        $this->events     = $events ?? new Event();
-        $this->categories = $categories ?? new Category();
+        $this->events = $events ?? new EventService();
     }
 
     public function index(Request $request): Response
@@ -27,10 +23,8 @@ final class EventController extends Controller
         $limit  = $request->queryInt('limit',  20, 1, 100);
         $offset = $request->queryInt('offset',  0, 0, 10_000);
 
-        $rows = $this->events->listPublished($limit, $offset);
-
         return $this->ok([
-            'items'  => EventMapper::toDtos($rows, $this->categoriesOf($rows)),
+            'items'  => EventMapper::toDtos($this->events->listPublished($limit, $offset)),
             'limit'  => $limit,
             'offset' => $offset,
         ]);
@@ -38,18 +32,7 @@ final class EventController extends Controller
 
     public function show(Request $request): Response
     {
-        $id    = (int) $request->param('id');
-        $event = $this->found($this->events->findPublishedById($id), 'Event', $id);
-        return $this->ok(EventMapper::toDto($event, $this->categoriesOf([$event])[$id] ?? []));
-    }
-
-    /**
-     * 1 requete pour toute la page, quel que soit le nombre d'events.
-     *
-     * @return array<int, array<int, array{slug: string, label: string}>> event_id => categories
-     */
-    private function categoriesOf(array $rows): array
-    {
-        return $this->categories->listActiveByEvent(array_column($rows, 'id'));
+        $id = (int) $request->param('id');
+        return $this->ok(EventMapper::toDto($this->found($this->events->findPublished($id), 'Event', $id)));
     }
 }

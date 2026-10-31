@@ -75,7 +75,6 @@ final class Config
         return $value;
     }
 
-    /** Relatif a back/ ou absolu (/var/log, C:\logs). */
     private static function path(string $appRoot, string $path): string
     {
         $path = rtrim($path, '/\\');

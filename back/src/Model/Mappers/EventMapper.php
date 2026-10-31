@@ -14,7 +14,8 @@ final class EventMapper
 {
     private const DB_DATETIME = 'Y-m-d H:i:s';
 
-    public static function toDto(array $row, array $categoryRows = []): EventDto
+    /** `$row` : ligne d'event, ses categories sous la cle `categories` (absente = aucune). */
+    public static function toDto(array $row): EventDto
     {
         return new EventDto(
             id: $row['id'],
@@ -37,16 +38,13 @@ final class EventMapper
             isPaid: $row['is_paid'],
             externalTicketUrl: $row['external_ticket_url'],
             schoolRestricted: $row['school_restricted'],
-            categories: CategoryMapper::toDtos($categoryRows),
+            categories: CategoryMapper::toDtos($row['categories'] ?? []),
         );
     }
 
-    public static function toDtos(array $rows, array $categoriesByEvent = []): array
+    public static function toDtos(array $rows): array
     {
-        return array_map(
-            static fn (array $row): EventDto => self::toDto($row, $categoriesByEvent[$row['id']] ?? []),
-            array_values($rows)
-        );
+        return array_map(self::toDto(...), array_values($rows));
     }
 
     /** JSON recu -> EventInputDto ; 422 VALIDATION_ERROR (details par champ) si invalide. */

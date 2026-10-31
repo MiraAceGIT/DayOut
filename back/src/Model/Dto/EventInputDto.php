@@ -6,7 +6,6 @@ namespace App\Model\Dto;
 /**
  * Event tel qu'un client peut l'ecrire (creation). Distinct d'EventDto (lecture) : ni id, ni registered_count,
  * ni school_restricted (deduit de restrictedSchoolId), ni champs serveur (creator_id, status).
- * Construit par EventMapper::fromInput(), qui valide le JSON avec RULES ; ecrit via EventMapper::toRow().
  */
 final readonly class EventInputDto
 {

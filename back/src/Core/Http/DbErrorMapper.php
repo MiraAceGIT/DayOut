@@ -13,7 +13,6 @@ use PDOException;
  */
 final class DbErrorMapper
 {
-    /** errno du trigger => [statut HTTP, code d'erreur API] */
     private const TRIGGER_ERRORS = [
         50101 => [422, 'EMAIL_DOMAIN_NOT_ALLOWED'],
         50201 => [422, 'INVALID_SCHOOL_RESTRICTION'],
@@ -30,7 +29,6 @@ final class DbErrorMapper
         50502 => [422, 'INVALID_REPORT_TARGET'],
     ];
 
-    /** errno natif => [statut HTTP, code d'erreur API, message] */
     private const NATIVE_ERRORS = [
         1062 => [409, 'CONFLICT', 'Resource already exists'],         // cle unique (ex. deja inscrit)
         1451 => [409, 'CONFLICT', 'Resource is still referenced'],    // suppression d'une ligne referencee

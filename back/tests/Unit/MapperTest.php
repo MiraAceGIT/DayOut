@@ -26,7 +26,7 @@ final class MapperTest extends TestCase
 
     public function testEventDtoExposesOnlyPublicFieldsInSnakeCase(): void
     {
-        $json = EventMapper::toDto(self::eventRow(), [['slug' => 'bde', 'label' => 'BDE / Assoc']])->jsonSerialize();
+        $json = EventMapper::toDto(self::eventRow(['categories' => [['slug' => 'bde', 'label' => 'BDE / Assoc']]]))->jsonSerialize();
 
         $this->assertSame([
             'id', 'title', 'slug', 'description', 'cover_image_url', 'start_at', 'end_at', 'venue_name',
@@ -49,10 +49,10 @@ final class MapperTest extends TestCase
 
     public function testToDtosAttachesEachEventItsCategories(): void
     {
-        $dtos = EventMapper::toDtos(
-            [5 => self::eventRow(['id' => 1]), 9 => self::eventRow(['id' => 2])],
-            [2 => [['slug' => 'sport', 'label' => 'Sport']], 99 => [['slug' => 'x', 'label' => 'X']]]
-        );
+        $dtos = EventMapper::toDtos([
+            5 => self::eventRow(['id' => 1]),
+            9 => self::eventRow(['id' => 2, 'categories' => [['slug' => 'sport', 'label' => 'Sport']]]),
+        ]);
 
         $this->assertSame([1, 2], array_map(static fn ($dto): int => $dto->id, $dtos), 'list, row order kept');
         $this->assertSame([], $dtos[0]->categories, 'event without categories');
@@ -60,7 +60,6 @@ final class MapperTest extends TestCase
         $this->assertSame([], EventMapper::toDtos([]));
     }
 
-    /** Corps JSON minimal valide d'une creation d'event. */
     private static function input(array $overrides = []): array
     {
         return $overrides + [

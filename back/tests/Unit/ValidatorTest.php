@@ -10,7 +10,6 @@ use Tests\TestCase;
 
 final class ValidatorTest extends TestCase
 {
-    /** Erreurs par champ renvoyees par check(), ou [] si les donnees sont valides. */
     private function errors(array $data, array $rules): array
     {
         try {
