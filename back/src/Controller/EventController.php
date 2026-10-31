@@ -32,7 +32,6 @@ final class EventController extends Controller
 
     public function show(Request $request): Response
     {
-        $id = (int) $request->param('id');
-        return $this->ok(EventMapper::toDto($this->found($this->events->findPublished($id), 'Event', $id)));
+        return $this->ok(EventMapper::toDto($this->events->getPublished((int) $request->param('id'))));
     }
 }

@@ -10,6 +10,8 @@ use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Router;
+use App\Model\Exceptions\BusinessException;
+use App\Model\Exceptions\ErrorKind;
 use PDOException;
 use RuntimeException;
 use Tests\TestCase;
@@ -19,6 +21,14 @@ final class FailingController
     public function fail(Request $request): Response
     {
         throw new RuntimeException('secret internal detail');
+    }
+}
+
+final class SampleException extends BusinessException
+{
+    public static function of(ErrorKind $kind): self
+    {
+        return new self($kind, 'SAMPLE_CODE', 'Sample message', ['id' => 7], ['secret' => 'internal']);
     }
 }
 
@@ -85,6 +95,20 @@ final class KernelTest extends TestCase
 
         $this->assertSame(405, $response->status);
         $this->assertSame('GET, POST', $response->header('Allow'));
+    }
+
+    public function testBusinessExceptionKindSetsStatusAndHidesContext(): void
+    {
+        $expected = [404 => ErrorKind::NotFound, 403 => ErrorKind::Forbidden, 409 => ErrorKind::Conflict, 422 => ErrorKind::Invalid];
+        foreach ($expected as $status => $kind) {
+            $response = ExceptionRenderer::render(SampleException::of($kind));
+            $this->assertSame($status, $response->status, $kind->name);
+            $this->assertSame(
+                ['code' => 'SAMPLE_CODE', 'message' => 'Sample message', 'details' => ['id' => 7]],
+                $response->payload()['error'],
+                $kind->name . ' : context stays out of the response'
+            );
+        }
     }
 
     private static function pdoError(string $state, int $errno, string $message): PDOException

@@ -28,6 +28,8 @@ back/
 │   │                     Compiler, Grammar
 │   ├── Model/          ← M
 │   │   ├── Dao/        ← acces BDD : Model.php (base) + une classe par table
+│   │   ├── Services/   ← regles metier : appellent les DAO, levent les exceptions metier
+│   │   ├── Exceptions/ ← BusinessException (base), ErrorKind, une classe par ressource
 │   │   ├── Dto/        ← contrat JSON : un objet immuable par ressource exposee (jsonSerialize)
 │   │   └── Mappers/    ← ligne du Model <-> DTO (toDto / toDtos / toRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
@@ -77,7 +79,7 @@ Toutes les reponses sont en JSON et suivent une enveloppe standard.
 
 Codes d'erreur emis : `BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`,
 `VALIDATION_ERROR` (422, `details` = champ -> message), `CONFLICT`, les codes metier
-des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
+des services (`EVENT_NOT_FOUND`... voir *Gestion des erreurs*) et des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
 `INTERNAL_ERROR`, `ENCODING_ERROR`.
 
 ## Endpoints
@@ -86,7 +88,7 @@ des triggers (`EVENT_FULL`, `USER_BANNED`... voir *Gestion des erreurs*),
 | ------- | -------------------- | ---------------------------------------------- | ------------------------------------- | ----------------------------------------- |
 | GET     | `/health`            | —                                              | `{ api, db, time }`                   | —                                         |
 | GET     | `/events`            | `limit` (1-100, def. 20), `offset` (def. 0)    | `{ items: Event[], limit, offset }`   | —                                         |
-| GET     | `/events/{id}`       | — (`id` entier obligatoire via regex `\d+`)    | `Event`                               | `404 NOT_FOUND`, `404` si `{id}` non num. |
+| GET     | `/events/{id}`       | — (`id` entier obligatoire via regex `\d+`)    | `Event`                               | `404 EVENT_NOT_FOUND`, `404 NOT_FOUND` si `{id}` non num. |
 | GET     | `/docs`              | —                                              | page HTML Swagger UI (hors enveloppe) | —                                         |
 | GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | —                                         |
 
@@ -521,6 +523,21 @@ exception a `App\Core\Http\ExceptionRenderer`.
   throw HttpException::notFound('Event not found', ['id' => $id]);
   throw HttpException::badRequest('Missing field', ['field' => 'title']);
   throw new HttpException(409, 'CONFLICT', 'Already registered');
+  ```
+- `App\Model\Exceptions\BusinessException` -> regle metier levee par un service. Une classe
+  par ressource, un cas par factory nommee ; le service ne connait pas HTTP, c'est
+  `ErrorKind` qui fixe le statut (`NotFound` 404, `Forbidden` 403, `Conflict` 409,
+  `Invalid` 422). `details` part au client, `context` reste dans `info-AAAA-MM-JJ.log` avec le
+  `requestId` (renvoye au client dans l'en-tete `X-Request-Id`) :
+  ```php
+  // src/Model/Exceptions/EventException.php
+  public static function notFound(int $id): self
+  {
+      return new self(ErrorKind::NotFound, 'EVENT_NOT_FOUND', 'Event not found', ['id' => $id]);
+  }
+
+  // dans EventService
+  $event = $this->events->findPublishedById($id) ?? throw EventException::notFound($id);
   ```
 - regle metier d'un trigger SQL (`SIGNAL ... MYSQL_ERRNO = 50xxx`) -> traduite par
   `App\Core\Http\DbErrorMapper`, avec le message du trigger. Table complete des

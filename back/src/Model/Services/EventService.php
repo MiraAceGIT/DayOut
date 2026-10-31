@@ -5,8 +5,8 @@ namespace App\Model\Services;
 
 use App\Model\Dao\Category;
 use App\Model\Dao\Event;
+use App\Model\Exceptions\EventException;
 
-/** Lignes d'events avec leurs categories sous la cle `categories`. */
 final class EventService
 {
     private Event $events;
@@ -24,11 +24,14 @@ final class EventService
         return $this->withCategories($this->events->listPublished($limit, $offset));
     }
 
-    /** @return array<string, mixed>|null */
-    public function findPublished(int $id): ?array
+    /**
+     * @return array<string, mixed>
+     * @throws EventException brouillon, archive ou inexistant
+     */
+    public function getPublished(int $id): array
     {
-        $event = $this->events->findPublishedById($id);
-        return $event === null ? null : $this->withCategories([$event])[0];
+        $event = $this->events->findPublishedById($id) ?? throw EventException::notFound($id);
+        return $this->withCategories([$event])[0];
     }
 
     /**

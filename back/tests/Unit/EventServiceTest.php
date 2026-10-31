@@ -6,6 +6,8 @@ namespace Tests\Unit;
 use App\Core\Orm\Connection;
 use App\Model\Dao\Category;
 use App\Model\Dao\Event;
+use App\Model\Exceptions\ErrorKind;
+use App\Model\Exceptions\EventException;
 use App\Model\Services\EventService;
 use PDO;
 use Tests\TestCase;
@@ -46,16 +48,20 @@ final class EventServiceTest extends TestCase
         $this->assertSame([['slug' => 'soiree', 'label' => 'Soiree']], $events[1]['categories']);
     }
 
-    public function testFindPublishedAttachesCategories(): void
+    public function testGetPublishedAttachesCategories(): void
     {
-        $event = $this->service->findPublished(1);
+        $event = $this->service->getPublished(1);
 
         $this->assertSame([['slug' => 'soiree', 'label' => 'Soiree']], $event['categories'] ?? null);
     }
 
-    public function testDraftOrUnknownEventIsNotFound(): void
+    public function testDraftOrUnknownEventThrowsNotFound(): void
     {
-        $this->assertSame(null, $this->service->findPublished(3));
-        $this->assertSame(null, $this->service->findPublished(99));
+        foreach ([3, 99] as $id) {
+            $e = $this->assertThrows(EventException::class, fn () => $this->service->getPublished($id), "event $id");
+            $this->assertSame(ErrorKind::NotFound, $e->kind);
+            $this->assertSame('EVENT_NOT_FOUND', $e->errorCode);
+            $this->assertSame(['id' => $id], $e->details);
+        }
     }
 }

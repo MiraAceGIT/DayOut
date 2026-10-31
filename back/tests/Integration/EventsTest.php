@@ -79,7 +79,7 @@ final class EventsTest extends HttpTestCase
 
     public function testShowUnknownEventReturns404(): void
     {
-        $error = $this->assertError(404, 'NOT_FOUND', $this->get('/events/99999'));
+        $error = $this->assertError(404, 'EVENT_NOT_FOUND', $this->get('/events/99999'));
         $this->assertSame('Event not found', $error['message']);
         $this->assertSame(['id' => 99999], $error['details']);
     }
@@ -87,7 +87,7 @@ final class EventsTest extends HttpTestCase
     public function testDraftAndArchivedEventsAreNotExposed(): void
     {
         foreach ([8, 9, 10] as $id) {
-            $this->assertError(404, 'NOT_FOUND', $this->get("/events/$id"));
+            $this->assertError(404, 'EVENT_NOT_FOUND', $this->get("/events/$id"));
         }
     }
 

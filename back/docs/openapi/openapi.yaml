@@ -36,7 +36,8 @@ components:
               type: string
               description: >-
                 BAD_REQUEST, NOT_FOUND, METHOD_NOT_ALLOWED, VALIDATION_ERROR, CONFLICT, codes metier des
-                triggers (EVENT_FULL, USER_BANNED...), INTERNAL_ERROR, ENCODING_ERROR.
+                services (EVENT_NOT_FOUND...) et des triggers (EVENT_FULL, USER_BANNED...), INTERNAL_ERROR,
+                ENCODING_ERROR.
               example: NOT_FOUND
             message:
               type: string
