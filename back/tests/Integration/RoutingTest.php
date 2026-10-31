@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Http;
+namespace Tests\Integration;
 
 use Tests\HttpTestCase;
 

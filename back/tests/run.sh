@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Remet la base de test a zero (schema + seed) puis lance tests/run.php.
-#   back/tests/run.sh [EventsTest]   filtre sur "Classe::methode" ; --unit : unitaires seuls, sans BDD
+#   back/tests/run.sh [EventsTest]   filtre sur "Classe::methode"
+#   --unit : unitaires seuls, sans BDD ; --integration : integration seule
 # Base : TEST_DB_NAME (defaut dayout_test), jamais celle de dev.
 set -euo pipefail
 cd "$(dirname "$0")/.."

@@ -36,7 +36,7 @@ back/
 ├── routes/            ← un fichier de routes par ressource (charges par api.php)
 ├── docs/openapi/       ← spec OpenAPI 3 en YAML : openapi.yaml (commun) + un fichier par controller
 ├── storage/logs/       ← fichiers de logs (crees a la volee, ignores par git)
-├── tests/              ← runner maison : Unit/ (sans BDD), Http/ (integration)
+├── tests/              ← runner maison : Unit/ (sans BDD), Integration/ (HTTP + BDD)
 ├── autoload.php        ← autoload PSR-4 App\ -> src/
 ├── .env.example
 └── README.md
@@ -178,24 +178,25 @@ requete pour toute la page (`Category::listActiveByEvent`). Seuls les events
 Runner maison sans dependance (pas de Composer), depuis Git Bash :
 
 ```bash
-back/tests/run.sh               # tout : unitaires + integration
-back/tests/run.sh EventsTest    # filtre sur "Classe::methode"
-back/tests/run.sh --unit        # unitaires seuls, sans BDD
+back/tests/run.sh                 # tout : unitaires + integration
+back/tests/run.sh EventsTest      # filtre sur "Classe::methode"
+back/tests/run.sh --unit          # unitaires seuls, sans BDD
+back/tests/run.sh --integration   # integration seule (remet dayout_test a zero)
 ```
 
-- `tests/Unit/` : classes testees directement, sans serveur : Router (middlewares, groupes),
+- `tests/Unit/` (tests unitaires) : classes testees directement, sans serveur ni MariaDB : Router (middlewares, groupes),
   Kernel (rendu des erreurs, CORS, en-tetes), Request / Response, QueryBuilder (SQL genere),
-  Caster, Model et Category (sur SQLite en memoire), Mappers (DTO exposes, toRow), Docs (spec OpenAPI = routes + DTO), Yaml, OpenApiSpec (fusion), Validator, ContextSanitizer, et les filets d'ErrorHandler
+  Caster, Model, Category et EventService (sur SQLite en memoire), Mappers (DTO exposes, toRow), Docs (spec OpenAPI = routes + DTO), Yaml, OpenApiSpec (fusion), Validator, ContextSanitizer, et les filets d'ErrorHandler
   (dans un processus a part).
-- `tests/Http/` : vraies requetes HTTP. `run.sh` remet a zero la base **`dayout_test`**
+- `tests/Integration/` (tests d'integration) : vraies requetes HTTP sur l'application complete. `run.sh` remet a zero la base **`dayout_test`**
   (`infra/sql/reset_db.sh`, schema + seed), puis lance `php -S` sur un port libre
   branche sur cette base, avec des logs dans un dossier temporaire. La base de dev
   et `storage/logs/` ne sont jamais touches. Autre base : `TEST_DB_NAME=... back/tests/run.sh`.
 - PHP : `php` du PATH, sinon `C:\xampp\php\php.exe` (ou `PHP=/chemin/php`).
 
 Ajouter un test : une classe `*Test` dans `tests/Unit/` (herite de `Tests\TestCase`)
-ou `tests/Http/` (herite de `Tests\HttpTestCase`), une methode publique `test*` par cas.
-Les tests HTTP s'appuient sur les donnees de `infra/sql/seed.sql`.
+ou `tests/Integration/` (herite de `Tests\HttpTestCase`), une methode publique `test*` par cas.
+Les tests d'integration s'appuient sur les donnees de `infra/sql/seed.sql`.
 
 ```php
 final class EventsTest extends HttpTestCase

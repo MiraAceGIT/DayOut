@@ -27,10 +27,16 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
-$args     = array_slice($_SERVER['argv'] ?? [], 1);
-$unitOnly = in_array('--unit', $args, true);
-$filter   = array_values(array_filter($args, fn (string $a): bool => !str_starts_with($a, '--')))[0] ?? '';
-$testDb   = (string) getenv('TEST_DB_NAME');
+$args            = array_slice($_SERVER['argv'] ?? [], 1);
+$unitOnly        = in_array('--unit', $args, true);
+$integrationOnly = in_array('--integration', $args, true);
+$filter          = array_values(array_filter($args, fn (string $a): bool => !str_starts_with($a, '--')))[0] ?? '';
+$testDb          = (string) getenv('TEST_DB_NAME');
+
+if ($integrationOnly && $testDb === '') {
+    fwrite(STDERR, "--integration : TEST_DB_NAME absent (lancer tests/run.sh --integration).\n");
+    exit(1);
+}
 
 // Dossier jetable : logs du runner et du serveur, jamais ceux de dev.
 $tmpDir = sys_get_temp_dir() . '/dayout-tests-' . bin2hex(random_bytes(4));
@@ -39,9 +45,9 @@ putenv("LOG_PATH=$tmpDir/logs"); // herite par les sous-processus (fixtures)
 putenv('TEST_TMP_DIR=' . $tmpDir);
 App\Core\Log\Log::configure(App\Core\Log\Level::Debug, "$tmpDir/logs");
 
-$suites = ['Unit' => __DIR__ . '/Unit'];
+$suites = $integrationOnly ? [] : ['Unit' => __DIR__ . '/Unit'];
 if (!$unitOnly && $testDb !== '') {
-    $suites['Http'] = __DIR__ . '/Http';
+    $suites['Integration'] = __DIR__ . '/Integration';
 } elseif (!$unitOnly) {
     echo "TEST_DB_NAME absent : tests d'integration ignores (lancer tests/run.sh).\n";
 }
@@ -49,7 +55,7 @@ if (!$unitOnly && $testDb !== '') {
 $server = null;
 $exit   = 1;
 try {
-    if (isset($suites['Http'])) {
+    if (isset($suites['Integration'])) {
         putenv("TEST_SERVER_LOG_PATH=$tmpDir/server-logs");
         $server = TestServer::start(APP_ROOT . '/public', [
             'DB_NAME'     => $testDb,
@@ -137,7 +143,7 @@ function testLocation(Throwable $e): string
     $frames = array_merge([['file' => $e->getFile(), 'line' => $e->getLine()]], $e->getTrace());
     foreach ($frames as $frame) {
         $file = $frame['file'] ?? '';
-        if (preg_match('#[\\\\/]tests[\\\\/](Unit|Http)[\\\\/]#', $file) === 1) {
+        if (preg_match('#[\\\\/]tests[\\\\/](Unit|Integration)[\\\\/]#', $file) === 1) {
             return 'tests/' . str_replace('\\', '/', substr($file, strpos($file, 'tests') + 6)) . ':' . $frame['line'];
         }
     }

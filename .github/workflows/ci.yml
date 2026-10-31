@@ -54,8 +54,11 @@ jobs:
       - name: Syntaxe PHP
         run: find back -name '*.php' -not -path '*/tools/.cache/*' -print0 | xargs -0 -n1 php -l > /dev/null
 
-      - name: Tests (unitaires + integration sur dayout_test)
-        run: bash back/tests/run.sh
+      - name: Tests unitaires
+        run: bash back/tests/run.sh --unit
+
+      - name: Tests d'integration (dayout_test)
+        run: bash back/tests/run.sh --integration
 
       - name: Analyse statique (PHPStan)
         if: matrix.php == '8.5'
