@@ -46,7 +46,6 @@ export function icon(name, { size = 20, className = "icon" } = {}) {
   return svg;
 }
 
-/** Epingle pleine pour la carte : corps a la couleur `currentColor`, contour et oeil blancs. */
 export function pinIcon({ size = 32, className = "map-pin__svg" } = {}) {
   const svg = svgEl("svg", {
     viewBox: "0 0 24 24",

@@ -1,4 +1,3 @@
-/* Onglets segmentes (role=tablist), pilotes par tabs.js (meme dossier). */
 .tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;

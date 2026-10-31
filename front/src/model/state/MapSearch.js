@@ -4,7 +4,6 @@ import { searchEvents } from "../domain/eventSearch.js";
 /** @typedef {{ lat: number, lng: number, label?: string, source: string }} Origin `source` : default | map | device */
 
 /**
- * Point par defaut de la maquette (ISEP Notre-Dame-des-Champs) ; son libelle est choisi par la vue.
  * @type {Origin}
  */
 export const DEFAULT_ORIGIN = { lat: 48.8455, lng: 2.3275, source: "default" };
@@ -13,7 +12,6 @@ export const DEFAULT_RADIUS_KM = 3;
 const FLAGS = new Set(["weekend", "free", "available"]);
 
 /**
- * Etat de la page carte, sans DOM : evenements charges, criteres, selection.
  * Les criteres sont modifiables avant la fin du chargement ; `results()` n'a de sens qu'une fois `isReady`.
  */
 export class MapSearch {
@@ -72,7 +70,6 @@ export class MapSearch {
     this.criteria.categories = categories;
   }
 
-  /** `point` = { lat, lng, label?, source? } ; `source` "device" = position de l'appareil. Renvoie le point retenu. */
   setOrigin(point) {
     this.criteria.origin = { lat: point.lat, lng: point.lng, label: point.label ?? "", source: point.source ?? "map" };
     return this.criteria.origin;
@@ -82,10 +79,6 @@ export class MapSearch {
     this.selectedId = id;
   }
 
-  /**
-   * Resultats des criteres courants ; une selection qui n'en fait plus partie est oubliee.
-   * `loadedCap` : nombre charge si le plafond de l'API est atteint, 0 sinon.
-   */
   results({ now = new Date() } = {}) {
     const result = searchEvents(this.events, { ...this.criteria, now });
     if (!result.items.some((item) => item.event.id === this.selectedId)) this.selectedId = null;

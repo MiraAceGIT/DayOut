@@ -2,7 +2,6 @@ import { h } from "../../../shared/dom.js";
 import { formatPrice, pluralize } from "../../../shared/format.js";
 import { categoryClass, renderCategoryDot } from "../category/category.js";
 
-/** `category` = { slug, label } normalise par toCategory() ; null -> rien. */
 export function renderCategoryPill(category) {
   if (!category) return null;
   return h("span", { class: ["pill", categoryClass(category)] },
@@ -11,7 +10,7 @@ export function renderCategoryPill(category) {
   );
 }
 
-/** "Gratuit" (vert) ou "Payant · 12 €" (orange texte). Le texte reste en casse normale : le CSS met en majuscules. */
+/** Texte en casse normale : le CSS met en majuscules. */
 export function renderPricePill(event) {
   if (event.isPaid === false) {
     return h("span", { class: "pill pill--success" }, "Gratuit");
@@ -20,10 +19,6 @@ export function renderPricePill(event) {
   return h("span", { class: "pill pill--price" }, price ? `Payant · ${price}` : "Payant");
 }
 
-/**
- * D'apres `event.availability` (toEvent) : complet (rouge), dernieres places (jaune fonce) ;
- * places en nombre, pastille neutre seulement si `showPlenty` ; capacite illimitee -> rien.
- */
 export function renderPlacesPill(event, { showPlenty = false } = {}) {
   switch (event.availability) {
     case "full":

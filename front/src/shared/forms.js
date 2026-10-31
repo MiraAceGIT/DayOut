@@ -33,7 +33,7 @@ export function clearFieldErrors(form) {
   for (const el of form.querySelectorAll('[aria-invalid="true"]')) el.removeAttribute("aria-invalid");
 }
 
-/** `details` = { champ: message } (422). Renvoie les entrees sans champ correspondant, a afficher en message global. */
+/** Renvoie les erreurs sans champ correspondant, a afficher en message global. */
 export function showFieldErrors(form, details, { focus = true } = {}) {
   clearFieldErrors(form);
   const unmatched = {};

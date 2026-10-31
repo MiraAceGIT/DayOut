@@ -1,11 +1,10 @@
 import { h } from "../../../shared/dom.js";
 import { frontUrl } from "../../../core/config.js";
 
-// Seul endroit qui connait le fichier du logo (header et footer, tous deux sur fond violet nuit).
 const LOGO_LIGHT = "assets/img/dayout-logo-light.svg";
 const LOGO_RATIO = 591.8 / 258; // viewBox du SVG
 
-/** Logo cliquable vers l'accueil ; `width` en px (charte : 96 px minimum). */
+/** `width` en px : 96 minimum (charte). */
 export function renderLogo({ width = 110, className = "" } = {}) {
   return h("a", { class: ["logo", className], href: frontUrl("index.html").href },
     h("img", {

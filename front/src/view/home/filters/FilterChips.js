@@ -1,14 +1,12 @@
 import { h } from "../../../shared/dom.js";
 import { categoryClass, renderCategoryDot } from "../../components/category/category.js";
 
-/** Inverse aria-pressed et renvoie le nouvel etat. */
 function toggle(button) {
   const on = button.getAttribute("aria-pressed") !== "true";
   button.setAttribute("aria-pressed", String(on));
   return on;
 }
 
-/** Puces a bascule : filtres fixes du HTML (`data-filter`) et categories construites depuis les donnees. */
 export class FilterChips {
   constructor({ filtersEl, categoriesEl }) {
     this.filtersEl = filtersEl;
@@ -20,7 +18,6 @@ export class FilterChips {
     return Boolean(this.filtersEl && this.categoriesEl);
   }
 
-  /** `handlers` : onFilter(name, on), onCategory(slug, on). */
   bind({ onFilter, onCategory }) {
     this.onCategory = onCategory;
     this.filtersEl.addEventListener("click", (e) => {
@@ -30,7 +27,6 @@ export class FilterChips {
     });
   }
 
-  /** `categories` = [{ slug, label }] ; `active` = Set des slugs deja choisis. */
   renderCategories(categories, active = new Set()) {
     this.categoriesEl.replaceChildren(...categories.map((category) =>
       h("button", {

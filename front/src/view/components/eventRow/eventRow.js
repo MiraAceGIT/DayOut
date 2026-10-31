@@ -4,11 +4,7 @@ import { categoryClass, colorCategoryOf } from "../category/category.js";
 import { distanceText, joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/pill.js";
 
-/**
- * Carte compacte de la liste de la carte. Le titre est un bouton etire sur toute la carte :
- * il selectionne l'evenement (synchronise avec le marqueur) ; `aria-current="true"` = selection.
- * `item` = { event, distanceKm } (resultat de searchEvents).
- */
+/** Le titre est un bouton etire sur toute la carte ; `aria-current="true"` = selection. */
 export function renderEventRow({ event, distanceKm }, { selected = false, onSelect } = {}) {
   const category = colorCategoryOf(event);
   const details = joinMeta(

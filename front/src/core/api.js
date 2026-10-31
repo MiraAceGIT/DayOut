@@ -7,21 +7,14 @@ const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 let csrfTokenProvider = () => null;
 let unauthorizedHandler = null;
 
-/** Jeton envoye en `X-CSRF-Token` sur POST/PUT/PATCH/DELETE ; `fn` sync ou async, null/"" = en-tete omis. */
 export function setCsrfTokenProvider(fn) {
   csrfTokenProvider = typeof fn === "function" ? fn : () => null;
 }
 
-/** Hook global appele avec l'ApiError sur toute reponse 401, juste avant de la lever. */
 export function setUnauthorizedHandler(fn) {
   unauthorizedHandler = typeof fn === "function" ? fn : null;
 }
 
-/**
- * .type : "network" (injoignable, CORS, DNS) | "timeout" | "abort" (signal de l'appelant)
- *       | "parse" (2xx au JSON invalide ou null) | "http" (non 2xx, code/details de l'enveloppe { error }).
- * .requestId : en-tete X-Request-Id (a communiquer au support).
- */
 export class ApiError extends Error {
   /**
    * @param {string} message
@@ -45,7 +38,6 @@ export class ApiError extends Error {
     this.requestId = requestId;
   }
 
-  /** Erreur de validation 422 : `details` = { champ: message }. */
   get isValidation() {
     return this.status === 422 && this.code === "VALIDATION_ERROR";
   }
@@ -145,7 +137,7 @@ async function apiFetch(path, {
   }
 
   const isJson = res.headers.get("content-type")?.includes("application/json") ?? false;
-  /** @type {any} JSON quelconque : sa forme est verifiee plus bas */
+  /** @type {any} */
   let payload = text;
   let parseError = null;
   if (isJson) {
@@ -193,7 +185,6 @@ async function apiFetch(path, {
   return Object.prototype.hasOwnProperty.call(payload, "data") ? payload.data : payload;
 }
 
-/** `options` : { signal, timeout (ms, 0 = aucun), headers }. */
 export const api = {
   get:   (path, options)       => apiFetch(path, { ...options, method: "GET" }),
   post:  (path, body, options) => apiFetch(path, { ...options, method: "POST",   body }),

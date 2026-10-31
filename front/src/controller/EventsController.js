@@ -3,7 +3,6 @@ import { fetchUpcomingEvents } from "../model/services/eventService.js";
 import { EventsView } from "../view/EventsView.js";
 
 export class EventsController {
-  /** `loadEvents({ limit })` : source des evenements (API par defaut, remplacable pour les tests). */
   constructor({ view = new EventsView(), loadEvents = fetchUpcomingEvents, limit = 20 } = {}) {
     this.view = view;
     this.loadEvents = loadEvents;
@@ -17,7 +16,7 @@ export class EventsController {
     try {
       this.view.showEvents(await this.loadEvents({ limit: this.limit }));
     } catch (err) {
-      // Une ApiError est un echec attendu (reseau, HTTP...) ; toute autre erreur est un bug, a garder en console.
+      // ApiError = echec attendu ; toute autre erreur est un bug.
       if (!isApiError(err)) console.error(err);
       this.view.showError(messageFor(err));
     } finally {

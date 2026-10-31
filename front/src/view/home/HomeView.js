@@ -9,10 +9,6 @@ import { resultsMessage } from "./resultsMessage.js";
 // Le compte est annonce par role=status : on attend la fin de la frappe / du glissement pour ne pas saturer.
 const STATUS_DELAY_MS = 400;
 
-/**
- * Panneau gauche de la carte. Seul fichier qui connait ses ids : il les passe a ses sous-vues
- * (onglets, point, filtres, liste) et gere le compteur, le statut et l'alerte.
- */
 export class HomeView {
   constructor(root = document) {
     this.root = root;
@@ -42,7 +38,6 @@ export class HomeView {
       && this.statusEl && this.errorEl && this.listEl);
   }
 
-  /** `handlers` : onRadius(km), onFilter(name, on), onCategory(slug, on), onSelect(id), onChangePoint(). */
   bind({ onRadius, onFilter, onCategory, onSelect, onChangePoint }) {
     this.onSelect = onSelect;
     bindTabs(this.tabs, { root: this.root });
@@ -73,7 +68,6 @@ export class HomeView {
     this.results.setBusy(false);
   }
 
-  /** `result` = { items: [{ event, distanceKm }], inCircle, withoutPosition, loadedCap } (MapSearch.results()). */
   showResults(result, selectedId = null) {
     this.results.render(result.items, { selectedId, onSelect: (id) => this.onSelect(id) });
     if (this.countEl) this.countEl.textContent = String(result.inCircle);

@@ -1,4 +1,3 @@
-/* Legende "Categories" de la carte, remplie par MapLegend.js (meme dossier). */
 .map-legend {
   position: absolute;
   left: var(--space-4);

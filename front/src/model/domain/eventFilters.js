@@ -1,4 +1,3 @@
-/** Minuscules sans accents : "Soirée" et "soiree" se trouvent mutuellement. */
 export function normalize(text) {
   return String(text ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
@@ -18,7 +17,6 @@ export const isFree = (event) => event.isPaid === false;
 
 export const hasPlacesLeft = (event) => event.availability !== "full";
 
-/** Au moins une des categories (OU). */
 export const inCategories = (slugs) => (event) => event.categories.some((c) => slugs.has(c.slug));
 
 export const startsWithin = ({ start, end }) => (event) => {
@@ -31,10 +29,7 @@ export const matchesText = (query) => {
   return (event) => [event.title, event.venueName, event.city].some((v) => normalize(v).includes(needle));
 };
 
-/**
- * Criteres choisis par l'utilisateur : chacun recoit les criteres et renvoie un predicat, ou null s'il est inactif.
- * Ajouter un filtre = ajouter une entree (ou passer sa propre liste a matchesCriteria).
- */
+/** Chaque entree renvoie un predicat, ou null si le critere est inactif. */
 export const USER_FILTERS = [
   ({ free }) => (free ? isFree : null),
   ({ available }) => (available ? hasPlacesLeft : null),
@@ -43,7 +38,6 @@ export const USER_FILTERS = [
   ({ query }) => (normalize(query) ? matchesText(query) : null),
 ];
 
-/** `criteria` : { weekend, free, available, categories (Set de slugs), query, now } -> predicat (ET des actifs). */
 export function matchesCriteria(criteria, filters = USER_FILTERS) {
   const predicates = filters.map((toPredicate) => toPredicate(criteria)).filter(Boolean);
   return (event) => predicates.every((test) => test(event));

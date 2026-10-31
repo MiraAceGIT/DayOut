@@ -4,7 +4,6 @@ import { categoryClass, colorCategoryOf } from "../category/category.js";
 import { joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/pill.js";
 
-/** `event` : objet normalise par `toEvent()`. */
 export function renderEventCard(event) {
   const details = joinMeta(formatEventWhen(event.startAt, event.endAt, { withEnd: true }), event.venueName, event.city);
 

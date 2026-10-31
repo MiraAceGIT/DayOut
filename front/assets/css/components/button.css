@@ -38,7 +38,6 @@
 }
 .button--dark:hover { text-decoration: underline; }
 
-/* Sur fond violet (header) : contour blanc. */
 .button--on-dark {
   background: transparent;
   border-color: var(--color-on-brand);
@@ -52,7 +51,6 @@
   font-size: var(--font-size-detail);
 }
 
-/* Bouton d'action secondaire presente comme un lien (ex. "Changer") : orange texte souligne. */
 .link-button {
   padding: 0;
   border: 0;
@@ -65,7 +63,6 @@
 }
 .link-button:hover { color: var(--color-link-hover); }
 
-/* Puce de filtre a bascule (aria-pressed) : surface 2, violet nuit une fois active. */
 .chip {
   display: inline-flex;
   align-items: center;

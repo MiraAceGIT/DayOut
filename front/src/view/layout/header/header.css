@@ -1,4 +1,3 @@
-/* Markup injecte par header.js (meme dossier) */
 .site-header {
   min-height: var(--header-min-height);
   background: var(--color-brand);

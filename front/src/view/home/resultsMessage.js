@@ -1,9 +1,5 @@
 import { pluralize } from "../../shared/format.js";
 
-/**
- * Texte du statut des resultats (role=status), sans DOM.
- * `loadedCap` : plafond de l'API atteint (nombre charge), des evenements a venir peuvent manquer ; 0 sinon.
- */
 export function resultsMessage({ items, inCircle, withoutPosition, loadedCap = 0 }) {
   let message = inCircle === 0
     ? "Aucun événement dans ce cercle"

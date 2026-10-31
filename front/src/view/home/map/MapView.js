@@ -2,10 +2,6 @@ import { LeafletMap } from "./LeafletMap.js";
 import { MapLegend } from "./MapLegend.js";
 import { MapStatus } from "./MapStatus.js";
 
-/**
- * Zone carte de la page : seul fichier qui connait ses ids. Compose la carte Leaflet, sa legende
- * et ses messages ; decide quoi dire selon que la carte est disponible ou non.
- */
 export class MapView {
   constructor(root = document) {
     this.leaflet = new LeafletMap(root.querySelector("#home-map"));
@@ -17,7 +13,6 @@ export class MapView {
     return this.leaflet.isAvailable;
   }
 
-  /** `handlers` : onPick({lat,lng}), onSelect(id), onLocate(). */
   init(options) {
     if (this.leaflet.init(options) === "unavailable") this.status.unavailable();
   }
@@ -42,7 +37,6 @@ export class MapView {
     this.legend.render(categories);
   }
 
-  /** "Changer" le point : invite a cliquer sur la carte (focus pour le clavier), sauf si elle est indisponible. */
   promptPick() {
     if (!this.isAvailable) {
       this.status.pickUnavailable();
@@ -68,7 +62,6 @@ export class MapView {
     this.status.outOfArea(areaName, from);
   }
 
-  /** `code` : code de rejet de core/geolocation.js. */
   showLocateError(code) {
     this.status.locateFailed(code);
   }

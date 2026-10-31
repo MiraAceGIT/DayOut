@@ -1,6 +1,5 @@
 /** @typedef {import("../dto/categoryDto.js").CategoryDto} CategoryDto */
 
-/** CategoryDto -> { slug, label } ; libelle affiche tel que renvoye. */
 export function toCategory(dto) {
   const slug = String(dto?.slug ?? "");
   return {

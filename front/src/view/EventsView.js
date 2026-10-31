@@ -8,7 +8,6 @@ export class EventsView {
     this.statusEl = root.querySelector("#events-status");
   }
 
-  /** Faux si la page ne contient pas les elements attendus. */
   get isReady() {
     return Boolean(this.listEl && this.errorEl && this.statusEl);
   }
@@ -27,7 +26,6 @@ export class EventsView {
     this.listEl.setAttribute("aria-busy", "false");
   }
 
-  /** `events` normalises par toEvent(). */
   showEvents(events) {
     this.listEl.replaceChildren(...events.map((event) => renderEventCard(event)));
     this.setStatus(events.length === 0

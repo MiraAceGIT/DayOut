@@ -15,13 +15,12 @@ function token(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-/** Carte Leaflet : tuiles, controles, point choisi et son cercle, marqueurs, bulle, choix du point au clic / Entree. */
 export class LeafletMap {
   constructor(containerEl, L = window.L) {
     this.containerEl = containerEl;
     this.L = L;
     this.map = null;
-    this.markers = new Map(); // id -> { marker, item }
+    this.markers = new Map();
     this.selectedId = null;
   }
 
@@ -29,12 +28,7 @@ export class LeafletMap {
     return Boolean(this.L && this.map);
   }
 
-  /**
-   * `area` : { south, west, north, east, outline }, zone hors de laquelle on ne peut pas naviguer ;
-   * `outline` ([lat, lng]) est dessine, le reste du monde voile.
-   * `handlers` : onPick({lat,lng}), onSelect(id), onLocate().
-   * Renvoie "ready", "unavailable" (Leaflet absent : conteneur marque) ou "absent" (pas de conteneur).
-   */
+  /** Renvoie "ready", "unavailable" (Leaflet absent) ou "absent" (pas de conteneur). */
   init({ origin, radiusKm, area, handlers }) {
     if (!this.containerEl) return "absent";
     if (!this.L) {
@@ -53,8 +47,8 @@ export class LeafletMap {
       zoomControl: false,
       attributionControl: true,
       maxBounds: bounds,
-      maxBoundsViscosity: 1, // bord dur : on ne glisse pas hors de la zone
-      minZoom: 9,            // a 9, l'Ile-de-France tient a peu pres dans la carte : pas de vue France ou monde
+      maxBoundsViscosity: 1,
+      minZoom: 9, // a 9, l'Ile-de-France tient a peu pres dans la carte : pas de vue France ou monde
     }).setView([origin.lat, origin.lng], 14);
     this.map.attributionControl.setPrefix(false);
     L.tileLayer(TILE_URL, { maxZoom: 19, noWrap: true, attribution: ATTRIBUTION }).addTo(this.map);
@@ -114,10 +108,7 @@ export class LeafletMap {
     return "ready";
   }
 
-  /**
-   * Voile hors zone : un polygone couvrant le monde, troue par le contour de la zone, puis le contour seul en liseré.
-   * Non interactifs : un clic dessus remonte a la carte, qui refuse le point et l'explique.
-   */
+  /** Voile hors zone (le monde troue par le contour), non interactif : le clic remonte a la carte, qui refuse le point. */
   addAreaMask(outline) {
     const L = this.L;
     const brand = token("--color-brand");
@@ -192,11 +183,7 @@ export class LeafletMap {
     return false;
   }
 
-  /**
-   * `items` = [{ event, distanceKm }] ; seuls ceux qui ont une position sont dessines.
-   * La bulle de l'evenement selectionne est rouverte s'il reste visible et qu'elle etait ouverte
-   * (clearLayers la ferme) ; fermee par l'utilisateur, elle le reste.
-   */
+  /** clearLayers ferme la bulle : on la rouvre si elle etait ouverte. */
   showEvents(items, selectedId = null) {
     if (!this.isAvailable) return;
     const wasOpen = this.markers.get(String(selectedId))?.marker.isPopupOpen() ?? false;
@@ -225,7 +212,6 @@ export class LeafletMap {
     if (selectedId !== null) this.select(selectedId, { openPopup: wasOpen });
   }
 
-  /** Marqueur orange + bulle ; `id` null = aucune selection. */
   select(id, { openPopup = true } = {}) {
     if (!this.isAvailable) return;
     const previous = this.markers.get(String(this.selectedId));

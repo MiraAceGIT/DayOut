@@ -3,14 +3,14 @@ import { toCategory, toCategoryDto } from "./categoryMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventDto} EventDto */
 
-/** Nombre ou chaine numerique -> nombre ; vide/invalide -> null (jamais 0, qui serait une vraie coordonnee). */
+/** Vide ou invalide -> null (pas 0 : c'est une vraie coordonnee). */
 function toCoordinate(value) {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
-/** EventDto -> evenement du front. Valeurs gardees brutes (pas de coercition) : `formatPrice` traite un `isPaid` absent comme payant. */
+/** Valeurs gardees brutes : `formatPrice` traite un `isPaid` absent comme payant. */
 export function toEvent(dto) {
   const latitude = toCoordinate(dto.latitude);
   const longitude = toCoordinate(dto.longitude);
@@ -43,12 +43,11 @@ export function toEvent(dto) {
   };
 }
 
-/** Liste d'EventDto -> evenements ; tout autre chose qu'un tableau -> []. */
 export function toEvents(dtos) {
   return Array.isArray(dtos) ? dtos.map(toEvent) : [];
 }
 
-/** Evenement du front -> EventDto (envoi a l'API). Les champs calcules (places restantes, disponibilite) ne repartent pas. */
+/** Les champs calcules (places restantes, disponibilite) ne repartent pas. */
 export function toEventDto(event) {
   return /** @type {EventDto} */ ({
     id: event.id,

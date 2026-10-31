@@ -26,7 +26,7 @@ export function renderSearchBox() {
   );
 }
 
-/** Pilotage du champ deja rendu par le header (a construire apres boot()). Sans champ, tout est sans effet. */
+/** A construire apres boot() ; sans champ, tout est sans effet. */
 export class SearchBox {
   constructor(root = document) {
     this.inputEl = root.querySelector(`#${INPUT_ID}`);
@@ -36,7 +36,6 @@ export class SearchBox {
     if (this.inputEl) this.inputEl.value = query;
   }
 
-  /** Recherche en direct : `onQuery(texte)` a chaque frappe et a l'envoi, qui ne recharge plus la page. */
   bindLive(onQuery) {
     if (!this.inputEl) return;
     this.inputEl.addEventListener("input", () => onQuery(this.inputEl.value));

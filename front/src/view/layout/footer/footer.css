@@ -1,4 +1,4 @@
-/* Markup injecte par footer.js (meme dossier) ; le fallback noscript reprend les memes classes. */
+/* Le fallback noscript reprend les memes classes. */
 .site-footer {
   margin-top: var(--space-7);
   background: var(--color-brand);

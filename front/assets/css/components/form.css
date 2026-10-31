@@ -9,7 +9,6 @@
 }
 .input::placeholder { color: var(--color-muted); opacity: 1; }
 
-/* Classes et attributs poses par shared/forms.js (showFieldErrors) */
 [aria-invalid="true"] {
   border-color: var(--color-error);
 }

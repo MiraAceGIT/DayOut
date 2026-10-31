@@ -1,5 +1,4 @@
-/* Seul endroit qui associe une categorie de la charte a sa couleur : --cat-color est lu par les pastilles,
-   les carres des cartes, les marqueurs et la legende. La correspondance slug API -> cle est dans category.js. */
+/* --cat-color est lu par les pastilles, les carres des cartes, les marqueurs et la legende. */
 .cat--soiree     { --cat-color: var(--color-cat-soiree); }
 .cat--sport      { --cat-color: var(--color-cat-sport); }
 .cat--conference { --cat-color: var(--color-cat-conference); }

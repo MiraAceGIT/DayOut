@@ -28,7 +28,6 @@ function baseMessage(err) {
   return "La requête n'a pas pu aboutir. Réessayez plus tard.";
 }
 
-/** Message utilisateur pour toute erreur, suivi de la reference de requete si l'API en a fourni une. */
 export function messageFor(err) {
   if (!isApiError(err)) {
     return "Une erreur inattendue est survenue. Réessayez plus tard.";

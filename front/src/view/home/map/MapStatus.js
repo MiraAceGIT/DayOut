@@ -6,7 +6,6 @@ const LOCATE_ERRORS = {
   unavailable: "Ta position est introuvable pour le moment. Clique sur la carte pour choisir un point.",
 };
 
-/** Messages de la carte (#home-map-status, role=status) : seul endroit qui en connait les textes. */
 export class MapStatus {
   constructor(statusEl) {
     this.statusEl = statusEl;
@@ -40,7 +39,6 @@ export class MapStatus {
     this.show("Point placé sur ta position.");
   }
 
-  /** `from` : "map" (clic, Entree) ou "device" (localisation). */
   outOfArea(areaName, from) {
     this.show(from === "device"
       ? `Tu sembles être hors ${areaName} : DayOut ne couvre que cette région. Clique sur la carte pour choisir un point.`

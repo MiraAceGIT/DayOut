@@ -8,10 +8,6 @@ import { HomeView } from "../view/home/HomeView.js";
 import { MapView } from "../view/home/map/MapView.js";
 import { SearchBox } from "../view/layout/header/searchBox.js";
 
-/**
- * Carte "Que faire autour de toi ?" : relaie les actions des views vers l'etat (MapSearch)
- * puis redessine panneau et carte. Chargement, geolocalisation et ?q= sont orchestres ici.
- */
 export class HomeController {
   constructor({
     view = new HomeView(),
@@ -69,7 +65,7 @@ export class HomeController {
       this.map.renderLegend(categories);
       this.render();
     } catch (err) {
-      // Une ApiError est un echec attendu (reseau, HTTP...) ; toute autre erreur est un bug, a garder en console.
+      // ApiError = echec attendu ; toute autre erreur est un bug.
       if (!isApiError(err)) console.error(err);
       this.state.fail();
       this.view.showError(messageFor(err));
@@ -139,7 +135,7 @@ export class HomeController {
     this.map.showLocating();
     try {
       const position = await this.getPosition();
-      if (seq !== this.pickSeq) return; // un autre point a ete choisi entre-temps
+      if (seq !== this.pickSeq) return;
       if (!isInCoverageArea(position)) {
         this.map.showOutOfArea(COVERAGE_AREA.name, "device");
         return;

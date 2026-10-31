@@ -1,7 +1,4 @@
-/**
- * Onglets ARIA sur un markup existant (role=tab + aria-controls) : activation automatique,
- * fleches gauche/droite, Debut/Fin, tabindex itinerant. `root` sert a trouver les panneaux.
- */
+/** Onglets ARIA sur markup existant : activation automatique, fleches, Debut/Fin, tabindex itinerant. */
 export function bindTabs(tabs, { root = document } = {}) {
   const select = (tab, { focus = false } = {}) => {
     for (const t of tabs) {

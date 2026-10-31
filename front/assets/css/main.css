@@ -1,5 +1,4 @@
-/* Ordre significatif : reset -> tokens -> base -> layout -> composants.
-   Les composants rendus par une view ont leur feuille a cote de leur JS, dans src/view/. */
+/* Ordre significatif : reset -> tokens -> base -> layout -> composants. */
 @import url("reset.css");
 @import url("tokens.css");
 @import url("base.css");

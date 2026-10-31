@@ -5,7 +5,6 @@ const SOURCE_LABELS = {
   device: "Ta position",
 };
 
-/** Carte "Point choisi" : libelle du point, bouton "Changer", curseur de rayon. */
 export class PointCard {
   constructor({ labelEl, changeBtn, radiusEl, radiusOut }) {
     this.labelEl = labelEl;
@@ -18,13 +17,11 @@ export class PointCard {
     return Boolean(this.labelEl && this.radiusEl && this.radiusOut);
   }
 
-  /** `handlers` : onRadius(km), onChangePoint(). */
   bind({ onRadius, onChangePoint }) {
     this.radiusEl.addEventListener("input", () => onRadius(Number(this.radiusEl.value)));
     this.changeBtn?.addEventListener("click", () => onChangePoint());
   }
 
-  /** `point` = { lat, lng, label?, source? } : sans libelle, selon `source`, sinon les coordonnees. */
   setOrigin(point) {
     this.labelEl.textContent = point.label
       || SOURCE_LABELS[point.source]

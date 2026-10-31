@@ -1,4 +1,3 @@
-/* Zone carte de index.html, pilotee par MapView.js / LeafletMap.js (meme dossier) ; surcharge quelques classes de leaflet.css. */
 .map-view {
   position: relative;
   min-height: 0;
@@ -12,7 +11,6 @@
 }
 .map-view__map--unavailable { background: var(--color-surface-2); }
 
-/* Bandeau d'aide en haut de la carte */
 .map-view__hint {
   position: absolute;
   top: var(--space-4);
@@ -48,7 +46,6 @@
   font-size: var(--font-size-detail);
 }
 
-/* Marqueurs (L.divIcon) : couleur de categorie, orange une fois selectionne. */
 .map-pin {
   color: var(--cat-color, var(--color-muted));
   filter: drop-shadow(0 2px 2px rgba(36, 18, 56, .35));
@@ -56,7 +53,6 @@
 .map-pin.map-pin--selected { color: var(--color-action); }
 .map-pin__svg { display: block; overflow: visible; }
 
-/* Point choisi : pastille violet nuit + etiquette */
 .map-origin__inner { position: relative; display: block; }
 .map-origin__dot {
   display: block;
@@ -82,7 +78,6 @@
   white-space: nowrap;
 }
 
-/* Controles Leaflet aux formes de la charte */
 .leaflet-container { font-family: var(--font-body); }
 .leaflet-container:focus-visible { outline: 3px solid var(--focus-color); outline-offset: -3px; }
 .leaflet-bar {

@@ -1,8 +1,4 @@
-/**
- * Position de l'appareil, demandee uniquement sur action explicite (regle de confidentialite de la spec).
- * Dans core/ et non shared/ : depend de l'API navigateur. Rejette avec
- * { code: "unsupported" | "denied" | "unavailable" | "timeout" }.
- */
+/** Uniquement sur action explicite (spec). Rejette avec { code: "unsupported" | "denied" | "unavailable" | "timeout" }. */
 export function currentPosition({ timeout = 10000 } = {}) {
   return new Promise((resolve, reject) => {
     if (!("geolocation" in navigator)) {
