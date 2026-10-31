@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Integration;
+namespace Tests\Integration\Core;
 
 use Tests\HttpTestCase;
 
-final class RoutingTest extends HttpTestCase
+final class RouterTest extends HttpTestCase
 {
     public function testUnknownRouteReturns404WithPath(): void
     {
@@ -30,23 +30,5 @@ final class RoutingTest extends HttpTestCase
 
         $this->assertError(405, 'METHOD_NOT_ALLOWED', $response);
         $this->assertSame('GET', $response->header('Allow'));
-    }
-
-    public function testPreflightFromAllowedOriginGetsCorsHeaders(): void
-    {
-        $response = $this->request('OPTIONS', '/events', null, ['Origin' => self::ALLOWED_ORIGIN]);
-
-        $this->assertStatus(204, $response);
-        $this->assertSame(self::ALLOWED_ORIGIN, $response->header('Access-Control-Allow-Origin'));
-        $this->assertSame('true', $response->header('Access-Control-Allow-Credentials'));
-        $this->assertStringContains('X-Request-Id', (string) $response->header('Access-Control-Expose-Headers'));
-    }
-
-    public function testOtherOriginsGetNoCorsHeaders(): void
-    {
-        $response = $this->get('/events', ['Origin' => 'http://evil.test']);
-
-        $this->assertStatus(200, $response);
-        $this->assertSame(null, $response->header('Access-Control-Allow-Origin'));
     }
 }

@@ -66,6 +66,24 @@ abstract class HttpTestCase extends TestCase
         return $json['error'];
     }
 
+    /**
+     * Entrees JSON d'un canal de log du serveur de test.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function readLog(string $channel): array
+    {
+        // Plusieurs fichiers si la suite traverse minuit UTC (un fichier par jour).
+        $files = glob(getenv('TEST_SERVER_LOG_PATH') . "/$channel-*.log") ?: [];
+        $this->assertTrue($files !== [], "$channel log file");
+
+        $lines = array_merge(...array_map(
+            fn (string $file): array => file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [],
+            $files
+        ));
+        return array_map(fn (string $line): array => json_decode($line, true), $lines);
+    }
+
     private static function baseUrl(): string
     {
         $url = getenv('TEST_BASE_URL');

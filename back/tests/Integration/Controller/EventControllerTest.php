@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Integration;
+namespace Tests\Integration\Controller;
 
 use Tests\HttpTestCase;
 
@@ -9,7 +9,7 @@ use Tests\HttpTestCase;
  * Seed : events 1 a 7 published, 8 et 9 archived, 10 draft.
  * Event 6 : sans coordonnees, lie a une seule categorie inactive (doit sortir sans categorie).
  */
-final class EventsTest extends HttpTestCase
+final class EventControllerTest extends HttpTestCase
 {
     public function testListReturnsOnlyPublishedEventsSortedByStartDate(): void
     {

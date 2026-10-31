@@ -1,32 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Unit\Core;
 
-use App\Core\Http\Middleware;
 use App\Core\HttpException;
+use App\Core\Http\Middleware;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Router;
 use LogicException;
+use Tests\Support\EchoController;
 use Tests\TestCase;
-
-/** Controller de test : renvoie ce qu'il a recu. */
-final class EchoController
-{
-    public function show(Request $request): Response
-    {
-        return Response::json([
-            'id'    => $request->param('id'),
-            'trace' => $request->attribute('trace', []),
-        ]);
-    }
-
-    public function broken(Request $request): string
-    {
-        return 'not a response';
-    }
-}
 
 /** Middleware de test : note son passage avant et apres l'action. */
 final class TraceMiddleware implements Middleware

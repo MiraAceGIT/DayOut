@@ -1,14 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Unit\Model\Mappers;
 
 use App\Core\HttpException;
-use App\Model\Mappers\CategoryMapper;
 use App\Model\Mappers\EventMapper;
 use Tests\TestCase;
 
-final class MapperTest extends TestCase
+final class EventMapperTest extends TestCase
 {
     /** Ligne telle que la renvoie Event (DAO) apres le Caster, colonnes internes comprises. Reprise par DocsTest. */
     public static function eventRow(array $overrides = []): array
@@ -113,14 +112,5 @@ final class MapperTest extends TestCase
         $restricted = EventMapper::toRow(EventMapper::fromInput(self::input(['restricted_school_id' => 3])));
         $this->assertSame(true, $restricted['school_restricted']);
         $this->assertSame(3, $restricted['restricted_school_id']);
-    }
-
-    public function testCategoryRoundTrip(): void
-    {
-        $dto = CategoryMapper::toDto(['slug' => 'sport', 'label' => 'Sport', 'event_id' => 7]);
-
-        $this->assertSame(['slug' => 'sport', 'label' => 'Sport'], $dto->jsonSerialize());
-        $this->assertSame(['slug' => 'sport', 'label' => 'Sport'], CategoryMapper::toRow($dto));
-        $this->assertSame([0], array_keys(CategoryMapper::toDtos([3 => ['slug' => 'a', 'label' => 'A']])), 're-indexed as a list');
     }
 }

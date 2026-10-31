@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Unit\Core\Orm\Query;
 
 use App\Core\Orm\Query\QueryBuilder;
 use InvalidArgumentException;

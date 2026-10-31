@@ -82,16 +82,16 @@ function runSuites(array $suites, string $filter): int
 
     foreach ($suites as $suite => $dir) {
         echo "\n$suite\n";
-        foreach (glob($dir . '/*Test.php') ?: [] as $file) {
-            $class = "Tests\\$suite\\" . basename($file, '.php');
+        foreach (testFiles($dir) as $name) {
+            $class = "Tests\\$suite\\" . str_replace('/', '\\', $name);
             $tests = array_filter(
                 get_class_methods($class),
-                fn (string $m): bool => str_starts_with($m, 'test') && ($filter === '' || str_contains(basename($file, '.php') . "::$m", $filter))
+                fn (string $m): bool => str_starts_with($m, 'test') && ($filter === '' || str_contains("$name::$m", $filter))
             );
             if ($tests === []) {
                 continue;
             }
-            echo '  ' . basename($file, '.php') . ' ';
+            echo "  $name ";
             foreach ($tests as $method) {
                 /** @var TestCase $test */
                 $test = new $class();
@@ -135,6 +135,25 @@ function runSuites(array $suites, string $filter): int
         microtime(true) - $start
     );
     return $problems === [] ? 0 : 1;
+}
+
+/**
+ * Chemins relatifs sans extension (`Core/Http/KernelTest`), tries : l'arborescence suit celle de src/.
+ *
+ * @return list<string>
+ */
+function testFiles(string $dir): array
+{
+    $names = [];
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+    foreach ($files as $file) {
+        if (str_ends_with($file->getFilename(), 'Test.php')) {
+            $relative = substr($file->getPathname(), strlen($dir) + 1, -4);
+            $names[]  = str_replace('\\', '/', $relative);
+        }
+    }
+    sort($names);
+    return $names;
 }
 
 /** Ligne du fichier de test ou l'assertion a echoue. */

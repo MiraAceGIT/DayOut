@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Remet la base de test a zero (schema + seed) puis lance tests/run.php.
-#   back/tests/run.sh [EventsTest]   filtre sur "Classe::methode"
+# Remet la base de test a zero (schema, migrations, seed) puis lance tests/run.php.
+#   back/tests/run.sh [Core/Http/KernelTest]   filtre sur "Dossier/Classe::methode"
 #   --unit : unitaires seuls, sans BDD ; --integration : integration seule
 # Base : TEST_DB_NAME (defaut dayout_test), jamais celle de dev.
 set -euo pipefail

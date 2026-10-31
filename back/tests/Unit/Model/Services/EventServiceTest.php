@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Unit\Model\Services;
 
 use App\Core\Orm\Connection;
 use App\Model\Dao\Category;

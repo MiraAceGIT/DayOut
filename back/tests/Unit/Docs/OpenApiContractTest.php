@@ -1,22 +1,19 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Unit\Docs;
 
-use App\Controller\DocsController;
-use App\Core\Config;
-use App\Core\Http\Kernel;
-use App\Core\Request;
 use App\Core\Router;
 use App\Docs\OpenApiSpec;
 use App\Model\Dto\CategoryDto;
 use App\Model\Mappers\EventMapper;
 use ReflectionProperty;
-use RuntimeException;
+use Tests\Support\AppRouter;
 use Tests\TestCase;
+use Tests\Unit\Model\Mappers\EventMapperTest;
 
 /** La spec OpenAPI doit suivre le code : routes declarees et champs des DTO. */
-final class DocsTest extends TestCase
+final class OpenApiContractTest extends TestCase
 {
     private const DOC_ROUTES = ['/docs', '/openapi.json'];
 
@@ -37,22 +34,10 @@ final class DocsTest extends TestCase
         }
     }
 
-    /** Routes de l'application ; pas via routes/api.php, dont le require_once ne recharge rien au 2e Router. */
-    private function router(): Router
-    {
-        $router = new Router();
-        foreach (glob(APP_ROOT . '/routes/*.php') as $file) {
-            if (basename($file) !== 'api.php') {
-                require $file;
-            }
-        }
-        return $router;
-    }
-
     /** @return list<array{method: string, regex: string}> */
     private function routes(): array
     {
-        return (new ReflectionProperty(Router::class, 'routes'))->getValue($this->router());
+        return (new ReflectionProperty(Router::class, 'routes'))->getValue(AppRouter::load());
     }
 
     /** "/events/{id}" -> "/events/1" : chemin concret a tester contre les regex du Router. */
@@ -91,7 +76,7 @@ final class DocsTest extends TestCase
     public function testEventSchemaMatchesEventDto(): void
     {
         $schema = $this->spec()['components']['schemas']['Event'];
-        $dtoKeys = array_keys(EventMapper::toDto(MapperTest::eventRow())->jsonSerialize());
+        $dtoKeys = array_keys(EventMapper::toDto(EventMapperTest::eventRow())->jsonSerialize());
 
         $this->assertSame($dtoKeys, array_keys($schema['properties']), 'properties, in DTO order');
         $this->assertSame($dtoKeys, $schema['required'], 'every field is always present (null allowed)');
@@ -104,27 +89,6 @@ final class DocsTest extends TestCase
         $this->assertSame(array_keys((new CategoryDto('s', 'l'))->jsonSerialize()), array_keys($schema['properties']));
     }
 
-    public function testSpecIsServedRawAndUiGetsItsOwnCsp(): void
-    {
-        $kernel = new Kernel($this->router(), new Config());
-
-        $spec = $kernel->handle(new Request('GET', '/openapi.json'));
-        $this->assertSame(200, $spec->status);
-        $this->assertStringContains('application/json', (string) $spec->header('Content-Type'));
-        $this->assertSame('3.0.3', json_decode((string) $spec->body(), true)['openapi'], 'not wrapped in data');
-
-        $ui = $kernel->handle(new Request('GET', '/docs'));
-        $csp = (string) $ui->header('Content-Security-Policy');
-        $this->assertStringContains('text/html', (string) $ui->header('Content-Type'));
-        $this->assertStringContains("default-src 'none'", $csp);
-        $this->assertStringContains("frame-ancestors 'none'", $csp);
-        $this->assertSame('nosniff', $ui->header('X-Content-Type-Options'), 'other security headers still applied');
-
-        // Le hash de la CSP doit couvrir exactement le script inline de la page.
-        preg_match('#<script>(.*?)</script>#s', (string) $ui->body(), $m);
-        $this->assertStringContains("'sha256-" . base64_encode(hash('sha256', $m[1], true)) . "'", $csp);
-    }
-
     public function testBearerTokenIsOfferedButOptional(): void
     {
         $spec = $this->spec();
@@ -135,10 +99,5 @@ final class DocsTest extends TestCase
         ));
         $this->assertSame('{}', json_encode($spec['security'][0]), 'public routes stay callable without token');
         $this->assertSame(['bearerAuth' => []], $spec['security'][1]);
-    }
-
-    public function testMissingSpecIsAServerError(): void
-    {
-        $this->assertThrows(RuntimeException::class, fn () => (new DocsController('/nope'))->spec(new Request('GET', '/')));
     }
 }

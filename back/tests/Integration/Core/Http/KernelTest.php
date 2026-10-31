@@ -1,23 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Integration;
+namespace Tests\Integration\Core\Http;
 
 use Tests\HttpTestCase;
 
-final class HealthTest extends HttpTestCase
+final class KernelTest extends HttpTestCase
 {
-    public function testApiAndDatabaseAreUp(): void
-    {
-        $response = $this->get('/health');
-
-        $this->assertStatus(200, $response);
-        $data = $response->json()['data'];
-        $this->assertSame('up', $data['api']);
-        $this->assertSame('up', $data['db']);
-        $this->assertArrayHasKey('time', $data);
-    }
-
     public function testEveryResponseCarriesRequestIdAndSecurityHeaders(): void
     {
         foreach (['/health', '/does-not-exist'] as $path) {

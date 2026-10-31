@@ -38,7 +38,7 @@ back/
 ├── routes/            ← un fichier de routes par ressource (charges par api.php)
 ├── docs/openapi/       ← spec OpenAPI 3 en YAML : openapi.yaml (commun) + un fichier par controller
 ├── storage/logs/       ← fichiers de logs (crees a la volee, ignores par git)
-├── tests/              ← runner maison : Unit/ (sans BDD), Integration/ (HTTP + BDD)
+├── tests/              ← runner maison : Unit/ (sans BDD), Integration/ (HTTP + BDD), meme arborescence que src/
 ├── autoload.php        ← autoload PSR-4 App\ -> src/
 ├── .env.example
 └── README.md
@@ -125,7 +125,7 @@ ou entre guillemets, blocs `|` et `>`, commentaires. Refuses avec fichier et lig
 tags `!`, tabulations, scalaire simple sur plusieurs lignes (utiliser `>-`). Mettre entre guillemets
 une valeur qui commence par `` ` ``, `@`, `*`, `&`, `!` ou qui contient `: ` ou ` #`.
 
-`tests/Unit/DocsTest.php` echoue si la spec derive du code : route declaree mais non documentee
+`tests/Unit/Docs/OpenApiContractTest.php` echoue si la spec derive du code : route declaree mais non documentee
 (ou l'inverse), fichier de `routes/` sans son YAML, champs du schema `Event` / `Category`
 differents de `EventDto` / `CategoryDto`.
 
@@ -181,31 +181,57 @@ Runner maison sans dependance (pas de Composer), depuis Git Bash :
 
 ```bash
 back/tests/run.sh                 # tout : unitaires + integration
-back/tests/run.sh EventsTest      # filtre sur "Classe::methode"
+back/tests/run.sh EventMapperTest # filtre sur "Dossier/Classe::methode"
+back/tests/run.sh Model/          # tous les tests d'un dossier
 back/tests/run.sh --unit          # unitaires seuls, sans BDD
 back/tests/run.sh --integration   # integration seule (remet dayout_test a zero)
 ```
 
-- `tests/Unit/` (tests unitaires) : classes testees directement, sans serveur ni MariaDB : Router (middlewares, groupes),
-  Kernel (rendu des erreurs, CORS, en-tetes), Request / Response, QueryBuilder (SQL genere),
-  Caster, Model, Category et EventService (sur SQLite en memoire), Mappers (DTO exposes, toRow), Docs (spec OpenAPI = routes + DTO), Yaml, OpenApiSpec (fusion), Validator, ContextSanitizer, et les filets d'ErrorHandler
-  (dans un processus a part).
+Les tests suivent l'arborescence de `src/` : le test de `src/Core/Http/Kernel.php` est
+`tests/Unit/Core/Http/KernelTest.php` (namespace `Tests\Unit\Core\Http`), un fichier par classe testee.
+
+```
+tests/
+├── Unit/                       ← une classe testee directement, sans serveur ni MariaDB
+│   ├── Controller/             ← DocsControllerTest
+│   ├── Core/                   ← RequestTest, ResponseTest, RouterTest, ValidatorTest, YamlTest
+│   │   ├── Http/               ← KernelTest, ExceptionRendererTest
+│   │   ├── Log/                ← ContextSanitizerTest, ErrorHandlerTest (processus a part)
+│   │   └── Orm/                ← CasterTest, Query/QueryBuilderTest
+│   ├── Docs/                   ← OpenApiSpecTest (fusion), OpenApiContractTest (spec = routes + DTO)
+│   └── Model/
+│       ├── Dao/                ← ModelTest, CategoryTest (SQLite en memoire)
+│       ├── Mappers/            ← EventMapperTest, CategoryMapperTest
+│       └── Services/           ← EventServiceTest (SQLite en memoire)
+├── Integration/                ← vraies requetes HTTP, rangees par classe responsable du comportement
+│   ├── Controller/             ← EventControllerTest, HealthControllerTest
+│   └── Core/                   ← RouterTest, Http/{Kernel,Cors,ExceptionRenderer}Test, Log/AccessLogTest
+├── Support/                    ← doublures partagees (EchoController, AppRouter)
+├── fixtures/                   ← scripts lances dans un processus a part
+└── TestCase.php, HttpTestCase.php, run.php, run.sh
+```
+
+- `tests/Unit/` (tests unitaires) : classes testees directement, sans serveur ni MariaDB.
 - `tests/Integration/` (tests d'integration) : vraies requetes HTTP sur l'application complete. `run.sh` remet a zero la base **`dayout_test`**
   (`infra/sql/reset_db.sh` : schema, migrations, seed), puis lance `php -S` sur un port libre
   branche sur cette base, avec des logs dans un dossier temporaire. La base de dev
   et `storage/logs/` ne sont jamais touches. Autre base : `TEST_DB_NAME=... back/tests/run.sh`.
 - PHP : `php` du PATH, sinon `C:\xampp\php\php.exe` (ou `PHP=/chemin/php`).
 
-Ajouter un test : une classe `*Test` dans `tests/Unit/` (herite de `Tests\TestCase`)
-ou `tests/Integration/` (herite de `Tests\HttpTestCase`), une methode publique `test*` par cas.
+Ajouter un test : une classe `<Classe>Test` au chemin de la classe testee, sous `tests/Unit/`
+(herite de `Tests\TestCase`) ou `tests/Integration/` (herite de `Tests\HttpTestCase`), une
+methode publique `test*` par cas. Une doublure utilisee par plusieurs tests va dans `tests/Support/`.
 Les tests d'integration s'appuient sur les donnees de `infra/sql/seed.sql`.
 
 ```php
-final class EventsTest extends HttpTestCase
+// tests/Integration/Controller/EventControllerTest.php
+namespace Tests\Integration\Controller;
+
+final class EventControllerTest extends HttpTestCase
 {
     public function testShowUnknownEventReturns404(): void
     {
-        $error = $this->assertError(404, 'NOT_FOUND', $this->get('/events/99999'));
+        $error = $this->assertError(404, 'EVENT_NOT_FOUND', $this->get('/events/99999'));
         $this->assertSame(['id' => 99999], $error['details']);
     }
 }
@@ -267,7 +293,7 @@ curl http://localhost:8000/events/abc    # 404 NOT_FOUND (regex)
    Helpers : `ok($data, $status)`, `noContent()`, `validate($request, $rules)`,
    `found($row, 'Resource', $id)` (404 si `null`). Pour echouer : `throw HttpException`.
    Requete : `param('id')`, `json()`, `query()`, `queryInt()`, `header()`, `attribute('user')`.
-4. Documenter la route et ses schemas dans `docs/openapi/<ressource>.yaml` (sinon `DocsTest` echoue).
+4. Documenter la route et ses schemas dans `docs/openapi/<ressource>.yaml` (sinon `OpenApiContractTest` echoue).
 5. Declarer les routes dans `routes/<ressource>.php` (ex. `routes/users.php`),
    charge automatiquement par `routes/api.php` :
    ```php

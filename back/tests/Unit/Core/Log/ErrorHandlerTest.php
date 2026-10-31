@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Unit\Core\Log;
 
 use RuntimeException;
 use Tests\TestCase;
@@ -43,7 +43,7 @@ final class ErrorHandlerTest extends TestCase
 
     private function runFixture(string $case): string
     {
-        $fixture = dirname(__DIR__) . '/fixtures/throw.php';
+        $fixture = dirname(__DIR__, 3) . '/fixtures/throw.php';
         $env     = ['LOG_PATH' => $this->logDir] + getenv();
         // output_buffering : comme sous un serveur web, la sortie partielle reste jetable.
         // log_errors=0 : sinon PHP CLI recopie l'erreur fatale sur stderr.
