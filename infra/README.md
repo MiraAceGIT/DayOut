@@ -224,7 +224,8 @@ modération). Côté PHP, `PDOException::getCode()` vaut `'45000'` pour toutes :
 Les règles sont écrites dans `09_routines.sql` (procédures `sp_assert_*`, `sp_lock_event_seat`), les
 triggers ne font que les appeler. Erreurs natives MariaDB utiles à mapper aussi :
 `1062` doublon (ex. déjà inscrit, `uk_reg_event_user`) → 409, `1451` suppression d'une ligne
-référencée (ex. école) → 409, `1452` FK vers une ligne inexistante → 422, `4025` CHECK violé → 422.
+référencée (ex. école) → 409, `1452` FK vers une ligne inexistante → 422, `4025` CHECK violé → 422, `1406` chaîne plus longue
+que la colonne → 422, `1264` nombre hors du type de la colonne → 422.
 
 Ajouter une règle : prendre le prochain numéro libre dans la plage du domaine, l'ajouter à ce tableau.
 

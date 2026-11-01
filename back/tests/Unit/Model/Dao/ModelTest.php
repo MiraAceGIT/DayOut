@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Model\Dao;
 
-use App\Core\HttpException;
+use App\Core\ValidationException;
 use App\Core\Orm\Connection;
 use App\Model\Dao\Model;
 use PDO;
@@ -45,7 +45,7 @@ final class ModelTest extends TestCase
     public function testServerFieldsAloneAreEnough(): void
     {
         $id = $this->notes->create([], ['title' => 'From server']);
-        $this->assertSame('From server', $this->notes->byId($id)['title']);
+        $this->assertSame('From server', $this->notes->byId($id)['title'] ?? null);
     }
 
     public function testNothingWritableIsAClientError(): void
@@ -53,8 +53,8 @@ final class ModelTest extends TestCase
         $id = $this->notes->create(['title' => 'x']);
 
         foreach ([[], ['unknown' => 1], ['author_id' => 3]] as $input) {
-            $e = $this->assertThrows(HttpException::class, fn () => $this->notes->updateById($id, $input), json_encode($input));
-            $this->assertSame(400, $e->status);
+            $e = $this->assertThrows(ValidationException::class, fn () => $this->notes->updateById($id, $input), (string) json_encode($input));
+            $this->assertSame(['body' => 'No writable field (allowed: title, pinned)'], $e->errors);
         }
     }
 
@@ -63,7 +63,7 @@ final class ModelTest extends TestCase
         $id = $this->notes->create(['title' => 'Old']);
 
         $this->assertSame(1, $this->notes->updateById($id, ['title' => 'New']));
-        $this->assertSame('New', $this->notes->byId($id)['title']);
+        $this->assertSame('New', $this->notes->byId($id)['title'] ?? null);
         $this->assertSame(1, $this->notes->deleteById($id));
         $this->assertSame(null, $this->notes->byId($id));
     }

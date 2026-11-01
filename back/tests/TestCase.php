@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\Core\Response;
 use Throwable;
 
 /** Chaque methode publique `test*` tourne sur une instance neuve ; setUp() avant chacune. */
@@ -11,6 +12,11 @@ abstract class TestCase
     public int $assertions = 0;
 
     public function setUp(): void
+    {
+    }
+
+    /** Toujours appele apres le test, meme en echec (remise en etat : variables d'env...). */
+    public function tearDown(): void
     {
     }
 
@@ -59,6 +65,12 @@ abstract class TestCase
         $this->assert(!str_contains($haystack, $needle), $message, self::export($needle) . ' unexpectedly found in ' . self::export($haystack));
     }
 
+    /** Corps JSON d'une Response (enveloppe data / error) ; echec si la reponse n'en a pas (204, raw). */
+    protected static function payload(Response $response): array
+    {
+        return $response->payload() ?? throw new AssertionFailed('Response has no JSON payload');
+    }
+
     /**
      * @template T of Throwable
      * @param class-string<T> $class
@@ -69,7 +81,10 @@ abstract class TestCase
         try {
             $fn();
         } catch (Throwable $e) {
-            $this->assert($e instanceof $class, $message, "Expected $class, got " . $e::class . ': ' . $e->getMessage());
+            if (!$e instanceof $class) {
+                $this->fail(($message !== '' ? "$message: " : '') . "Expected $class, got " . $e::class . ': ' . $e->getMessage());
+            }
+            $this->assertions++;
             return $e;
         }
         $this->fail($message !== '' ? $message : "Expected $class to be thrown");

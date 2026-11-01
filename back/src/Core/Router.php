@@ -6,7 +6,12 @@ namespace App\Core;
 use App\Core\Http\Middleware;
 use LogicException;
 
-/** Controllers et middlewares donnes par nom de classe sont instancies sans argument. */
+/**
+ * Controllers et middlewares donnes par nom de classe sont instancies sans argument.
+ *
+ * @phpstan-type Handler array{0: class-string, 1: string}
+ * @phpstan-type Middlewares array<int, Middleware|class-string<Middleware>>
+ */
 final class Router
 {
     /**
@@ -24,12 +29,18 @@ final class Router
     /** @var array<int, Middleware|class-string<Middleware>> */
     private array $groupMiddlewares = [];
 
+    /** @param Handler $handler @param Middlewares $middlewares */
     public function get(string $path, array $handler, array $middlewares = []): void    { $this->add('GET', $path, $handler, $middlewares); }
+    /** @param Handler $handler @param Middlewares $middlewares */
     public function post(string $path, array $handler, array $middlewares = []): void   { $this->add('POST', $path, $handler, $middlewares); }
+    /** @param Handler $handler @param Middlewares $middlewares */
     public function put(string $path, array $handler, array $middlewares = []): void    { $this->add('PUT', $path, $handler, $middlewares); }
+    /** @param Handler $handler @param Middlewares $middlewares */
     public function patch(string $path, array $handler, array $middlewares = []): void  { $this->add('PATCH', $path, $handler, $middlewares); }
+    /** @param Handler $handler @param Middlewares $middlewares */
     public function delete(string $path, array $handler, array $middlewares = []): void { $this->add('DELETE', $path, $handler, $middlewares); }
 
+    /** @param Middlewares $middlewares */
     public function group(string $prefix, array $middlewares, callable $routes): void
     {
         [$previousPrefix, $previousMiddlewares] = [$this->prefix, $this->groupMiddlewares];
@@ -67,29 +78,54 @@ final class Router
         throw HttpException::notFound('Route not found', ['path' => $request->path]);
     }
 
+    /** @param Handler $handler @param Middlewares $middlewares */
     private function add(string $method, string $path, array $handler, array $middlewares): void
     {
         $path = '/' . trim($this->prefix . $path, '/');
-        $names = [];
-        // {name} -> [^/]+ ; {name:regex} -> regex fournie
-        $regex = preg_replace_callback(
-            '#\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]+))?\}#',
-            function (array $m) use (&$names, $path): string {
-                if (in_array($m[1], $names, true)) {
-                    throw new LogicException("Duplicate route parameter '{$m[1]}' in $path");
-                }
-                $names[] = $m[1];
-                return '(?P<' . $m[1] . '>' . ($m[2] ?? '[^/]+') . ')';
-            },
-            $path
-        );
 
         $this->routes[] = [
             'method'      => $method,
-            'regex'       => '#^' . $regex . '$#',
+            'regex'       => '#^' . self::compile($path) . '$#',
             'handler'     => $handler,
             'middlewares' => [...$this->groupMiddlewares, ...$middlewares],
         ];
+    }
+
+    /**
+     * {name} -> [^/]+ ; {name:regex} -> regex fournie, accolades equilibrees comprises (`{code:[a-z]{2}}`).
+     * Lu caractere par caractere : une regex ne peut pas trouver la fin d'un parametre qui contient lui-meme `}`.
+     */
+    private static function compile(string $path): string
+    {
+        $regex = '';
+        $names = [];
+        $length = strlen($path);
+        for ($i = 0; $i < $length; $i++) {
+            if ($path[$i] !== '{') {
+                $regex .= preg_quote($path[$i], '#');
+                continue;
+            }
+            $depth = 1;
+            $end = $i + 1;
+            for (; $end < $length && $depth > 0; $end++) {
+                $depth += match ($path[$end]) { '{' => 1, '}' => -1, default => 0 };
+            }
+            if ($depth !== 0) {
+                throw new LogicException("Unclosed route parameter in $path");
+            }
+            $inner = substr($path, $i + 1, $end - $i - 2);
+            [$name, $pattern] = array_pad(explode(':', $inner, 2), 2, null);
+            if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', (string) $name) !== 1 || $pattern === '') {
+                throw new LogicException("Invalid route parameter '{{$inner}}' in $path");
+            }
+            if (in_array($name, $names, true)) {
+                throw new LogicException("Duplicate route parameter '$name' in $path");
+            }
+            $names[] = $name;
+            $regex .= '(?P<' . $name . '>' . str_replace('#', '\#', $pattern ?? '[^/]+') . ')';
+            $i = $end - 1;
+        }
+        return $regex;
     }
 
     /** Pipeline : middlewares dans l'ordre de declaration, puis l'action. */

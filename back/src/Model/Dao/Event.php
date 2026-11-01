@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Model\Dao;
 
 use App\Core\Orm\Query\QueryBuilder;
+use DateTimeInterface;
 
 /** Seuls les events `published` sont exposes. */
 final class Event extends Model
@@ -44,10 +45,15 @@ final class Event extends Model
         'created_at'           => 'datetime',
     ];
 
-    /** @return array<int, array<string, mixed>> */
-    public function listPublished(int $limit = 20, int $offset = 0): array
+    /**
+     * Events pas encore termines a `$from` (ceux en cours compris), du plus proche au plus lointain.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listPublishedEndingAfter(DateTimeInterface $from, int $limit = 20, int $offset = 0): array
     {
         return $this->published()
+            ->where('end_at', '>', $from)
             ->orderBy('start_at')
             ->orderBy('id') // departage les egalites : pas de doublon/trou entre pages
             ->limit($limit)

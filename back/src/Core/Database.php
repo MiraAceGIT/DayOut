@@ -11,6 +11,8 @@ use RuntimeException;
 /** Point d'acces unique a la BDD : orm(), jamais le PDO brut. */
 final class Database
 {
+    private const CONNECT_TIMEOUT = 3;
+
     private static ?Config $config = null;
     private static ?Connection $orm = null;
 
@@ -36,6 +38,8 @@ final class Database
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
+                // Delai de connexion (s) : BDD injoignable -> echec rapide, /health repond `db: down` sans bloquer.
+                PDO::ATTR_TIMEOUT            => self::CONNECT_TIMEOUT,
             ]);
             // Casts et bindings supposent une session UTC (DEFAULT CURRENT_TIMESTAMP compris).
             $pdo->exec("SET time_zone = '+00:00'");

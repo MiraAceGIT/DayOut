@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Core;
 
-use App\Core\HttpException;
+use App\Core\ValidationException;
 use App\Core\Validator;
 use LogicException;
 use Tests\TestCase;
@@ -15,8 +15,8 @@ final class ValidatorTest extends TestCase
         try {
             Validator::check($data, $rules);
             return [];
-        } catch (HttpException $e) {
-            return $e->details;
+        } catch (ValidationException $e) {
+            return $e->errors;
         }
     }
 
@@ -37,16 +37,25 @@ final class ValidatorTest extends TestCase
 
     public function testFailureThrows422WithOneMessagePerField(): void
     {
-        $e = $this->assertThrows(HttpException::class, fn () => Validator::check(
+        $e = $this->assertThrows(ValidationException::class, fn () => Validator::check(
             ['email' => 'nope'],
             ['email' => 'required|email', 'password' => 'required|string|min:8']
         ));
-        $this->assertSame(422, $e->status);
-        $this->assertSame('VALIDATION_ERROR', $e->errorCode);
+        $this->assertSame('Invalid input', $e->getMessage());
         $this->assertSame([
             'email'    => 'Must be a valid email address',
             'password' => 'This field is required',
-        ], $e->details);
+        ], $e->errors);
+    }
+
+    public function testSlugAcceptsLowercaseWordsSeparatedBySingleDashes(): void
+    {
+        foreach (['soiree', 'soiree-2026', 'a-b-c'] as $slug) {
+            $this->assertSame([], $this->errors(['s' => $slug], ['s' => 'slug']), $slug);
+        }
+        foreach (['Soiree', 'soiree--x', '-soiree', 'soiree-', 'soir ee', 'soirée', 12] as $slug) {
+            $this->assertSame(['s' => 'Must be lowercase letters, digits and single dashes'], $this->errors(['s' => $slug], ['s' => 'slug']), (string) $slug);
+        }
     }
 
     public function testRulesAcceptArraySyntax(): void
@@ -84,7 +93,7 @@ final class ValidatorTest extends TestCase
         $this->assertSame(['a' => 12], Validator::check(['a' => '12'], ['a' => 'int']));
         $this->assertSame(['a' => -3], Validator::check(['a' => -3], ['a' => 'int']));
         foreach ([1.5, '1.5', '1e3', 'abc', true, '', '99999999999999999999'] as $value) {
-            $this->assertSame(['a' => 'Must be an integer'], $this->errors(['a' => $value], ['a' => 'int']), json_encode($value));
+            $this->assertSame(['a' => 'Must be an integer'], $this->errors(['a' => $value], ['a' => 'int']), (string) json_encode($value));
         }
     }
 
@@ -95,7 +104,7 @@ final class ValidatorTest extends TestCase
         $this->assertSame(['a' => -2.341], Validator::check(['a' => '-2.341'], ['a' => 'number']));
         $this->assertSame(['a' => 'Must be at least -90'], $this->errors(['a' => -90.5], ['a' => 'number|min:-90']));
         foreach (['1e3', 'abc', true, '', '1.', [1]] as $value) {
-            $this->assertSame(['a' => 'Must be a number'], $this->errors(['a' => $value], ['a' => 'number']), json_encode($value));
+            $this->assertSame(['a' => 'Must be a number'], $this->errors(['a' => $value], ['a' => 'number']), (string) json_encode($value));
         }
     }
 

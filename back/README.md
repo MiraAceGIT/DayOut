@@ -61,7 +61,13 @@ back/
    `/dayout/back/public` est retire automatiquement du chemin (deduit de `SCRIPT_NAME`).
 
 Au demarrage, `config/config.php` valide le `.env` : une variable `DB_*` manquante,
-un `LOG_LEVEL` inconnu ou un entier invalide donnent un `500` journalise (cause dans `error.log`).
+un `LOG_LEVEL` ou un `APP_TIMEZONE` inconnu, un entier ou un booleen invalide (`APP_DEBUG`,
+`DOCS_ENABLED` : `true`/`false`, `1`/`0`, `yes`/`no`, `on`/`off`) donnent un `500` journalise
+(cause dans `error.log`). Dans le `.env`, `# ...` en fin de ligne est un commentaire, sauf dans
+une valeur entre guillemets (`"a#b"`).
+
+`APP_DEBUG=true` journalise aussi notices et deprecations, mais PHP n'affiche jamais ses erreurs
+dans la reponse (elles casseraient le JSON) : tout est dans `error-AAAA-MM-JJ.log`.
 
 ## Format de reponse
 
@@ -87,14 +93,20 @@ des services (`EVENT_NOT_FOUND`... voir *Gestion des erreurs*) et des triggers (
 | Methode | Chemin               | Query params                                   | 200 — shape (sous `data`)             | Erreurs                                   |
 | ------- | -------------------- | ---------------------------------------------- | ------------------------------------- | ----------------------------------------- |
 | GET     | `/health`            | —                                              | `{ api, db, time }`                   | —                                         |
-| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (def. 0)    | `{ items: Event[], limit, offset }`   | —                                         |
+| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (0-10000, def. 0), `from` (ISO 8601, def. maintenant) | `{ items: Event[], limit, offset }`   | `422 VALIDATION_ERROR` (param invalide ou hors bornes) |
 | GET     | `/events/{id}`       | — (`id` entier obligatoire via regex `\d+`)    | `Event`                               | `404 EVENT_NOT_FOUND`, `404 NOT_FOUND` si `{id}` non num. |
-| GET     | `/docs`              | —                                              | page HTML Swagger UI (hors enveloppe) | —                                         |
-| GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | —                                         |
+| GET     | `/docs`              | —                                              | page HTML Swagger UI (hors enveloppe) | `404` si `DOCS_ENABLED` n'est pas vrai     |
+| GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | `404` si `DOCS_ENABLED` n'est pas vrai     |
+
+`/events` ne renvoie que les events pas encore termines a `from` (`end_at > from` : ceux en cours
+restent listes), tries par `start_at` puis `id`. Ecrire `from` avec `Z` (`2026-11-01T00:00:00Z`) ou
+encoder le `+` d'un decalage (`%2B01:00`) : dans une query string, `+` se lit comme un espace.
+Un `offset` au-dela de la fin donne une page vide, jamais la premiere page.
 
 ### Documentation interactive (Swagger)
 
-Ouvrir `http://localhost:8000/docs` (sous XAMPP : `.../dayout/back/public/docs`) :
+Servie seulement avec `DOCS_ENABLED=true` dans le `.env` (coupee par defaut, donc en prod :
+`routes/docs.php` n'est charge que dans ce cas par `public/index.php`). Ouvrir `http://localhost:8000/docs` (sous XAMPP : `.../dayout/back/public/docs`) :
 toutes les routes, leurs parametres et les schemas (`Event`, `Category`, `Error`...), avec
 **Try it out** pour appeler l'API depuis la page.
 
@@ -109,7 +121,7 @@ de `routes/`) :
 
 ```
 docs/openapi/
-├── openapi.yaml   ← en-tete (info, servers) + composants communs (Error, NotFound, InternalError)
+├── openapi.yaml   ← en-tete (info, servers) + composants communs (Error, ValidationError, NotFound, InternalError)
 ├── events.yaml    ← EventController : tags, paths /events*, schemas Event, Category, EventPage
 └── health.yaml    ← HealthController : /health, schema Health
 ```
@@ -135,7 +147,7 @@ monter de version, changer l'URL et recalculer les deux hashes
 (scripts du CDN + script d'init autorise par son hash) ; toutes les autres reponses gardent
 `default-src 'none'`.
 
-**Shape `Event`** (contrat JSON stable, fixe par `App\Dto\EventDto`) :
+**Shape `Event`** (contrat JSON stable, fixe par `App\Model\Dto\EventDto`) :
 ```json
 {
   "id": 1,
@@ -170,7 +182,7 @@ Types garantis : `is_paid` et `school_restricted` en `bool`, entiers en `int`,
 UTC (`DateTime::ATOM`). `categories` : liste de `{ slug, label }` triee par `label`
 puis `id`, categories actives uniquement, `[]` si aucune ; chargees en une seule
 requete pour toute la page (`Category::listActiveByEvent`). Seuls les events
-`status='published'` sont exposes. Colonnes lues mais jamais exposees :
+`status='published'` sont exposes (et, dans la liste, pas encore termines). Colonnes lues mais jamais exposees :
 `creator_id`, `restricted_school_id`, `status`, `published_at`, `created_at`.
 
 ## Tester
@@ -194,17 +206,17 @@ Les tests suivent l'arborescence de `src/` : le test de `src/Core/Http/Kernel.ph
 tests/
 ├── Unit/                       ← une classe testee directement, sans serveur ni MariaDB
 │   ├── Controller/             ← DocsControllerTest
-│   ├── Core/                   ← RequestTest, ResponseTest, RouterTest, ValidatorTest, YamlTest
+│   ├── Core/                   ← ConfigTest, RequestTest, ResponseTest, RouterTest, ValidatorTest, YamlTest
 │   │   ├── Http/               ← KernelTest, ExceptionRendererTest
 │   │   ├── Log/                ← ContextSanitizerTest, ErrorHandlerTest (processus a part)
-│   │   └── Orm/                ← CasterTest, Query/QueryBuilderTest
+│   │   └── Orm/                ← CasterTest, ConnectionTest (transactions), Query/QueryBuilderTest
 │   ├── Docs/                   ← OpenApiSpecTest (fusion), OpenApiContractTest (spec = routes + DTO)
 │   └── Model/
 │       ├── Dao/                ← ModelTest, CategoryTest (SQLite en memoire)
 │       ├── Mappers/            ← EventMapperTest, CategoryMapperTest
 │       └── Services/           ← EventServiceTest (SQLite en memoire)
 ├── Integration/                ← vraies requetes HTTP, rangees par classe responsable du comportement
-│   ├── Controller/             ← EventControllerTest, HealthControllerTest
+│   ├── Controller/             ← EventControllerTest, HealthControllerTest, DocsControllerTest (docs coupees)
 │   └── Core/                   ← RouterTest, Http/{Kernel,Cors,ExceptionRenderer}Test, Log/AccessLogTest
 ├── Support/                    ← doublures partagees (EchoController, AppRouter)
 ├── fixtures/                   ← scripts lances dans un processus a part
@@ -220,8 +232,10 @@ tests/
 
 Ajouter un test : une classe `<Classe>Test` au chemin de la classe testee, sous `tests/Unit/`
 (herite de `Tests\TestCase`) ou `tests/Integration/` (herite de `Tests\HttpTestCase`), une
-methode publique `test*` par cas. Une doublure utilisee par plusieurs tests va dans `tests/Support/`.
-Les tests d'integration s'appuient sur les donnees de `infra/sql/seed.sql`.
+methode publique `test*` par cas ; `setUp()` avant chacune, `tearDown()` apres, meme en echec
+(remettre une variable d'env...). Une doublure utilisee par plusieurs tests va dans `tests/Support/`.
+Les tests d'integration s'appuient sur les donnees de `infra/sql/seed.sql`, datees par rapport au
+2026-10-19 : une liste d'events passe `from=2026-10-19T00:00:00Z` pour ne pas dependre du jour du test.
 
 ```php
 // tests/Integration/Controller/EventControllerTest.php
@@ -238,7 +252,7 @@ final class EventControllerTest extends HttpTestCase
 ```
 
 Assertions : `assertSame`, `assertTrue` / `assertFalse`, `assertCount`, `assertArrayHasKey`,
-`assertStringContains`, `assertThrows` ; en HTTP `assertStatus`, `assertError`, et
+`assertStringContains`, `assertThrows`, `self::payload($response)` (corps JSON d'une `Response`) ; en HTTP `assertStatus`, `assertError`, et
 `get` / `post` / `request` qui renvoient un `TestResponse` (`status`, `header()`, `json()`).
 
 ### Analyse statique (PHPStan)
@@ -248,8 +262,8 @@ back/tools/phpstan.sh                # config : back/phpstan.neon
 ```
 
 Sans Composer : le script telecharge `phpstan.phar` (version epinglee) dans `tools/.cache/`
-(ignore par git) et verifie son empreinte SHA-256 avant chaque lancement. Niveau 6 (types des
-parametres et retours, code mort, `match` non exhaustif...), avec `phpVersion: 80200` pour
+(ignore par git) et verifie son empreinte SHA-256 avant chaque lancement. Niveau 8 (types des
+parametres et retours, code mort, `match` non exhaustif, valeurs `null` et `false` possibles...), avec `phpVersion: 80200` pour
 refuser toute syntaxe plus recente que le minimum supporte. Seule exception globale :
 le type des valeurs des tableaux (`array<string, mixed>`), trop verbeux pour des lignes SQL et du JSON.
 Ignorer une ligne precise : `// @phpstan-ignore <identifiant> (raison)`.
@@ -260,42 +274,49 @@ Ignorer une ligne precise : `// @phpstan-ignore <identifiant> (raison)`.
 curl http://localhost:8000/health
 curl http://localhost:8000/events
 curl 'http://localhost:8000/events?limit=5&offset=0'
+curl 'http://localhost:8000/events?from=2026-10-19T00:00:00Z'   # events termines apres cette date
+curl 'http://localhost:8000/events?limit=500'                   # 422 VALIDATION_ERROR
 curl http://localhost:8000/events/1
-curl http://localhost:8000/events/9999   # 404 NOT_FOUND
+curl http://localhost:8000/events/9999   # 404 EVENT_NOT_FOUND
 curl http://localhost:8000/events/abc    # 404 NOT_FOUND (regex)
 ```
 
 ## Ajouter une route
 
-1. Ecrire le `Model` dans `src/Model/Dao/` (herite de `App\Model\Dao\Model`, voir *ORM* ci-dessous).
+1. Ecrire le `Model` dans `src/Model/Dao/` (herite de `App\Model\Dao\Model`, voir *ORM* ci-dessous)
+   et le service dans `src/Model/Services/` : il appelle les DAO, applique les regles metier
+   (`throw UserException::notFound($id)`, voir *Gestion des erreurs*) et renvoie des DTO.
 2. Ecrire le DTO dans `src/Model/Dto/` (`final readonly class ... implements JsonSerializable` :
    proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case, et seulement
    les champs a exposer) et son mapper dans `src/Model/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`).
-   Le controller ne renvoie jamais une ligne brute du Model.
+   Le service renvoie des DTO, jamais une ligne brute du Model.
    Si la ressource est ecrite : un DTO d'entree **distinct** (ex. `EventInputDto`), qui porte ses
    regles de validation (`RULES`) et ne contient que ce qu'un client peut envoyer (ni id, ni compteurs,
-   ni champs serveur). Le mapper le construit depuis le JSON (`fromInput($json)` : valide, 422 sinon)
+   ni champs serveur). Le mapper le construit depuis le JSON (`fromInput($json)` : valide, regles
+   croisees comprises comme `is_paid` / `price_cents`, `ValidationException` -> 422 sinon)
    et en tire les colonnes (`toRow($inputDto)`) :
    ```php
    $input = EventMapper::fromInput($request->json());
    $id    = $this->events->create(EventMapper::toRow($input), ['creator_id' => $userId, 'status' => 'draft']);
    ```
 3. Ecrire le `Controller` dans `src/Controller/` (herite de `App\Core\Controller`) ;
-   il instancie ses models dans son constructeur (`new User()`). Chaque action recoit
-   la `Request` et **renvoie** une `Response` :
+   il instancie son service dans son constructeur (`$users ?? new UserService()`). Chaque action
+   recoit la `Request` et **renvoie** une `Response` ; logique HTTP seulement (parametres, statut) :
    ```php
    public function show(Request $request): Response
    {
-       $id = (int) $request->param('id');
-       return $this->ok(UserMapper::toDto($this->found($this->users->findPublicById($id), 'User', $id)));
+       return $this->ok($this->users->getPublic((int) $request->param('id')));  // 404 leve par le service
    }
    ```
-   Helpers : `ok($data, $status)`, `noContent()`, `validate($request, $rules)`,
-   `found($row, 'Resource', $id)` (404 si `null`). Pour echouer : `throw HttpException`.
-   Requete : `param('id')`, `json()`, `query()`, `queryInt()`, `header()`, `attribute('user')`.
+   Helpers : `ok($data, $status)`, `noContent()`, `validate($request, $rules)` (body JSON),
+   `validateQuery($request, $rules)` (query string : 422 si invalide, jamais de valeur par defaut
+   silencieuse). Pour echouer : laisser remonter l'exception metier du service, ou `throw HttpException`.
+   Requete : `param('id')`, `json()`, `query()`, `header()`, `attribute('user')`.
 4. Documenter la route et ses schemas dans `docs/openapi/<ressource>.yaml` (sinon `OpenApiContractTest` echoue).
 5. Declarer les routes dans `routes/<ressource>.php` (ex. `routes/users.php`),
-   charge automatiquement par `routes/api.php` :
+   charge automatiquement par `routes/api.php` (sauf `docs.php`, charge selon `DOCS_ENABLED`).
+   Parametre : `{id}` (tout sauf `/`) ou `{id:regex}`, accolades admises (`{code:[a-z]{2}}`) ;
+   le reste du chemin est pris a la lettre (`.` n'est pas un joker) :
    ```php
    <?php
    declare(strict_types=1);
@@ -346,7 +367,7 @@ ORM maison minimal : le moteur est dans `src/Core/Orm/`, les models dans
 | `Rows`                  | `keyBy` / `groupBy` pour assembler des chargements batch              |
 
 Les lignes sont des tableaux associatifs deja castes, directement passables
-a `$this->ok()`. Un model construit sans argument utilise la `Connection`
+au mapper du service. Un model construit sans argument utilise la `Connection`
 partagee (`Database::orm()`) ; on peut lui en passer une autre pour les tests.
 
 **Declarer un model :**
@@ -366,7 +387,7 @@ final class User extends Model
     }
 }
 
-// src/Controller/UserController.php
+// src/Model/Services/UserService.php
 public function __construct(?User $users = null)
 {
     $this->users = $users ?? new User();
@@ -407,17 +428,19 @@ $this->query()->where('role', 'admin')->exists();
 $id = $users->create($data, ['password_hash' => Password::hash($password)]);  // id insere
 $users->updateById($id, ['first_name' => 'B']);                               // nb lignes
 $users->deleteById($id);
-// Rien a ecrire (body vide ou sans champ FILLABLE) -> HttpException 400.
+// Rien a ecrire (body vide ou sans champ FILLABLE) -> ValidationException, 422 ({"body": "No writable field..."}).
 
 // Requete libre (pas de filtre FILLABLE ni de casts) : $this->table() dans un
 // model, ou Database::orm()->table(...) ailleurs.
 $this->table()->where('event_id', 4)->where('status', 'no_show')->update(['status' => 'cancelled']);
 
 // Transaction : la Connection est partagee, donc tous les models construits
-// sans argument participent a la meme transaction (pas d'imbrication).
+// sans argument participent a la meme transaction.
 Database::orm()->transaction(function (Connection $db) use ($events, $registrations) {
     // tout ou rien ; la valeur retournee est renvoyee par transaction()
 });
+// Imbricable : un transaction() interne pose un SAVEPOINT. S'il echoue et que l'appelant
+// rattrape l'exception, seul son travail est annule ; sinon tout est annule.
 ```
 
 **Jointures / agregats** (`$this->table()` : builder brut, sans COLUMNS ni casts) :
@@ -447,13 +470,10 @@ public function listForEvents(array $eventIds): array
     return Rows::groupBy($rows, 'event_id');      // [event_id => [registration, ...]]
 }
 
-// Controller : 2 requetes au total, quel que soit le nombre d'events
-$items  = $this->events->listPublished($limit, $offset);
+// Service : 2 requetes au total, quel que soit le nombre d'events (cf. EventService::withCategories)
+$items   = $this->events->listPublishedEndingAfter($from, $limit, $offset);
 $byEvent = $this->registrations->listForEvents(array_column($items, 'id'));
-foreach ($items as &$event) {
-    $event['registrations'] = $byEvent[$event['id']] ?? [];
-}
-unset($event);
+$items   = array_map(fn (array $e): array => $e + ['registrations' => $byEvent[$e['id']] ?? []], $items);
 ```
 
 Garde-fous : valeurs toujours bindees (`?`), noms de colonnes valides par regex
@@ -519,7 +539,10 @@ Garde-fous :
   erreurs comprises (`App\Core\Http\SecurityHeaders`, identiques sous Apache et `php -S`)
 - `.htaccess` bloque les dotfiles et extensions sensibles (`.env`, `.sql`, …)
 - Variables d'env validees au demarrage par `App\Core\Config` (`DB_HOST`, `DB_PORT`,
-  `DB_NAME`, `DB_USER` obligatoires, entiers et `LOG_LEVEL` controles)
+  `DB_NAME`, `DB_USER` obligatoires, entiers, booleens, `LOG_LEVEL` et `APP_TIMEZONE` controles)
+- `/docs` et `/openapi.json` coupes par defaut (`DOCS_ENABLED`)
+- Connexion BDD avec delai de 3 s : MariaDB injoignable -> echec rapide, pas de requete bloquee
+- `Vary: Origin` sur toutes les reponses (cache partage sans fuite de CORS entre origines)
 - Jamais de `$e->getMessage()` ou de trace dans la reponse HTTP (log serveur uniquement)
 - `App\Core\Password` : bcrypt cost 12, pret pour l'auth future
 
@@ -528,11 +551,11 @@ Garde-fous :
 ```
 HTTP -> public/.htaccess -> public/index.php
      -> autoload, ErrorHandler (filets), config/config.php (Config, Log, Database)
-     -> routes/api.php -> routes/<ressource>.php (declarations)
+     -> routes/api.php -> routes/<ressource>.php (declarations) [+ routes/docs.php si DOCS_ENABLED]
      -> Kernel::handle(Request::fromGlobals())
           -> Router::dispatch : match {param}, middlewares, Controller::action -> Response
-             -> Model (methode nommee) -> QueryBuilder -> Compiler (SQL)
-                -> Connection (bindings) -> PDO -> MariaDB -> Caster (Model::CASTS)
+             -> Service (regles metier) -> Model (methode nommee) -> QueryBuilder -> Compiler (SQL)
+                -> Connection (bindings) -> PDO -> MariaDB -> Caster (Model::CASTS) -> Mapper -> DTO
           -> exception levee n'importe ou -> ExceptionRenderer -> Response d'erreur
           -> SecurityHeaders + Cors + X-Request-Id sur toutes les reponses
      -> Response::send() (seul endroit qui ecrit statut, en-tetes et body)
@@ -544,11 +567,16 @@ Aucun `try/catch` n'est necessaire dans les controllers : `Kernel` confie toute
 exception a `App\Core\Http\ExceptionRenderer`.
 
 - `App\Core\HttpException` -> renvoyee au client avec son statut, son code, son message
-  et ses en-tetes :
+  et ses en-tetes. Reservee a la couche HTTP (routeur, `Request`, middlewares) ; un 404 de
+  ressource vient du service (`EventException::notFound`, ci-dessous) :
   ```php
-  throw HttpException::notFound('Event not found', ['id' => $id]);
   throw HttpException::badRequest('Missing field', ['field' => 'title']);
-  throw new HttpException(409, 'CONFLICT', 'Already registered');
+  throw new HttpException(401, 'UNAUTHENTICATED', 'Login required');
+  ```
+- `App\Core\ValidationException` -> `422 VALIDATION_ERROR`, `details` = champ -> message. Levee
+  par le `Validator`, les mappers (`fromInput`) et les DAO, sans dependre de HTTP :
+  ```php
+  throw ValidationException::field('end_at', 'Must be after start_at');
   ```
 - `App\Model\Exceptions\BusinessException` -> regle metier levee par un service. Une classe
   par ressource, un cas par factory nommee ; le service ne connait pas HTTP, c'est
@@ -586,7 +614,11 @@ exception a `App\Core\Http\ExceptionRenderer`.
   `DbErrorMapper::TRIGGER_ERRORS` et aux deux README.
 - contrainte native -> message generique (le message MariaDB cite tables et contraintes) :
   doublon `1062` et suppression d'une ligne referencee `1451` -> `409 CONFLICT`,
-  cle etrangere inexistante `1452` et CHECK `4025` -> `422 VALIDATION_ERROR`.
+  cle etrangere inexistante `1452`, CHECK `4025`, chaine trop longue `1406` et nombre hors
+  du type de la colonne `1264` -> `422 VALIDATION_ERROR`. Filet seulement : les `RULES` des DTO
+  d'entree reprennent ces bornes pour que le client sache quel champ corriger.
+  Chaque erreur SQL traduite est journalisee en `info` (`Database rule violated`, errno et code,
+  sans le message natif, qui peut citer la valeur refusee).
 - toute autre exception (PDO, logique, ...) -> journalisee dans `error.log`,
   le client recoit un `500 INTERNAL_ERROR` generique.
 
@@ -599,8 +631,9 @@ Un `try/catch` ne se justifie que pour reagir a une erreur precise
 
 ## Validation des entrees
 
-`App\Core\Validator` verifie les donnees recues et leve une `HttpException` 422 si
-elles sont invalides. Dans un controller, `$this->validate()` valide le body JSON :
+`App\Core\Validator` verifie les donnees recues et leve une `ValidationException` (422) si
+elles sont invalides. Dans un controller, `$this->validate()` valide le body JSON,
+`$this->validateQuery()` la query string :
 
 ```php
 public function create(Request $request): Response
@@ -637,6 +670,7 @@ Reponse en cas d'erreur (une erreur par champ, la premiere regle qui echoue) :
 | `url`      | URL `http://` ou `https://` (refuse `javascript:`...)                |
 | `date`     | `AAAA-MM-JJ`, date reelle (refuse `2026-02-31`)                      |
 | `datetime` | ISO 8601 avec fuseau : `2026-11-07T20:00:00Z`, `...+01:00`           |
+| `slug`     | minuscules, chiffres et tirets simples (`soiree-2026`, pas `Soiree--x`) |
 | `min:n`    | longueur d'une chaine (en caracteres), valeur d'un int, taille d'un tableau |
 | `max:n`    | idem                                                                 |
 | `in:a,b`   | une des valeurs listees (sensible a la casse)                        |
@@ -645,7 +679,8 @@ Un champ absent et non `required` est simplement absent du resultat. Placer la
 regle de type avant `min` / `max` (`int|min:1`). Les regles sont verifiees avant
 les donnees : une regle inconnue ou un argument invalide (`max:abc`) leve une
 `LogicException` (erreur de dev, donc 500), meme si le champ n'est pas envoye.
-Pour valider la query string : `Validator::check($request->query(), [...])`.
+Pour valider la query string : `$this->validateQuery($request, [...])` (une valeur invalide
+donne 422, jamais une valeur par defaut silencieuse).
 
 ## Conventions
 

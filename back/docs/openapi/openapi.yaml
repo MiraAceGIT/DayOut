@@ -48,6 +48,11 @@ components:
               example: { id: 42 }
 
   responses:
+    ValidationError:
+      description: Parametre ou body invalide (`VALIDATION_ERROR`, `details` = champ -> message)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: Ressource ou route introuvable
       content:

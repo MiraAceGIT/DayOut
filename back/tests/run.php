@@ -58,11 +58,12 @@ try {
     if (isset($suites['Integration'])) {
         putenv("TEST_SERVER_LOG_PATH=$tmpDir/server-logs");
         $server = TestServer::start(APP_ROOT . '/public', [
-            'DB_NAME'     => $testDb,
-            'LOG_PATH'    => "$tmpDir/server-logs",
-            'LOG_LEVEL'   => 'info',
-            'APP_DEBUG'   => 'false',
-            'CORS_ORIGIN' => Tests\HttpTestCase::ALLOWED_ORIGIN,
+            'DB_NAME'      => $testDb,
+            'LOG_PATH'     => "$tmpDir/server-logs",
+            'LOG_LEVEL'    => 'info',
+            'APP_DEBUG'    => 'false',
+            'DOCS_ENABLED' => 'false',
+            'CORS_ORIGIN'  => Tests\HttpTestCase::ALLOWED_ORIGIN,
         ], "$tmpDir/server.out");
         putenv('TEST_BASE_URL=' . $server->baseUrl);
     }
@@ -109,6 +110,8 @@ function runSuites(array $suites, string $filter): int
                 } catch (Throwable $e) {
                     $problems[] = ['ERROR', "$class::$method", $e::class . ': ' . $e->getMessage(), $e];
                     echo 'E';
+                } finally {
+                    $test->tearDown();
                 }
                 $assertions += $test->assertions;
             }

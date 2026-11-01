@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Mappers;
 
-use App\Core\HttpException;
+use App\Core\ValidationException;
 use App\Core\Validator;
 use App\Model\Dto\EventDto;
 use App\Model\Dto\EventInputDto;
@@ -42,17 +42,27 @@ final class EventMapper
         );
     }
 
+    /** @return list<EventDto> */
     public static function toDtos(array $rows): array
     {
         return array_map(self::toDto(...), array_values($rows));
     }
 
-    /** JSON recu -> EventInputDto ; 422 VALIDATION_ERROR (details par champ) si invalide. */
+    /**
+     * JSON recu -> EventInputDto ; ValidationException (422, un message par champ) si invalide.
+     * Regles croisees verifiees ici plutot que par les CHECK SQL, dont l'erreur ne cite pas le champ.
+     */
     public static function fromInput(array $json): EventInputDto
     {
         $v = Validator::check($json, EventInputDto::RULES);
         if (new DateTimeImmutable($v['end_at']) <= new DateTimeImmutable($v['start_at'])) {
-            throw HttpException::validation(['end_at' => 'Must be after start_at']);
+            throw ValidationException::field('end_at', 'Must be after start_at');
+        }
+        // chk_events_price : payant <=> prix > 0.
+        $isPaid = $v['is_paid'] ?? false;
+        $price  = $v['price_cents'] ?? 0;
+        if ($isPaid !== ($price > 0)) {
+            throw ValidationException::field('price_cents', $isPaid ? 'Must be greater than 0 for a paid event' : 'Must be 0 for a free event');
         }
 
         return new EventInputDto(
@@ -69,9 +79,9 @@ final class EventMapper
             latitude: $v['latitude'] ?? null,
             longitude: $v['longitude'] ?? null,
             capacity: $v['capacity'] ?? null,
-            priceCents: $v['price_cents'] ?? 0,
+            priceCents: $price,
             currency: $v['currency'] ?? 'EUR',
-            isPaid: $v['is_paid'] ?? false,
+            isPaid: $isPaid,
             externalTicketUrl: $v['external_ticket_url'] ?? null,
             restrictedSchoolId: $v['restricted_school_id'] ?? null,
         );

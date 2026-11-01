@@ -20,6 +20,9 @@ $config = require APP_ROOT . '/config/config.php';
 
 $router = new Router();
 require APP_ROOT . '/routes/api.php';
+if ($config->docsEnabled) {
+    require APP_ROOT . '/routes/docs.php';
+}
 
 (new Kernel($router, $config))
     ->handle(Request::fromGlobals())

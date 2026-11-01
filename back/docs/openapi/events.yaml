@@ -6,10 +6,10 @@ paths:
   /events:
     get:
       tags: [events]
-      summary: Liste des evenements publies
+      summary: Liste des evenements publies a venir
       description: >-
-        Tries par `start_at` puis `id`. Les evenements passes sont inclus (pas de filtre de date).
-        Une valeur de pagination hors bornes ou invalide retombe sur sa valeur par defaut.
+        Evenements publies pas encore termines a `from` (ceux en cours compris), tries par `start_at` puis `id`.
+        Un parametre invalide ou hors bornes donne 422 `VALIDATION_ERROR`.
       operationId: listEvents
       parameters:
         - name: limit
@@ -20,6 +20,12 @@ paths:
           in: query
           description: Nombre d'evenements a sauter (0 a 10000).
           schema: { type: integer, minimum: 0, maximum: 10000, default: 0 }
+        - name: from
+          in: query
+          description: >-
+            Instant de reference, ISO 8601 avec fuseau (defaut : maintenant). Ecrire `Z` ou encoder le `+` (`%2B`),
+            sinon la query string le lit comme un espace.
+          schema: { type: string, format: date-time, example: "2026-11-01T00:00:00Z" }
       responses:
         "200":
           description: Une page d'evenements
@@ -30,6 +36,7 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/EventPage" }
+        "422": { $ref: "#/components/responses/ValidationError" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /events/{id}:
@@ -53,7 +60,11 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/Event" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        "404":
+          description: Evenement inexistant ou non publie (`EVENT_NOT_FOUND`), ou `id` non numerique (`NOT_FOUND`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
 components:

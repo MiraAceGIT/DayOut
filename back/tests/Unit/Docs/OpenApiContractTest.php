@@ -26,7 +26,7 @@ final class OpenApiContractTest extends TestCase
 
     public function testEachRoutesFileHasItsOwnSpecFile(): void
     {
-        foreach (glob(APP_ROOT . '/routes/*.php') as $file) {
+        foreach (glob(APP_ROOT . '/routes/*.php') ?: [] as $file) {
             $name = basename($file, '.php');
             if (!in_array($name, ['api', 'docs'], true)) {
                 $this->assertTrue(is_file(self::SPEC_DIR . "/$name.yaml"), "routes/$name.php has no docs/openapi/$name.yaml");
@@ -51,7 +51,7 @@ final class OpenApiContractTest extends TestCase
         $operations = [];
         foreach ($this->spec()['paths'] as $path => $methods) {
             foreach (array_keys($methods) as $method) {
-                $operations[] = [strtoupper($method), self::sample($path), "$method $path"];
+                $operations[] = [strtoupper((string) $method), self::sample($path), "$method $path"];
             }
         }
 

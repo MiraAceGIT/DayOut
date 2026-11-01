@@ -13,6 +13,9 @@ final class Connection
 {
     private PDO $pdo;
 
+    /** Transactions ouvertes par transaction() : 0 = aucune, 1 = la transaction, au-dela = savepoints. */
+    private int $depth = 0;
+
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
@@ -47,20 +50,29 @@ final class Connection
         return $this->run($sql, $bindings)->rowCount();
     }
 
-    /** Pas d'imbrication : appeler transaction() dans $fn leve une PDOException. */
+    /**
+     * Imbricable : un appel interne pose un SAVEPOINT, son echec n'annule que son propre travail
+     * (si l'appelant rattrape l'exception) ; seul l'appel le plus externe fait COMMIT.
+     */
     public function transaction(callable $fn): mixed
     {
-        $this->pdo->beginTransaction();
+        $savepoint = $this->depth > 0 ? 'sp_' . $this->depth : null;
+        $savepoint === null ? $this->pdo->beginTransaction() : $this->pdo->exec("SAVEPOINT $savepoint");
+        $this->depth++;
         try {
             $result = $fn($this);
-            $this->pdo->commit();
-            return $result;
         } catch (Throwable $e) {
-            if ($this->pdo->inTransaction()) {
+            $this->depth--;
+            if ($savepoint !== null) {
+                $this->pdo->exec("ROLLBACK TO SAVEPOINT $savepoint");
+            } elseif ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
             throw $e;
         }
+        $this->depth--;
+        $savepoint === null ? $this->pdo->commit() : $this->pdo->exec("RELEASE SAVEPOINT $savepoint");
+        return $result;
     }
 
     private function run(string $sql, array $bindings): PDOStatement

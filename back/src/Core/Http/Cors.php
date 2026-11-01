@@ -16,13 +16,14 @@ final class Cors
 
     public function apply(Request $request, Response $response): Response
     {
+        // Toujours, origine autorisee ou non : sinon un cache partage resservirait une reponse sans CORS a une origine autorisee.
+        $response = $response->withHeader('Vary', 'Origin');
         $origin = $request->header('Origin');
         if ($origin === null || !in_array($origin, $this->allowedOrigins, true)) {
             return $response;
         }
         return $response
             ->withHeader('Access-Control-Allow-Origin', $origin)
-            ->withHeader('Vary', 'Origin')
             ->withHeader('Access-Control-Allow-Credentials', 'true')
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
             ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token')

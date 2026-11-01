@@ -86,7 +86,8 @@ final class Yaml
 
     private function parseNode(int $indent): array
     {
-        return self::isSequenceItem($this->peek()['text']) ? $this->parseSequence($indent) : $this->parseMapping($indent);
+        $line = $this->peek() ?? throw $this->error(count($this->raw), 'unexpected end of file');
+        return self::isSequenceItem($line['text']) ? $this->parseSequence($indent) : $this->parseMapping($indent);
     }
 
     private function parseMapping(int $indent): array
@@ -239,8 +240,9 @@ final class Yaml
             return $value;
         }
         preg_match($isKey ? '/\G[^,\[\]{}:]*/' : '/\G[^,\[\]{}]*/', $s, $m, 0, $i);
-        $i += strlen($m[0]);
-        $text = trim($m[0]);
+        $token = $m[0] ?? '';
+        $i += strlen($token);
+        $text = trim($token);
         if ($text === '') {
             throw $this->error($lineNo, 'empty entry in flow collection');
         }

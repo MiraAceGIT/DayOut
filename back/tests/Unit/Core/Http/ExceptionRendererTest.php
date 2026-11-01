@@ -5,6 +5,7 @@ namespace Tests\Unit\Core\Http;
 
 use App\Core\HttpException;
 use App\Core\Http\ExceptionRenderer;
+use App\Core\ValidationException;
 use App\Model\Exceptions\BusinessException;
 use App\Model\Exceptions\ErrorKind;
 use PDOException;
@@ -36,7 +37,7 @@ final class ExceptionRendererTest extends TestCase
             $this->assertSame($status, $response->status, $kind->name);
             $this->assertSame(
                 ['code' => 'SAMPLE_CODE', 'message' => 'Sample message', 'details' => ['id' => 7]],
-                $response->payload()['error'],
+                self::payload($response)['error'],
                 $kind->name . ' : context stays out of the response'
             );
         }
@@ -53,11 +54,11 @@ final class ExceptionRendererTest extends TestCase
     {
         $response = ExceptionRenderer::render(self::pdoError('45000', 50304, 'Event is full'));
         $this->assertSame(409, $response->status);
-        $this->assertSame(['code' => 'EVENT_FULL', 'message' => 'Event is full'], $response->payload()['error']);
+        $this->assertSame(['code' => 'EVENT_FULL', 'message' => 'Event is full'], self::payload($response)['error']);
 
         $this->assertSame(403, ExceptionRenderer::render(self::pdoError('45000', 50301, 'User is banned'))->status);
         $unknown = ExceptionRenderer::render(self::pdoError('45000', 50999, 'Some new rule'));
-        $this->assertSame('BUSINESS_RULE_VIOLATION', $unknown->payload()['error']['code']);
+        $this->assertSame('BUSINESS_RULE_VIOLATION', self::payload($unknown)['error']['code']);
     }
 
     public function testNativeConstraintErrorsGetGenericMessages(): void
@@ -65,13 +66,33 @@ final class ExceptionRendererTest extends TestCase
         $response = ExceptionRenderer::render(self::pdoError('23000', 1062, "Duplicate entry '1-3' for key 'uk_reg_event_user'"));
 
         $this->assertSame(409, $response->status);
-        $this->assertSame(['code' => 'CONFLICT', 'message' => 'Resource already exists'], $response->payload()['error']);
+        $this->assertSame(['code' => 'CONFLICT', 'message' => 'Resource already exists'], self::payload($response)['error']);
+    }
+
+    public function testValidationExceptionBecomes422WithErrorsPerField(): void
+    {
+        $response = ExceptionRenderer::render(new ValidationException(['title' => 'This field is required']));
+
+        $this->assertSame(422, $response->status);
+        $this->assertSame(
+            ['code' => 'VALIDATION_ERROR', 'message' => 'Invalid input', 'details' => ['title' => 'This field is required']],
+            self::payload($response)['error']
+        );
+    }
+
+    public function testValueTooLongOrOutOfRangeIsAClientError(): void
+    {
+        foreach ([1406 => 'Value too long', 1264 => 'Value out of range'] as $errno => $message) {
+            $response = ExceptionRenderer::render(self::pdoError('22001', $errno, "Data too long for column 'title'"));
+            $this->assertSame(422, $response->status, (string) $errno);
+            $this->assertSame(['code' => 'VALIDATION_ERROR', 'message' => $message], self::payload($response)['error']);
+        }
     }
 
     public function testOtherDatabaseErrorsStayInternal(): void
     {
         $response = ExceptionRenderer::render(self::pdoError('42S22', 1054, "Unknown column 'x'"));
         $this->assertSame(500, $response->status);
-        $this->assertSame('INTERNAL_ERROR', $response->payload()['error']['code']);
+        $this->assertSame('INTERNAL_ERROR', self::payload($response)['error']['code']);
     }
 }

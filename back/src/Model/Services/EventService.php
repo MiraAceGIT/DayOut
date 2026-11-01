@@ -5,8 +5,12 @@ namespace App\Model\Services;
 
 use App\Model\Dao\Category;
 use App\Model\Dao\Event;
+use App\Model\Dto\EventDto;
 use App\Model\Exceptions\EventException;
+use App\Model\Mappers\EventMapper;
+use DateTimeInterface;
 
+/** Renvoie des DTO : le controller n'a plus qu'a les serialiser. */
 final class EventService
 {
     private Event $events;
@@ -18,20 +22,17 @@ final class EventService
         $this->categories = $categories ?? new Category();
     }
 
-    /** @return list<array<string, mixed>> */
-    public function listPublished(int $limit, int $offset): array
+    /** @return list<EventDto> events publies pas encore termines a `$from` */
+    public function listUpcoming(DateTimeInterface $from, int $limit, int $offset): array
     {
-        return $this->withCategories($this->events->listPublished($limit, $offset));
+        return EventMapper::toDtos($this->withCategories($this->events->listPublishedEndingAfter($from, $limit, $offset)));
     }
 
-    /**
-     * @return array<string, mixed>
-     * @throws EventException brouillon, archive ou inexistant
-     */
-    public function getPublished(int $id): array
+    /** @throws EventException brouillon, archive ou inexistant */
+    public function getPublished(int $id): EventDto
     {
         $event = $this->events->findPublishedById($id) ?? throw EventException::notFound($id);
-        return $this->withCategories([$event])[0];
+        return EventMapper::toDto($this->withCategories([$event])[0]);
     }
 
     /**

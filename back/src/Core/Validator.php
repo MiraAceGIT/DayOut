@@ -14,7 +14,7 @@ final class Validator
     /** Regle => argument attendu : null (aucun), 'int' (min:3) ou 'list' (in:a,b). */
     private const RULES = [
         'required' => null, 'nullable' => null, 'string' => null, 'int' => null, 'number' => null, 'bool' => null,
-        'array'    => null, 'email'    => null, 'url'    => null, 'date' => null, 'datetime' => null,
+        'array'    => null, 'email'    => null, 'url'    => null, 'date' => null, 'datetime' => null, 'slug' => null,
         'min'      => 'int', 'max'     => 'int', 'in'    => 'list',
     ];
 
@@ -63,7 +63,7 @@ final class Validator
         }
 
         if ($errors !== []) {
-            throw HttpException::validation($errors);
+            throw new ValidationException($errors);
         }
         return $clean;
     }
@@ -108,6 +108,8 @@ final class Validator
             'url'      => is_string($value) && preg_match('#^https?://#i', $value) === 1
                 && filter_var($value, FILTER_VALIDATE_URL) !== false
                 ? null : 'Must be a valid http(s) URL',
+            'slug'     => is_string($value) && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $value) === 1
+                ? null : 'Must be lowercase letters, digits and single dashes',
             'date'     => self::isDate($value, ['Y-m-d']) ? null : 'Must be a date (YYYY-MM-DD)',
             'datetime' => self::isDate($value, self::DATETIME_FORMATS)
                 ? null : 'Must be an ISO 8601 datetime with timezone',

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Model\Mappers;
 
-use App\Core\HttpException;
+use App\Core\ValidationException;
 use App\Model\Mappers\EventMapper;
 use Tests\TestCase;
 
@@ -86,15 +86,34 @@ final class EventMapperTest extends TestCase
             'title'        => [self::input(['title' => '']), 'This field is required'],
             'end_at'       => [self::input(['end_at' => '2026-11-07T19:00:00Z']), 'Must be after start_at'],
             'latitude'     => [self::input(['latitude' => 91]), 'Must be at most 90'],
-            'currency'     => [self::input(['currency' => 'EURO']), 'Must be at most 3 characters'],
+            'currency'     => [self::input(['currency' => 'EURO']), 'Must be one of: EUR'],
+            'slug'         => [self::input(['slug' => 'Soiree Rentree']), 'Must be lowercase letters, digits and single dashes'],
+            'description'  => [self::input(['description' => str_repeat('a', 16001)]), 'Must be at most 16000 characters'],
+            'restricted_school_id' => [self::input(['restricted_school_id' => 4294967296]), 'Must be at most 4294967295'],
             'capacity'     => [self::input(['capacity' => 0]), 'Must be at least 1'],
             'cover_image_url' => [self::input(['cover_image_url' => 'javascript:alert(1)']), 'Must be a valid http(s) URL'],
         ];
         foreach ($cases as $field => [$body, $message]) {
-            $e = $this->assertThrows(HttpException::class, fn () => EventMapper::fromInput($body), $field);
-            $this->assertSame(422, $e->status, $field);
-            $this->assertSame($message, $e->details[$field] ?? null, $field);
+            $e = $this->assertThrows(ValidationException::class, fn () => EventMapper::fromInput($body), $field);
+            $this->assertSame($message, $e->errors[$field] ?? null, $field);
         }
+    }
+
+    /** chk_events_price verifie en PHP : le client sait quel champ corriger (le CHECK SQL ne le dirait pas). */
+    public function testPaidFlagAndPriceMustAgree(): void
+    {
+        $cases = [
+            'Must be greater than 0 for a paid event' => ['is_paid' => true],
+            'Must be 0 for a free event'              => ['price_cents' => 500],
+        ];
+        foreach ($cases as $message => $overrides) {
+            $e = $this->assertThrows(ValidationException::class, fn () => EventMapper::fromInput(self::input($overrides)), $message);
+            $this->assertSame(['price_cents' => $message], $e->errors);
+        }
+
+        $paid = EventMapper::fromInput(self::input(['is_paid' => true, 'price_cents' => 1500]));
+        $this->assertSame(true, $paid->isPaid);
+        $this->assertSame(1500, $paid->priceCents);
     }
 
     public function testToRowWritesDbDatetimesAndDerivesSchoolRestriction(): void

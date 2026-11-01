@@ -79,15 +79,6 @@ final class Request
         return $this->query;
     }
 
-    /** Hors [min, max] ou non entier -> $default. */
-    public function queryInt(string $key, int $default, int $min, int $max): int
-    {
-        $value = filter_var($this->query[$key] ?? null, FILTER_VALIDATE_INT, [
-            'options' => ['min_range' => $min, 'max_range' => $max],
-        ]);
-        return $value === false ? $default : $value;
-    }
-
     public function header(string $name): ?string
     {
         return $this->headers[strtolower($name)] ?? null;

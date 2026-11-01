@@ -28,8 +28,8 @@ final class ErrorHandler
         }
         Log::log(self::levelFor($type), $message, ['file' => "$file:$line", 'type' => $type]);
 
-        // display_errors actif (APP_DEBUG) : laisser aussi PHP afficher l'erreur.
-        return !filter_var(ini_get('display_errors'), FILTER_VALIDATE_BOOLEAN);
+        // Traitee : PHP n'affiche rien (le texte casserait le JSON de la reponse), meme en APP_DEBUG.
+        return true;
     }
 
     public static function handleException(Throwable $e): void

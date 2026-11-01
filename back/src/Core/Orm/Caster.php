@@ -31,7 +31,8 @@ final class Caster
             'bool'     => (bool) $value,
             'datetime' => (new DateTimeImmutable((string) $value, new DateTimeZone('UTC')))
                 ->format(DateTimeInterface::ATOM),
-            'json'     => json_decode((string) $value, true),
+            // JSON invalide en base : erreur plutot qu'un null qui passerait pour une colonne vide.
+            'json'     => json_decode((string) $value, true, 512, JSON_THROW_ON_ERROR),
             default    => throw new LogicException("Unknown cast '$type' on $context"),
         };
     }

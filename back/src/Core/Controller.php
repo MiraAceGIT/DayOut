@@ -3,7 +3,10 @@ declare(strict_types=1);
 
 namespace App\Core;
 
-/** Pour echouer : throw HttpException, jamais de Response d'erreur construite a la main. */
+/**
+ * Pour echouer : throw HttpException (HTTP) ou laisser remonter l'exception metier du service,
+ * jamais de Response d'erreur construite a la main. Un 404 de ressource vient du service (EventException::notFound).
+ */
 abstract class Controller
 {
     protected function ok(mixed $data, int $status = 200): Response
@@ -16,13 +19,15 @@ abstract class Controller
         return Response::noContent();
     }
 
+    /** Body JSON ; ValidationException (422) si invalide. */
     protected function validate(Request $request, array $rules): array
     {
         return Validator::check($request->json(), $rules);
     }
 
-    protected function found(?array $row, string $resource, int|string $id): array
+    /** Query string ; ValidationException (422) si invalide, plutot qu'une valeur par defaut silencieuse. */
+    protected function validateQuery(Request $request, array $rules): array
     {
-        return $row ?? throw HttpException::notFound("$resource not found", ['id' => $id]);
+        return Validator::check($request->query(), $rules);
     }
 }

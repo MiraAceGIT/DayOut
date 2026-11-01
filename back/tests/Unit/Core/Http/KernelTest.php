@@ -37,7 +37,7 @@ final class KernelTest extends TestCase
         $response = $this->kernel()->handle(new Request('GET', '/nope'));
 
         $this->assertSame(404, $response->status);
-        $this->assertSame('NOT_FOUND', $response->payload()['error']['code']);
+        $this->assertSame('NOT_FOUND', self::payload($response)['error']['code']);
     }
 
     public function testUnexpectedExceptionIsHiddenBehindGeneric500(): void

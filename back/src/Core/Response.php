@@ -67,13 +67,27 @@ final class Response
         return $this->payload;
     }
 
+    /**
+     * Payload encode en JSON (null sans payload). JSON_PRESERVE_ZERO_FRACTION : un float reste un float
+     * (48.0 et non 48), comme annonce par la spec.
+     *
+     * @throws JsonException valeur non encodable (UTF-8 invalide...)
+     */
+    public function jsonBody(): ?string
+    {
+        return $this->payload === null ? null : json_encode(
+            $this->payload,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR
+        );
+    }
+
     public function send(): void
     {
         $body = null;
         $status = $this->status;
         if ($this->payload !== null) {
             try {
-                $body = json_encode($this->payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+                $body = $this->jsonBody();
             } catch (JsonException $e) {
                 // Sinon le client recevrait un body vide avec le statut d'origine (ex. 200).
                 $status = 500;

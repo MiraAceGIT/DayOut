@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Core\Log\Level;
+use DateTimeZone;
 use RuntimeException;
 
 /** Seul endroit du code qui lit getenv() : les autres classes recoivent leurs valeurs. */
@@ -23,6 +24,7 @@ final class Config
         public readonly string $logPath = '',
         public readonly int $logRetentionDays = 30,
         public readonly int $auditRetentionDays = 365,
+        public readonly bool $docsEnabled = false,
     ) {
     }
 
@@ -38,10 +40,14 @@ final class Config
         }
 
         $logLevel = self::env('LOG_LEVEL') ?? 'info';
+        $timezone = self::env('APP_TIMEZONE') ?? 'UTC';
+        if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
+            throw new RuntimeException("Invalid APP_TIMEZONE: $timezone");
+        }
 
         return new self(
-            debug: self::env('APP_DEBUG') === 'true',
-            timezone: self::env('APP_TIMEZONE') ?? 'UTC',
+            debug: self::bool('APP_DEBUG', false),
+            timezone: $timezone,
             dbHost: (string) self::env('DB_HOST'),
             dbPort: self::positiveInt('DB_PORT', 3306),
             dbName: (string) self::env('DB_NAME'),
@@ -53,6 +59,8 @@ final class Config
             logPath: self::path($appRoot, self::env('LOG_PATH') ?? 'storage/logs'),
             logRetentionDays: self::positiveInt('LOG_RETENTION_DAYS', 30),
             auditRetentionDays: self::positiveInt('AUDIT_RETENTION_DAYS', 365),
+            // /docs et /openapi.json : coupes par defaut, a activer en dev (la spec decrit toute l'API).
+            docsEnabled: self::bool('DOCS_ENABLED', false),
         );
     }
 
@@ -73,6 +81,17 @@ final class Config
             throw new RuntimeException("$key must be a positive integer, got '$raw'");
         }
         return $value;
+    }
+
+    /** true/false, 1/0, yes/no, on/off ; autre valeur = erreur plutot qu'un false silencieux. */
+    private static function bool(string $key, bool $default): bool
+    {
+        $raw = self::env($key);
+        if ($raw === null) {
+            return $default;
+        }
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            ?? throw new RuntimeException("$key must be a boolean (true/false), got '$raw'");
     }
 
     private static function path(string $appRoot, string $path): string

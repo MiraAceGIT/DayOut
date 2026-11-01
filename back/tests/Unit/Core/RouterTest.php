@@ -38,7 +38,32 @@ final class RouterTest extends TestCase
         $router = new Router();
         $router->get('/items/{id:\d+}', [EchoController::class, 'show']);
 
-        $this->assertSame('42', $this->get($router, '/items/42')->payload()['data']['id']);
+        $this->assertSame('42', self::payload($this->get($router, '/items/42'))['data']['id']);
+    }
+
+    public function testParameterRegexMayContainBraces(): void
+    {
+        $router = new Router();
+        $router->get('/lang/{id:[a-z]{2}}', [EchoController::class, 'show']);
+
+        $this->assertSame('fr', self::payload($this->get($router, '/lang/fr'))['data']['id']);
+        $this->assertThrows(HttpException::class, fn () => $this->get($router, '/lang/fra'));
+    }
+
+    public function testStaticPartsAreMatchedLiterally(): void
+    {
+        $router = new Router();
+        $router->get('/v1.0/{id}', [EchoController::class, 'show']);
+
+        $this->assertSame('5', self::payload($this->get($router, '/v1.0/5'))['data']['id']);
+        $this->assertThrows(HttpException::class, fn () => $this->get($router, '/v1x0/5'), 'dot is not a wildcard');
+    }
+
+    public function testMalformedParameterIsRejected(): void
+    {
+        foreach (['/{id', '/{1id}', '/{id:}'] as $path) {
+            $this->assertThrows(LogicException::class, fn () => (new Router())->get($path, [EchoController::class, 'show']), $path);
+        }
     }
 
     public function testCapturingGroupInsideAParameterRegexDoesNotShiftParameters(): void
@@ -46,7 +71,7 @@ final class RouterTest extends TestCase
         $router = new Router();
         $router->get('/items/{id:(\d+)}', [EchoController::class, 'show']);
 
-        $this->assertSame('7', $this->get($router, '/items/7')->payload()['data']['id']);
+        $this->assertSame('7', self::payload($this->get($router, '/items/7'))['data']['id']);
     }
 
     public function testUnknownPathThrows404AndWrongMethodThrows405WithAllow(): void
@@ -78,7 +103,7 @@ final class RouterTest extends TestCase
         $router->get('/items/{id}', [EchoController::class, 'show'], [new TraceMiddleware('a'), new TraceMiddleware('b')]);
 
         $response = $this->get($router, '/items/1');
-        $this->assertSame(['a', 'b'], $response->payload()['data']['trace']);
+        $this->assertSame(['a', 'b'], self::payload($response)['data']['trace']);
         $this->assertSame('yes', $response->header('X-After-a'));
         $this->assertSame('yes', $response->header('X-After-b'));
     }
@@ -88,7 +113,7 @@ final class RouterTest extends TestCase
         $router = new Router();
         $router->get('/items/{id}', [EchoController::class, 'show'], [TraceMiddleware::class]);
 
-        $this->assertSame(['mw'], $this->get($router, '/items/1')->payload()['data']['trace']);
+        $this->assertSame(['mw'], self::payload($this->get($router, '/items/1'))['data']['trace']);
     }
 
     public function testGroupsPrefixPathsAndStackMiddlewares(): void
@@ -101,8 +126,8 @@ final class RouterTest extends TestCase
         });
         $router->get('/outside/{id}', [EchoController::class, 'show']);
 
-        $this->assertSame(['api', 'items', 'route'], $this->get($router, '/api/items/3')->payload()['data']['trace']);
-        $this->assertSame([], $this->get($router, '/outside/3')->payload()['data']['trace'], 'group state restored');
+        $this->assertSame(['api', 'items', 'route'], self::payload($this->get($router, '/api/items/3'))['data']['trace']);
+        $this->assertSame([], self::payload($this->get($router, '/outside/3'))['data']['trace'], 'group state restored');
     }
 
     public function testMiddlewareCanRejectTheRequest(): void

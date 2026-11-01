@@ -7,13 +7,21 @@ use Tests\HttpTestCase;
 
 /**
  * Seed : events 1 a 7 published, 8 et 9 archived, 10 draft.
- * Event 6 : sans coordonnees, lie a une seule categorie inactive (doit sortir sans categorie).
+ * Event 6 : sans coordonnees, lie a une seule categorie inactive (doit sortir sans categorie), termine le 2026-10-30.
+ * Le seed est date par rapport au 2026-10-19 : les listes passent `from` pour ne pas dependre du jour du test.
  */
 final class EventControllerTest extends HttpTestCase
 {
+    private const SEED_NOW = '2026-10-19T00:00:00Z';
+
+    private function list(string $query = ''): array
+    {
+        return $this->get('/events?from=' . self::SEED_NOW . ($query === '' ? '' : "&$query"))->json()['data'];
+    }
+
     public function testListReturnsOnlyPublishedEventsSortedByStartDate(): void
     {
-        $response = $this->get('/events');
+        $response = $this->get('/events?from=' . self::SEED_NOW);
 
         $this->assertStatus(200, $response);
         $data = $response->json()['data'];
@@ -32,8 +40,8 @@ final class EventControllerTest extends HttpTestCase
 
     public function testPagesDoNotOverlap(): void
     {
-        $first  = $this->get('/events?limit=3&offset=0')->json()['data'];
-        $second = $this->get('/events?limit=3&offset=3')->json()['data'];
+        $first  = $this->list('limit=3&offset=0');
+        $second = $this->list('limit=3&offset=3');
 
         $this->assertSame(3, $first['limit']);
         $this->assertSame(3, $second['offset']);
@@ -42,14 +50,49 @@ final class EventControllerTest extends HttpTestCase
         $this->assertSame([], array_intersect(array_column($first['items'], 'id'), array_column($second['items'], 'id')));
     }
 
-    public function testOutOfRangePaginationFallsBackToDefaults(): void
+    public function testInvalidQueryParametersAre422(): void
     {
-        $data = $this->get('/events?limit=500&offset=-1')->json()['data'];
-        $this->assertSame(20, $data['limit']);
-        $this->assertSame(0, $data['offset']);
+        $cases = [
+            'limit=500'          => ['limit' => 'Must be at most 100'],
+            'limit=0'            => ['limit' => 'Must be at least 1'],
+            'limit=abc'          => ['limit' => 'Must be an integer'],
+            'offset=-1'          => ['offset' => 'Must be at least 0'],
+            'offset=20000'       => ['offset' => 'Must be at most 10000'],
+            'from=2026-10-19'    => ['from' => 'Must be an ISO 8601 datetime with timezone'],
+        ];
+        foreach ($cases as $query => $details) {
+            $error = $this->assertError(422, 'VALIDATION_ERROR', $this->get("/events?$query"));
+            $this->assertSame($details, $error['details'], $query);
+        }
+    }
 
-        $data = $this->get('/events?limit=abc')->json()['data'];
-        $this->assertSame(20, $data['limit']);
+    public function testOffsetPastTheEndGivesAnEmptyPage(): void
+    {
+        $this->assertSame([], $this->list('offset=10000')['items'], 'never page 1 again (infinite scroll)');
+    }
+
+    public function testDefaultListHidesEventsThatAlreadyEnded(): void
+    {
+        $items = $this->get('/events?limit=100')->json()['data']['items'];
+
+        $now = time();
+        foreach ($items as $event) {
+            $this->assertTrue(strtotime($event['end_at']) > $now, "event {$event['id']} has ended");
+        }
+        $this->assertFalse(in_array(6, array_column($items, 'id'), true), 'event 6 ended on 2026-10-30');
+    }
+
+    public function testFromKeepsOngoingEventsAndDropsEndedOnes(): void
+    {
+        // Event 1 : 2026-11-07 20:00 -> 2026-11-08 02:00 UTC ; event 6 : termine le 2026-10-30 23:00 UTC.
+        $ids = array_column($this->get('/events?from=2026-11-07T23:00:00Z')->json()['data']['items'], 'id');
+        $this->assertTrue(in_array(1, $ids, true), 'ongoing event listed');
+        $this->assertFalse(in_array(6, $ids, true), 'ended event hidden');
+
+        // %2B = "+" : 03:00+01:00 = 02:00 UTC, pile la fin de l'event 1, qui n'est plus liste (fin exclue).
+        $ids = array_column($this->get('/events?from=2026-11-08T03:00:00%2B01:00')->json()['data']['items'], 'id');
+        $this->assertFalse(in_array(1, $ids, true), 'event 1 ended at 02:00 UTC');
+        $this->assertTrue(in_array(3, $ids, true), 'later events still listed');
     }
 
     public function testShowReturnsEventWithCastTypes(): void
@@ -68,7 +111,7 @@ final class EventControllerTest extends HttpTestCase
 
     public function testInternalColumnsAreNotExposed(): void
     {
-        $events = [$this->get('/events/1')->json()['data'], ...$this->get('/events')->json()['data']['items']];
+        $events = [$this->get('/events/1')->json()['data'], ...$this->list()['items']];
 
         foreach ($events as $event) {
             foreach (['creator_id', 'restricted_school_id', 'status', 'published_at', 'created_at', 'updated_at'] as $key) {
@@ -93,7 +136,7 @@ final class EventControllerTest extends HttpTestCase
 
     public function testListItemsExposeCoordinatesAndCategories(): void
     {
-        $items = $this->get('/events')->json()['data']['items'];
+        $items = $this->list()['items'];
 
         foreach ($items as $event) {
             $this->assertMapFields($event);
@@ -122,7 +165,7 @@ final class EventControllerTest extends HttpTestCase
     public function testEventWithoutCoordinatesNorActiveCategory(): void
     {
         $fromShow = $this->get('/events/6')->json()['data'];
-        $fromList = array_column($this->get('/events')->json()['data']['items'], null, 'id')[6];
+        $fromList = array_column($this->list()['items'], null, 'id')[6];
 
         foreach ([$fromShow, $fromList] as $event) {
             $this->assertMapFields($event);
@@ -134,7 +177,7 @@ final class EventControllerTest extends HttpTestCase
 
     public function testCategoriesFollowPagination(): void
     {
-        $page = $this->get('/events?limit=2&offset=1')->json()['data']['items'];
+        $page = $this->list('limit=2&offset=1')['items'];
 
         $this->assertCount(2, $page);
         foreach ($page as $event) {

@@ -34,6 +34,8 @@ final class DbErrorMapper
         1451 => [409, 'CONFLICT', 'Resource is still referenced'],    // suppression d'une ligne referencee
         1452 => [422, 'VALIDATION_ERROR', 'Referenced resource does not exist'],
         4025 => [422, 'VALIDATION_ERROR', 'Invalid data'],            // CHECK viole
+        1406 => [422, 'VALIDATION_ERROR', 'Value too long'],          // chaine plus longue que la colonne
+        1264 => [422, 'VALIDATION_ERROR', 'Value out of range'],      // nombre hors du type de la colonne
     ];
 
     /** Plage reservee aux triggers : un errno inconnu de cette plage reste une regle metier. */

@@ -6,8 +6,8 @@ namespace App\Controller;
 use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
-use App\Model\Mappers\EventMapper;
 use App\Model\Services\EventService;
+use DateTimeImmutable;
 
 final class EventController extends Controller
 {
@@ -20,11 +20,17 @@ final class EventController extends Controller
 
     public function index(Request $request): Response
     {
-        $limit  = $request->queryInt('limit',  20, 1, 100);
-        $offset = $request->queryInt('offset',  0, 0, 10_000);
+        $query = $this->validateQuery($request, [
+            'limit'  => 'int|min:1|max:100',
+            'offset' => 'int|min:0|max:10000',
+            'from'   => 'datetime',
+        ]);
+        $limit  = $query['limit'] ?? 20;
+        $offset = $query['offset'] ?? 0;
+        $from   = new DateTimeImmutable($query['from'] ?? 'now');
 
         return $this->ok([
-            'items'  => EventMapper::toDtos($this->events->listPublished($limit, $offset)),
+            'items'  => $this->events->listUpcoming($from, $limit, $offset),
             'limit'  => $limit,
             'offset' => $offset,
         ]);
@@ -32,6 +38,6 @@ final class EventController extends Controller
 
     public function show(Request $request): Response
     {
-        return $this->ok(EventMapper::toDto($this->events->getPublished((int) $request->param('id'))));
+        return $this->ok($this->events->getPublished((int) $request->param('id')));
     }
 }

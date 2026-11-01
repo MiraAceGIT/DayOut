@@ -1,6 +1,6 @@
 # Analyse statique : back/tools/phpstan.sh (telecharge PHPStan, version epinglee, sans Composer).
 parameters:
-    level: 6
+    level: 8
     phpVersion: 80200 # minimum supporte (readonly class) ; la CI teste aussi la derniere version
     paths:
         - src

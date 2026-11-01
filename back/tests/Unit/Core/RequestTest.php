@@ -26,16 +26,6 @@ final class RequestTest extends TestCase
         $this->assertSame('JSON body must be an object or array', $e->getMessage());
     }
 
-    public function testQueryIntFallsBackToDefaultOutsideRange(): void
-    {
-        $request = new Request('GET', '/', ['limit' => '5', 'big' => '500', 'bad' => 'abc', 'neg' => '-1']);
-        $this->assertSame(5, $request->queryInt('limit', 20, 1, 100));
-        $this->assertSame(20, $request->queryInt('big', 20, 1, 100));
-        $this->assertSame(20, $request->queryInt('bad', 20, 1, 100));
-        $this->assertSame(0, $request->queryInt('neg', 0, 0, 100));
-        $this->assertSame(20, $request->queryInt('missing', 20, 1, 100));
-    }
-
     public function testHeadersAreCaseInsensitive(): void
     {
         $request = new Request('GET', '/', headers: ['x-csrf-token' => 'abc']);

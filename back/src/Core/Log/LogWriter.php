@@ -44,7 +44,7 @@ final class LogWriter
         if ($days === null) {
             return;
         }
-        $cutoff = gmdate('Y-m-d', strtotime("-$days days"));
+        $cutoff = gmdate('Y-m-d', time() - $days * 86400);
         foreach (glob($this->directory . '/' . $channel . '-*.log') ?: [] as $file) {
             $date = substr(basename($file, '.log'), strlen($channel) + 1);
             if ($date < $cutoff) {

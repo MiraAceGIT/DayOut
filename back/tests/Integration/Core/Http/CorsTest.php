@@ -24,4 +24,12 @@ final class CorsTest extends HttpTestCase
         $this->assertStatus(200, $response);
         $this->assertSame(null, $response->header('Access-Control-Allow-Origin'));
     }
+
+    /** Sans Vary sur toutes les reponses, un cache partage resservirait la version sans CORS a une origine autorisee. */
+    public function testVaryOriginIsAlwaysSent(): void
+    {
+        foreach ([[], ['Origin' => 'http://evil.test'], ['Origin' => self::ALLOWED_ORIGIN]] as $headers) {
+            $this->assertSame('Origin', $this->get('/health', $headers)->header('Vary'), (string) json_encode($headers));
+        }
+    }
 }

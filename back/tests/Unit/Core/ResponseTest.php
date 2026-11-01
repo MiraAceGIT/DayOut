@@ -18,4 +18,13 @@ final class ResponseTest extends TestCase
         $this->assertSame('GET', $withHeader->header('allow'));
         $this->assertSame(['error' => ['code' => 'X', 'message' => 'm']], Response::error('X', 'm', 400)->payload(), 'no empty details');
     }
+
+    /** La spec annonce latitude / longitude en number double : 48.0 ne doit pas sortir en entier 48. */
+    public function testFloatsKeepTheirDecimalPointInJson(): void
+    {
+        $body = Response::json(['latitude' => 48.0, 'capacity' => 250])->jsonBody();
+
+        $this->assertSame('{"data":{"latitude":48.0,"capacity":250}}', $body);
+        $this->assertSame(null, Response::noContent()->jsonBody());
+    }
 }

@@ -37,10 +37,4 @@ final class HttpException extends RuntimeException
         return new self(405, 'METHOD_NOT_ALLOWED', 'Method not allowed on this route', [], null,
             ['Allow' => implode(', ', $allowed)]);
     }
-
-    /** @param array<string, string> $errors champ => message */
-    public static function validation(array $errors): self
-    {
-        return new self(422, 'VALIDATION_ERROR', 'Invalid input', $errors);
-    }
 }

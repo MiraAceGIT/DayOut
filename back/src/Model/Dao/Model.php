@@ -4,11 +4,11 @@ declare(strict_types=1);
 namespace App\Model\Dao;
 
 use App\Core\Database;
-use App\Core\HttpException;
 use App\Core\Orm\Caster;
 use App\Core\Orm\Connection;
 use App\Core\Orm\Query\QueryBuilder;
 use App\Core\Orm\Rows;
+use App\Core\ValidationException;
 use LogicException;
 
 abstract class Model
@@ -88,7 +88,7 @@ abstract class Model
         return $this->connection->table(static::TABLE);
     }
 
-    /** Rien a ecrire (body vide ou sans champ FILLABLE) : erreur du client, 400 et non 500. */
+    /** Rien a ecrire (body vide ou sans champ FILLABLE) : erreur du client (422), pas un 500. */
     private function row(array $input, array $server): array
     {
         if (static::FILLABLE === [] && $input !== []) {
@@ -96,7 +96,7 @@ abstract class Model
         }
         $row = array_merge(array_intersect_key($input, array_flip(static::FILLABLE)), $server);
         if ($row === []) {
-            throw HttpException::badRequest('Request body has no writable field', ['allowed' => static::FILLABLE]);
+            throw ValidationException::field('body', 'No writable field (allowed: ' . implode(', ', static::FILLABLE) . ')');
         }
         return $row;
     }
