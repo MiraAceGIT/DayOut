@@ -23,10 +23,40 @@ dayout/
 └── docs/           ← MCD-MLD, cahier des charges, fonctionnalites (non versionne)
 ```
 
+## Prerequis
+
+- **PHP** >= 8.2 (teste sur 8.2 et 8.5)
+- **MariaDB** 10.11+ (ou MySQL 8+) demarre sur `localhost:3306`
+- **Node.js** 22+ (uniquement pour lancer les tests front)
+- **Git Bash** sous Windows (les scripts `*.sh` sont en Bash)
+
+### Installation Linux (Debian / Ubuntu)
+
+```bash
+sudo apt update
+sudo apt install -y php php-mysql php-mbstring mariadb-server nodejs npm git
+sudo systemctl enable --now mariadb
+```
+
+### Installation Windows
+
+Via [winget](https://learn.microsoft.com/windows/package-manager/winget/) (PowerShell) :
+
+```powershell
+winget install --id PHP.PHP.8.4 -e
+winget install --id MariaDB.Server -e
+winget install --id OpenJS.NodeJS.LTS -e
+winget install --id Git.Git -e
+```
+
+Alternative tout-en-un : installer [XAMPP](https://www.apachefriends.org/) (fournit PHP + MariaDB).
+Si `php` n'est pas dans le PATH apres l'install XAMPP, utiliser `/c/xampp/php/php.exe` dans Git Bash.
+
+> Redemarrer le terminal apres l'installation pour que les commandes `php`, `node` et `git` soient disponibles.
+
 ## Demarrage rapide
 
-Prerequis : XAMPP avec MySQL demarre. Les commandes sont pour Git Bash, depuis la
-racine du projet. Si `php` n'est pas dans le PATH, utiliser `/c/xampp/php/php.exe`.
+Les commandes sont pour Git Bash, depuis la racine du projet.
 
 1. **BDD** : creer la base `dayout` avec le schema et le seed (voir `infra/README.md`) :
    ```bash
