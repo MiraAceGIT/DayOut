@@ -1,0 +1,37 @@
+{
+    "name": "dayout/back",
+    "description": "API REST DayOut (PHP + MariaDB)",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.2",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "firebase/php-jwt": "^7.2"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "2.1.17"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "preferred-install": "dist"
+    },
+    "scripts": {
+        "test": "php tests/run.php",
+        "test:unit": "php tests/run.php --unit",
+        "test:integration": "bash tests/run.sh --integration",
+        "stan": "phpstan analyse --no-progress --memory-limit=1G"
+    }
+}

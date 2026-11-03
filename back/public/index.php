@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
 
-require APP_ROOT . '/autoload.php';
+require APP_ROOT . '/vendor/autoload.php';
 
 use App\Core\Http\Kernel;
 use App\Core\Log\AccessLog;

@@ -16,16 +16,8 @@ set_error_handler(static function (int $type, string $message, string $file, int
 
 define('APP_ROOT', dirname(__DIR__));
 
-require APP_ROOT . '/autoload.php';
-
-spl_autoload_register(function (string $class): void {
-    if (str_starts_with($class, 'Tests\\')) {
-        $file = __DIR__ . '/' . str_replace('\\', '/', substr($class, 6)) . '.php';
-        if (is_file($file)) {
-            require $file;
-        }
-    }
-});
+// vendor/autoload.php charge App\ (require) et Tests\ (require-dev).
+require APP_ROOT . '/vendor/autoload.php';
 
 $args            = array_slice($_SERVER['argv'] ?? [], 1);
 $unitOnly        = in_array('--unit', $args, true);

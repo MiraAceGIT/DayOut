@@ -4,7 +4,7 @@ declare(strict_types=1);
 // Processus a part (ErrorHandlerTest) : les filets d'ErrorHandler n'agissent qu'en fin de script.
 
 define('APP_ROOT', dirname(__DIR__, 2));
-require APP_ROOT . '/autoload.php';
+require APP_ROOT . '/vendor/autoload.php';
 
 App\Core\Log\Log::configure(App\Core\Log\Level::Info, (string) getenv('LOG_PATH'));
 App\Core\Log\ErrorHandler::register();

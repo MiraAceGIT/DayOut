@@ -2,3 +2,4 @@
 *.log
 vendor/
 tools/.cache/
+tools/composer.phar

@@ -1,6 +1,8 @@
 # Back — API REST DayOut (PHP + MariaDB)
 
-API REST en PHP vanilla (pas de framework ni Composer). Architecture MVC, un dossier par couche :
+API REST en PHP vanilla (pas de framework). Composer sert uniquement a
+l'autoload PSR-4 et aux rares libs tierces (JWT) ; aucune abstraction type Symfony/Laravel.
+Architecture MVC, un dossier par couche :
 `Model/` decrit les tables et expose l'acces aux donnees par methodes
 nommees (DAO, `Model/Dao`), `Controller/` orchestre, la vue est la reponse JSON (`Response`, pas de dossier dedie).
 Ce qui sort dans le JSON est fixe par les DTO (`Model/Dto`, noms publics, champs exposes) ;
@@ -39,7 +41,7 @@ back/
 ├── docs/openapi/       ← spec OpenAPI 3 en YAML : openapi.yaml (commun) + un fichier par controller
 ├── storage/logs/       ← fichiers de logs (crees a la volee, ignores par git)
 ├── tests/              ← runner maison : Unit/ (sans BDD), Integration/ (HTTP + BDD), meme arborescence que src/
-├── autoload.php        ← autoload PSR-4 App\ -> src/
+├── composer.json       ← dependances (firebase/php-jwt) + autoload PSR-4 App\ -> src/, Tests\ -> tests/
 ├── .env.example
 └── README.md
 ```
@@ -48,7 +50,13 @@ back/
 
 1. Copier `.env.example` en `.env` et adapter si besoin.
 2. S'assurer que la base `dayout` est importee (voir `infra/README.md`).
-3. Au choix :
+3. Installer les dependances PHP : `composer install` (depuis `back/`). Si `composer`
+   n'est pas sur le PATH, telecharger le phar une fois :
+   ```bash
+   curl -sSfL -o tools/composer.phar https://getcomposer.org/download/latest-stable/composer.phar
+   php tools/composer.phar install
+   ```
+4. Au choix :
 
    **A. Serveur PHP integre (recommande en dev)** — depuis la racine du projet :
    ```bash
@@ -59,6 +67,9 @@ back/
    **B. XAMPP Apache** — placer le projet dans `C:\xampp\htdocs\dayout`
    puis ouvrir `http://localhost/dayout/back/public/health`. Le prefixe
    `/dayout/back/public` est retire automatiquement du chemin (deduit de `SCRIPT_NAME`).
+
+Si une erreur `vendor/autoload.php not found` apparait, c'est que `composer install`
+n'a pas ete lance : les dependances sont ignorees par git (`vendor/`).
 
 Au demarrage, `config/config.php` valide le `.env` : une variable `DB_*` manquante,
 un `LOG_LEVEL` ou un `APP_TIMEZONE` inconnu, un entier ou un booleen invalide (`APP_DEBUG`,
@@ -131,7 +142,7 @@ les fusionne dans `openapi.yaml` (une route ou un composant defini deux fois est
 `/openapi.json` sert le resultat en JSON, relu a chaque appel. Un `$ref` vers un composant
 d'un autre fichier marche (`#/components/schemas/Error`) : apres fusion, tout est dans le meme document.
 
-Le YAML est lu par `App\Core\Yaml` (pas de Composer ni d'extension `yaml`), qui ne prend qu'un
+Le YAML est lu par `App\Core\Yaml` (pas de lib tierce ni d'extension `yaml`), qui ne prend qu'un
 sous-ensemble : mappings / listes en blocs, `[a, b]` et `{ k: v }` sur une ligne, scalaires simples
 ou entre guillemets, blocs `|` et `>`, commentaires. Refuses avec fichier et ligne : ancres / alias,
 tags `!`, tabulations, scalaire simple sur plusieurs lignes (utiliser `>-`). Mettre entre guillemets
@@ -189,7 +200,7 @@ requete pour toute la page (`Category::listActiveByEvent`). Seuls les events
 
 ### Tests automatiques
 
-Runner maison sans dependance (pas de Composer), depuis Git Bash :
+Runner maison sans framework de test (ni PHPUnit ni autre), depuis Git Bash :
 
 ```bash
 back/tests/run.sh                 # tout : unitaires + integration
@@ -261,8 +272,10 @@ Assertions : `assertSame`, `assertTrue` / `assertFalse`, `assertCount`, `assertA
 back/tools/phpstan.sh                # config : back/phpstan.neon
 ```
 
-Sans Composer : le script telecharge `phpstan.phar` (version epinglee) dans `tools/.cache/`
-(ignore par git) et verifie son empreinte SHA-256 avant chaque lancement. Niveau 8 (types des
+Deux voies au choix : via Composer (`composer stan`, phpstan est en `require-dev`) ou
+via le script historique `back/tools/phpstan.sh`, qui telecharge `phpstan.phar` (meme
+version epinglee) dans `tools/.cache/` (ignore par git) et verifie son empreinte SHA-256
+avant chaque lancement. Niveau 8 (types des
 parametres et retours, code mort, `match` non exhaustif, valeurs `null` et `false` possibles...), avec `phpVersion: 80200` pour
 refuser toute syntaxe plus recente que le minimum supporte. Seule exception globale :
 le type des valeurs des tableaux (`array<string, mixed>`), trop verbeux pour des lignes SQL et du JSON.
