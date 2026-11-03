@@ -269,17 +269,14 @@ Assertions : `assertSame`, `assertTrue` / `assertFalse`, `assertCount`, `assertA
 ### Analyse statique (PHPStan)
 
 ```bash
-back/tools/phpstan.sh                # config : back/phpstan.neon
+composer stan                        # config : back/phpstan.neon
 ```
 
-Deux voies au choix : via Composer (`composer stan`, phpstan est en `require-dev`) ou
-via le script historique `back/tools/phpstan.sh`, qui telecharge `phpstan.phar` (meme
-version epinglee) dans `tools/.cache/` (ignore par git) et verifie son empreinte SHA-256
-avant chaque lancement. Niveau 8 (types des
-parametres et retours, code mort, `match` non exhaustif, valeurs `null` et `false` possibles...), avec `phpVersion: 80200` pour
-refuser toute syntaxe plus recente que le minimum supporte. Seule exception globale :
-le type des valeurs des tableaux (`array<string, mixed>`), trop verbeux pour des lignes SQL et du JSON.
-Ignorer une ligne precise : `// @phpstan-ignore <identifiant> (raison)`.
+PHPStan est en `require-dev` (version epinglee dans `composer.json`). Niveau 8 (types des
+parametres et retours, code mort, `match` non exhaustif, valeurs `null` et `false` possibles...),
+avec `phpVersion: 80200` pour refuser toute syntaxe plus recente que le minimum supporte.
+Seule exception globale : le type des valeurs des tableaux (`array<string, mixed>`), trop verbeux
+pour des lignes SQL et du JSON. Ignorer une ligne precise : `// @phpstan-ignore <identifiant> (raison)`.
 
 ### A la main
 

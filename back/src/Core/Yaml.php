@@ -7,7 +7,7 @@ use RuntimeException;
 use stdClass;
 
 /**
- * Lecteur YAML minimal (ni Composer ni extension yaml) pour les fichiers ecrits a la main du projet (docs/openapi).
+ * Lecteur YAML minimal (sans dependance tierce ni extension yaml) pour les fichiers ecrits a la main du projet (docs/openapi).
  * Sous-ensemble : mappings et listes en blocs, collections en flux [a, b] / {k: v}, scalaires simples ou entre
  * guillemets, blocs | et > (avec - ou +), commentaires #. Tout le reste est refuse avec le fichier et la ligne,
  * pour qu'un fichier lu ici reste du YAML standard : ancres & / alias *, tags !, cles complexes ?, tabulations,
