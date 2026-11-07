@@ -28,3 +28,11 @@ Mets en place un système de journalisation complet dans le backend PHP du proje
 ▎ Style de code :
 ▎ - Le même style que le code existant : classes final, typage strict, méthodes courtes, noms explicites.
 ▎ - Peu de commentaires : uniquement ceux qui expliquent un pourquoi non évident, comme le commentaire existant sur l'ordre de capture PDOException / RuntimeException. Aucun commentaire qui paraphrase le code.
+
+07/11/2026 – Jakub Mazur – SCRUM-32 (étape 1) – Lis d'abord en entier ../Claude_projet_contexte/SCRUM-32-PLAN.md (ignore les deux autres notes de ce dossier, elles sont obsolètes), puis front/README.md.
+
+Fais uniquement « Étape 1 : coquille et routeur », en respectant toutes les « Règles pour toutes les étapes » du plan.
+
+Avant de modifier quoi que ce soit, annonce en quelques lignes les fichiers que tu vas créer, modifier et supprimer.
+
+À la fin : lance les tests et le typecheck, ajoute l'entrée dans prompts.txt, puis donne ton compte-rendu. Ne commite pas.

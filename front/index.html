@@ -16,22 +16,23 @@
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="assets/css/main.css">
 </head>
-<body class="page-map">
+<body>
   <a class="skip-link" href="#main">Aller au contenu</a>
 
-  <header class="site-header" data-layout>
-    <noscript>
-      <nav class="site-nav" aria-label="Navigation principale">
-        <a class="site-nav__link" href="index.html" aria-current="page">Carte</a>
-        <a class="site-nav__link" href="pages/events.html">Événements</a>
-      </nav>
-    </noscript>
-  </header>
+  <header class="site-header" data-layout></header>
 
-  <main id="main" class="map-layout" tabindex="-1">
+  <main id="main" tabindex="-1">
+    <noscript><p class="alert alert--error">JavaScript est nécessaire pour utiliser DayOut.</p></noscript>
+  </main>
+
+  <footer class="site-footer" data-layout></footer>
+
+  <p id="route-announcer" class="visually-hidden" role="status"></p>
+
+  <!-- Ecrans : le routeur (src/app/router.js) clone le template de la route dans <main>. -->
+  <template id="screen-home">
     <section class="map-panel" aria-labelledby="home-title">
       <h1 id="home-title" class="map-panel__title">Que faire autour de toi ?</h1>
-      <noscript><p class="alert alert--error">JavaScript est nécessaire pour afficher la carte et les événements.</p></noscript>
 
       <div id="home-tabs" class="tabs" role="tablist" aria-label="Choix des événements">
         <button type="button" class="tabs__tab" role="tab" id="home-tab-nearby"
@@ -86,7 +87,7 @@
       <div id="home-panel-foryou" class="map-panel__tabpanel" role="tabpanel" aria-labelledby="home-tab-foryou" hidden>
         <p class="foryou">
           Connecte-toi pour voir les événements choisis pour toi.
-          <a id="home-login-link" href="pages/login.html">Se connecter</a>
+          <a id="home-login-link" href="#/connexion">Se connecter</a>
         </p>
       </div>
     </section>
@@ -109,12 +110,32 @@
         <ul class="map-legend__list"></ul>
       </div>
     </section>
-  </main>
+  </template>
+
+  <template id="screen-events">
+    <h1>Événements à venir</h1>
+    <p id="events-error" class="alert alert--error" role="alert"></p>
+    <p id="events-status" class="status-message" role="status"></p>
+    <section id="events-list" class="card-grid" aria-label="Liste des événements" aria-busy="false"></section>
+  </template>
+
+  <!-- Le titre est remplace par celui de l'ecran (PlaceholderView). -->
+  <template id="screen-placeholder">
+    <h1 id="placeholder-title">Bientôt disponible</h1>
+    <p>Cette page arrive bientôt.</p>
+    <p><a href="#/">Retour à la carte</a></p>
+  </template>
+
+  <template id="screen-not-found">
+    <h1>Page introuvable</h1>
+    <p>L'adresse demandée ne correspond à aucune page de DayOut.</p>
+    <p><a href="#/">Retour à la carte</a></p>
+  </template>
 
   <!-- Classiques, avant les modules : config locale optionnelle (ignoree par git) puis Leaflet (global L, SRI). -->
   <script src="src/config.local.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script type="module" src="src/pages/home.js"></script>
+  <script type="module" src="src/pages/app.js"></script>
 </body>
 </html>
