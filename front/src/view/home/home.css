@@ -1,15 +1,12 @@
-/* Header + panneau gauche + carte plein ecran, sans footer. */
-.page-map {
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-}
-
+/* La carte occupe toute la hauteur visible sous le header ; le footer vient en dessous, en faisant defiler. */
 .map-layout {
   display: grid;
   grid-template-columns: minmax(320px, 380px) 1fr;
-  min-height: 0;
+  height: calc(100vh - var(--header-min-height));
+  height: calc(100dvh - var(--header-min-height));
 }
+
+.page-map .site-footer { margin-top: 0; }
 
 .map-panel {
   display: flex;
@@ -48,10 +45,7 @@
 }
 
 @media (max-width: 900px) {
-  .page-map { height: auto; overflow: visible; }
-  .map-layout { grid-template-columns: 1fr; }
+  .map-layout { grid-template-columns: 1fr; height: auto; }
   .map-panel { overflow: visible; border-right: 0; padding-inline: var(--space-4); }
   .map-view { order: 2; }
 }
-
-.page-map > main { flex: 1 1 auto; }
