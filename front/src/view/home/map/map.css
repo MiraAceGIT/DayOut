@@ -48,10 +48,12 @@
 
 .map-pin {
   color: var(--cat-color, var(--color-muted));
-  filter: drop-shadow(0 2px 2px rgba(36, 18, 56, .35));
+  filter: drop-shadow(var(--shadow-pin));
 }
 .map-pin.map-pin--selected { color: var(--color-action); }
 .map-pin__svg { display: block; overflow: visible; }
+.map-pin__outline { stroke: var(--color-surface); }
+.map-pin__dot { fill: var(--color-surface); }
 
 .map-origin__inner { position: relative; display: block; }
 .map-origin__dot {

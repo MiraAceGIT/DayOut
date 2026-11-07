@@ -41,7 +41,7 @@
 
 .leaflet-popup-content-wrapper {
   border-radius: var(--radius-card);
-  box-shadow: 0 6px 24px rgba(36, 18, 56, .18);
+  box-shadow: var(--shadow-popup);
 }
 .leaflet-popup-content { margin: var(--space-4) var(--space-5); }
 .leaflet-container a.leaflet-popup-close-button {

@@ -16,13 +16,16 @@ pas de build, pas de npm : modules ES natifs servis tels quels.
 
 ### Statut actuel
 
-**V1 publique en lecture seule** — Deux pages implementees :
+**V1 publique en lecture seule** — Une seule page HTML, `index.html`, qui sert de **coquille** (header, footer)
+et affiche les ecrans selon l'adresse apres `#` (voir [Coquille et routeur](#coquille-et-routeur)) :
 
-- `index.html` : carte interactive "Que faire autour de toi ?" (plein ecran)
-- `pages/events.html` : liste des evenements (cartes + footer)
+- `#/` : carte interactive "Que faire autour de toi ?"
+- `#/evenements` : liste des evenements (cartes)
+- `#/planning`, `#/faq`, `#/cgu`, `#/mentions-legales`, `#/contact`, `#/connexion` : ecrans "Bientot disponible"
+- toute autre adresse en `#/...` : ecran 404
 
 L'auth (login, pages protegees), les inscriptions et l'admin sont en cours
-(infrastructure deja en place : `boot()` installe un handler `401`, `loginUrl()` genere l'URL de connexion).
+(infrastructure deja en place : `boot()` installe un handler `401`, `loginUrl()` genere `#/connexion?next=...`).
 
 ### Perimetre exact
 
@@ -143,10 +146,20 @@ php -S localhost:5500 -t front
 Les **modules ES** et `fetch()` cross-origin ont besoin d'un serveur HTTP.
 Ouvrir `index.html` directement par `file://` **ne marchera pas**.
 
-### Pages disponibles
+### Ecrans disponibles
 
-- **`/`** (`index.html`) : carte "Que faire autour de toi ?" (accueil plein ecran)
-- **`/pages/events.html`** : liste des evenements (cartes + footer)
+Une seule page, `http://localhost:5500/` (`index.html`) ; l'ecran depend de l'adresse apres `#` :
+
+| Adresse                | Ecran                                       |
+| ---------------------- | ------------------------------------------- |
+| `#/` (ou rien)         | carte "Que faire autour de toi ?"           |
+| `#/evenements`         | liste des evenements                        |
+| `#/planning`           | Mon planning ("Bientot disponible")         |
+| `#/faq`, `#/cgu`, `#/mentions-legales`, `#/contact` | liens du footer ("Bientot disponible") |
+| `#/connexion`          | Connexion ("Bientot disponible")            |
+| toute autre `#/...`    | 404 "Page introuvable"                      |
+
+Un hash qui ne commence pas par `#/` (ex. `#main`, cible du skip-link) n'est pas une route : l'ecran ne change pas.
 
 ---
 
@@ -156,9 +169,7 @@ Ouvrir `index.html` directement par `file://` **ne marchera pas**.
 
 ```
 front/
-├── index.html                    ← carte "Que faire autour de toi ?" (plein ecran, sans footer)
-├── pages/
-│   └── events.html               ← liste des evenements (cartes + footer)
+├── index.html                    ← coquille unique : <head>, skip-link, header/main/footer, annonceur, <template> des ecrans
 ├── assets/
 │   ├── img/dayout-logo-light.svg ← logo (blanc + orange, pour fond violet nuit)
 │   └── css/                      ← CSS global (sans JS proprietaire)
@@ -171,8 +182,10 @@ front/
 ├── src/
 │   ├── config.local.example.js   ← modele de surcharge locale
 │   ├── config.local.js           ← surcharge locale optionnelle (ignore git)
-│   ├── core/                     ← infrastructure : config, api, errors, geolocation, routes
-│   ├── app/boot.js               ← header + footer + handler 401
+│   ├── core/                     ← infrastructure : config, api, errors, geolocation, routes (PATHS, parseHash, routeHref, loginUrl)
+│   ├── app/
+│   │   ├── boot.js               ← header + footer (une fois), handler 401, demarrage du routeur
+│   │   └── router.js             ← startRouter : hash -> route -> clone du <template> dans <main>, titre, focus, annonce
 │   ├── shared/                   ← utilitaires purs sans dependance : dom (h), format, geo, forms
 │   ├── model/                    ← M : sans DOM
 │   │   ├── dto/                  ← typedefs JSDoc du JSON API (snake_case), un fichier par ressource
@@ -181,13 +194,14 @@ front/
 │   │   ├── domain/               ← regles metier pures (ni reseau, ni DOM, ni etat)
 │   │   └── state/                ← etat d'une page (ex. MapSearch : criteres, chargement, selection)
 │   ├── view/                     ← V : construisent et mettent a jour le DOM
-│   │   ├── layout/header/        ← renderHeader({ current }), SearchBox
-│   │   ├── layout/footer/        ← renderFooter()
+│   │   ├── layout/header/        ← renderHeader() -> { setCurrent(id) }, NAV_ITEMS, menu burger, SearchBox
+│   │   ├── layout/footer/        ← renderFooter(), FOOTER_LINKS ("Liens utiles")
 │   │   ├── components/           ← category, logo, icon, pill, eventMeta, eventCard, eventRow, eventPopup, tabs, liveStatus
 │   │   ├── home/                 ← HomeView, PointCard, FilterChips, ResultsList, MapView (LeafletMap + MapLegend + MapStatus)
-│   │   └── EventsView.js
-│   ├── controller/               ← C : mediateurs minces (HomeController, EventsController)
-│   ├── pages/                    ← points d'entree minces (un par page HTML)
+│   │   ├── EventsView.js
+│   │   └── PlaceholderView.js    ← ecrans "Bientot disponible" (titre)
+│   ├── controller/               ← C : mediateurs minces (HomeController, EventsController, PlaceholderController)
+│   ├── pages/                    ← app.js (seul point d'entree) + un module par ecran (home, events, placeholders, notFound)
 │   └── types/globals.d.ts        ← declarations globales (DAYOUT_CONFIG, Leaflet)
 ├── tests/                        ← node:test, aucune dependance npm
 ├── tools/typecheck.sh            ← installe TypeScript dans .cache/ et verifie les JSDoc
@@ -208,34 +222,68 @@ transverses (points d'entree, demarrage, infrastructure, utilitaires).
   - **state/** : etat d'une page (`MapSearch` : evenements charges, criteres, selection), s'appuie sur `domain/`.
 - **view/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes et choix d'affichage. Aucun appel API, aucune regle metier. Une view de page est seule a connaitre ses ids et les passe a des sous-vues sans id, reutilisables.
 - **controller/** : mediateurs minces (relaient les evenements des views vers le model, redessinent). Ne touchent **jamais** le DOM, ne contiennent ni texte affiche ni regle metier. Dependances injectables par le constructeur (tests).
-- **pages/** : points d'entree minces, un par page HTML. `boot({ page })` **en premier**, puis demarrage du controleur.
+- **pages/** : `app.js` est le **seul** point d'entree (charge par `index.html`) : il appelle `boot({ routes, notFound })`.
+  Les autres fichiers sont des **modules d'ecran**, de la forme
+  `{ id, path, title, template, mainClass, bodyClass, mount(), unmount() }` : `mount()` cree et demarre le controleur,
+  `unmount()` appelle son `stop()` (requete annulee, carte detruite, ecouteurs retires) puis l'oublie.
+- **app/** : `boot.js` dessine header et footer **une fois**, installe le handler 401 et demarre le routeur ;
+  `router.js` ne connait aucun ecran (il recoit la liste des routes).
 - **Fonctions** pour ce qui est sans etat (models, composants) ; **petite classe** pour ce qui garde des references (view et ses elements, etat de page, controleur).
 
 ### Regle de dependances
 
 ```
-pages/           -> app/boot.js, controller/
+pages/app.js     -> app/boot.js, pages/ (modules d'ecran)
+pages/<ecran>.js -> controller/, core/routes.js (PATHS)
 controller/      -> model/services/, model/state/, model/domain/, view/, core/errors.js, core/geolocation.js, core/routes.js
 model/services/  -> core/api.js, model/mappers/, model/dto/ (types)
 model/mappers/   -> model/domain/ (regles de calcul), model/dto/ (types)
 model/state/     -> model/domain/
 model/domain/    -> model/domain/, shared/geo.js (calcul pur)
-view/            -> view/, shared/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
-app/boot.js      -> core/, view/layout/
+view/            -> view/, shared/, core/config.js (frontUrl), core/routes.js (PATHS, routeHref, loginUrl)
+app/boot.js      -> core/, app/router.js, view/layout/
+app/router.js    -> core/ uniquement
 core/            -> core/ uniquement
 shared/          -> rien (utilitaires purs)
 ```
 
-- Rien n'importe `pages/` ; pas de dependance circulaire
+- Seul `pages/app.js` importe les modules d'ecran ; rien d'autre n'importe `pages/` ; pas de dependance circulaire
+- Le routeur ne connait aucun ecran : il recoit la liste des routes en parametre
 - Une view n'importe **ni** `model/` **ni** `core/api.js` ; un model n'importe **ni** `view/` **ni** `shared/dom.js`
 - Ce dont une view a besoin cote metier est un **champ de l'objet normalise** (`event.remainingPlaces`, `event.availability`) ou lui est **passe par le controleur**
 - Leaflet n'est lu que dans `view/home/map/LeafletMap.js`
+
+### Coquille et routeur
+
+```
+index.html (chargee une fois)
+├── <header data-layout>   ← renderHeader(), une fois ; setCurrent(id) deplace aria-current
+├── <main id="main">       ← le routeur y clone le <template id="screen-..."> de l'ecran
+├── <footer data-layout>   ← renderFooter(), une fois
+├── <p id="route-announcer" role="status">  ← titre de l'ecran annonce apres chaque navigation
+└── <template id="screen-home|screen-events|screen-placeholder|screen-not-found">
+```
+
+A chaque `hashchange`, `startRouter` (`app/router.js`) :
+
+1. lit `location.hash` via `parseHash` (vide = `/` ; un hash hors `#/...` est ignore) ;
+2. trouve la route (sinon `notFound`) ; rien ne se passe si c'est deja l'ecran affiche ;
+3. appelle `unmount()` de l'ecran precedent ;
+4. clone le template dans `<main>` (`template.content.cloneNode(true)`, jamais d'`innerHTML`) ;
+5. applique `mainClass` sur `<main>` et `bodyClass` sur `<body>` (carte : `map-layout` + `page-map` ; autres : `container`) ;
+6. appelle `mount()` ;
+7. met `document.title` a `"DayOut — " + titre` et, sauf au premier chargement : remonte en haut, met le focus
+   sur le `<h1>` (`tabindex="-1"`) et ecrit le titre dans l'annonceur ;
+8. appelle `onNavigate(route)` (le header deplace `aria-current`, met a jour le `next` de Connexion et ferme le menu).
+
+Les liens internes s'ecrivent avec `routeHref(PATHS.x)` (`core/routes.js`), jamais en dur.
+La recherche du header reste un formulaire GET vers `index.html?q=` : `?q=` est lu dans `location.search`.
 
 ---
 
 ## 7) Pages & composants
 
-### Page carte (`index.html`)
+### Ecran carte (`#/`)
 
 - Les evenements sont charges **une fois** (`limit=100`, plafond du back) puis filtres **cote client** (`model/domain/eventSearch.js`) :
   - distance haversine au point choisi
@@ -251,11 +299,19 @@ shared/          -> rien (utilitaires purs)
 - **Leaflet 1.9.4** en `<script>` classique UMD + `<link>` CSS depuis unpkg, versions epinglees avec `integrity` (SRI). `LeafletMap` lit `window.L` ; s'il manque (hors ligne, bloque), un message s'affiche et la liste reste utilisable.
 - **Categories** : `view/components/category/category.js` rattache les slugs charte (`soiree`, `sport`, `conference`, `culture`, `tech`, `forum-entreprises`) a leur couleur ; les autres slugs (`concert`, `gaming`, `bde`, `exterieur`, `gastronomie`) sont gris et regroupes sous "Autres" dans la legende. Couleur d'un evenement = sa premiere categorie de la charte, sinon sa premiere categorie.
 
-### Page liste (`pages/events.html`)
+- La carte occupe toute la hauteur visible sous le header (`calc(100dvh - var(--header-min-height))`) ; le footer est
+  en dessous et apparait en faisant defiler.
+
+### Ecran liste (`#/evenements`)
 
 - Cartes complete par evenement (image, titre, date formatee, lieu, prix, places, categories)
 - Pas de filtres ni de carte
-- Footer visible
+
+### Ecrans "Bientot disponible" et 404
+
+- `pages/placeholders.js` : Mon planning, FAQ, CGU, Mentions legales, Contact, Connexion. Template `screen-placeholder` ;
+  `PlaceholderController` + `PlaceholderView` y ecrivent le titre de l'ecran.
+- `pages/notFound.js` : template `screen-not-found` ("Page introuvable"), sans controleur.
 
 ### Composants reutilisables (`src/view/components/`)
 
@@ -263,7 +319,7 @@ shared/          -> rien (utilitaires purs)
 | ------------- | -------------------------------------------------------------------- |
 | `category`    | slug -> classe CSS, couleur, pastille ; seul lien categorie -> couleur |
 | `logo`        | `renderLogo()`, seul endroit qui connait le fichier du logo         |
-| `icon`        | `icon(name)`, `pinIcon()` : SVG Lucide via `createElementNS`         |
+| `icon`        | `icon(name)` (`search`, `map-pin`, `locate-fixed`, `menu`, `x`), `pinIcon()` : SVG Lucide via `createElementNS` |
 | `pill`        | `renderCategoryPill`, `renderPricePill`, `renderPlacesPill` (+ `.pill`) |
 | `eventMeta`   | `joinMeta`, `placeOf`, `distanceText` (lignes de details)            |
 | `eventCard`   | carte complete (page evenements)                                     |
@@ -465,7 +521,7 @@ api.del(path, { signal, timeout })
 - **Echec** : leve une `ApiError` avec `type` (`network`, `timeout`, `abort`, `parse`, `http`), `status`, `code`, `details`, `requestId` (en-tete `X-Request-Id`), `cause`, et le getter `isValidation` (422 + `VALIDATION_ERROR`).
 - `credentials: "include"` par defaut (front et API sont deux origines ; session cookie a venir).
 - `X-CSRF-Token` envoye sur POST/PUT/PATCH/DELETE si `setCsrfTokenProvider(fn)` fournit un jeton.
-- `setUnauthorizedHandler(fn)` : appele sur tout 401 avant de lever l'erreur. `boot()` l'installe pour rediriger vers `pages/login.html?next=...` (`loginUrl()` dans `core/routes.js`).
+- `setUnauthorizedHandler(fn)` : appele sur tout 401 avant de lever l'erreur. `boot()` l'installe pour envoyer vers `#/connexion?next=...` (`loginUrl()` dans `core/routes.js`).
 - **Timeout par defaut 10 s** (`timeout: 0` pour desactiver), combinable avec un `signal` appelant.
 
 ---
@@ -474,8 +530,9 @@ api.del(path, { signal, timeout })
 
 ### Localisation
 
-- [`src/controller/HomeController.js`](src/controller/HomeController.js) : page carte
-- [`src/controller/EventsController.js`](src/controller/EventsController.js) : page liste
+- [`src/controller/HomeController.js`](src/controller/HomeController.js) : ecran carte
+- [`src/controller/EventsController.js`](src/controller/EventsController.js) : ecran liste
+- [`src/controller/PlaceholderController.js`](src/controller/PlaceholderController.js) : ecrans "Bientot disponible"
 
 ### Regles
 
@@ -483,6 +540,10 @@ api.del(path, { signal, timeout })
 - **Ne contiennent ni texte affiche ni regle metier** (les views et `domain/` s'en chargent)
 - Dependances **injectables par le constructeur** (views, `loadEvents`, `getPosition`...) avec valeurs par defaut
 - Pas de conteneur d'injection : le constructeur suffit
+- Un controleur qui charge des donnees ou pose des ecouteurs hors de `<main>` a une methode **`stop()`**, appelee par
+  `unmount()` de son module d'ecran : `AbortController` sur la requete (une erreur `abort` n'est jamais affichee),
+  resultats tardifs ignores (geolocalisation comprise), carte detruite (`MapView.destroy()`), recherche du header
+  debranchee (`SearchBox.bindLive()` renvoie la fonction de desabonnement)
 
 ### Exemple
 
@@ -512,15 +573,27 @@ export class EventsController {
 }
 ```
 
-### Point d'entree (page)
+### Module d'ecran
 
 ```js
 // src/pages/events.js
-import { boot } from "../app/boot.js";
+import { PATHS } from "../core/routes.js";
 import { EventsController } from "../controller/EventsController.js";
 
-boot({ page: "events" });          // header + footer + handler 401
-new EventsController().start();
+let controller = null;
+
+export const events = {
+  id: "events", path: PATHS.events, title: "Événements",
+  template: "screen-events", mainClass: "container",
+  mount() {
+    controller = new EventsController();
+    controller.start();
+  },
+  unmount() {
+    controller?.stop();
+    controller = null;
+  },
+};
 ```
 
 ---
@@ -586,8 +659,8 @@ form.addEventListener("submit", async (e) => {
 
 ### Redirection 401
 
-`boot({ page })` installe un handler `setUnauthorizedHandler` qui redirige vers
-`pages/login.html?next=<URL courante>` sur tout 401. Les appels API echouent **avant** d'atteindre le controleur sur 401 -> l'utilisateur est redirige directement.
+`boot()` installe un handler `setUnauthorizedHandler` qui envoie vers
+`#/connexion?next=<ecran courant>` sur tout 401 (sans boucler si l'ecran Connexion est deja affiche). Les appels API echouent **avant** d'atteindre le controleur sur 401 -> l'utilisateur est redirige directement.
 
 ### Erreurs reseau et offline
 
@@ -640,6 +713,7 @@ tests/
 ├── eventSearch.test.js      ← filtres, recherche, distance, tri
 ├── shared.test.js           ← dom (h), format (dates/prix/distance), geo (haversine), forms
 ├── contract.test.js         ← contrat avec la spec OpenAPI du back
+├── routes.test.js           ← parseHash, routeHref, loginUrl (adresses #/...)
 └── fixtures.js              ← eventDto(), event() : donnees communes
 ```
 
@@ -655,6 +729,21 @@ tests/
 - La spec OpenAPI du back (assemblee par PHP) est la **reference**
 - Echoue si un champ de `Event` / `Category` **manque** au typedef de `src/model/dto/`, **n'est pas lu** par `toEvent` ou **pas renvoye** par `toEventDto`
 - **Ignore sans PHP**, sauf avec `REQUIRE_CONTRACT=1` (force l'echec si PHP manque — utilise en CI)
+
+### Test manuel navigateurs (Chrome, Firefox, Edge)
+
+A faire dans chacun des trois navigateurs, en largeur ordinateur (1440 px) puis mobile (360 px, mode responsive des DevTools) :
+
+- [ ] `/` affiche la carte ; la carte remplit l'ecran sous le header ; le footer apparait en faisant defiler
+- [ ] Carte -> Evenements -> Mon planning sans rechargement (onglet Reseau : pas de nouveau document) ; titre de l'onglet a jour
+- [ ] Precedent / Suivant du navigateur ; `#/xyz` affiche "Page introuvable"
+- [ ] Skip-link (Tab des l'arrivee, Entree) : focus dans le contenu, ecran inchange
+- [ ] Apres un clic de menu : focus sur le titre de l'ecran, annonce par le lecteur d'ecran (NVDA / Narrateur)
+- [ ] Lien actif souligne en orange ; footer : FAQ, CGU, Mentions legales, Contact menent aux ecrans "Bientot disponible"
+- [ ] 10 allers-retours Carte <-> Evenements : aucune erreur console (hors 404 de `config.local.js`), la carte marche, une frappe dans la recherche = un seul filtrage
+- [ ] Mobile : burger au clavier (Tab jusqu'au bouton, Entree ouvre, Tab parcourt les liens, Echap ferme et rend le focus au bouton),
+      au doigt (clic sur un lien ferme, clic a l'exterieur ferme) ; elargir au-dela de 900 px ferme le panneau
+- [ ] Pas de defilement horizontal de 360 a 1440 px ; zoom navigateur 200 % utilisable
 
 ### Ajouter un test
 
@@ -701,7 +790,9 @@ front/tools/typecheck.sh
 ### Regles CSS
 
 - Valeurs via les **tokens** de `tokens.css` (`--color-*`, `--space-1..7`, `--font-size-*`, `--radius-*`) : pas de valeur en dur dans les composants
-- `theme-color` (meta HTML) reprend en litteral la valeur de `--color-brand` (`#241238`), a **garder synchronisee**
+- **Aucune couleur en dur hors de `tokens.css`** (ombres comprises : `--shadow`, `--shadow-popup`, `--shadow-pin`). Seule exception :
+  `theme-color` (meta HTML), qui reprend en litteral la valeur de `--color-brand` (`#241238`), a **garder synchronisee**
+- Une couleur dont un attribut SVG a besoin passe par une classe stylee en CSS (ex. `.map-pin__outline`), pas par l'attribut
 - **Pas de selecteur d'id** pour le style : ids reserves au JS et a l'ARIA
 - **Nommage BEM leger** :
   - bloc : `.event-card`, `.site-nav`, `.card-grid`
@@ -727,9 +818,15 @@ front/tools/typecheck.sh
 
 ### Accessibilite
 
-- Un seul `<h1>` par page
-- **Skip-link** vers `#main` (lien visible au focus)
-- `aria-current="page"` sur la nav
+- Un seul `<h1>` par **ecran** (dans son `<template>`)
+- **Skip-link** vers `#main` (lien visible au focus) ; `#main` n'est pas une route, l'ecran ne change pas
+- **Changement d'ecran** (sauf premier chargement) : retour en haut, focus sur le `<h1>` (`tabindex="-1"`),
+  titre ecrit dans l'annonceur permanent `#route-announcer` (`role="status"`) ; `document.title` = `"DayOut — " + titre`
+- `aria-current="page"` sur le lien de l'ecran courant (header), deplace par `setCurrent(id)`
+- **Menu burger** (< 900 px) : vrai `<button>` avec `aria-expanded`, `aria-controls="site-menu"` et `aria-label`
+  ("Ouvrir le menu" / "Fermer le menu"), zone d'au moins `--tap-target` ; le panneau se ferme sur Echap (focus rendu
+  au bouton), clic sur un lien, clic exterieur, tabulation hors du panneau et passage au-dessus de 900 px
+- Footer : liens dans `<nav aria-label="Liens utiles">`
 - **Messages dynamiques** : elements **permanents** dans le HTML dont on change le `textContent`.
   - `role="status"` pour l'information (chargement, resultat)
   - `role="alert"` seul pour les erreurs (ne pas combiner avec `aria-live`)
@@ -808,10 +905,11 @@ Aucun build, aucun bundler : copier le contenu de `front/` tel quel.
 
 ## 20) Troubleshooting
 
-### Page blanche, 404 sur `../src/pages/xxx.js`
+### Ecran vide (`<main>` reste vide)
 
-L'URL est relative au HTML. Verifier que `pages/events.html` reference bien
-`../src/pages/events.js` (deux niveaux au-dessus).
+- Console : `Template "screen-..." introuvable.` -> l'id `template` du module d'ecran ne correspond a aucun
+  `<template>` de `index.html`.
+- Le module d'ecran n'est pas dans la liste passee a `boot()` par `src/pages/app.js` : l'adresse affiche la 404.
 
 ### Erreur CORS
 
@@ -893,7 +991,7 @@ Tokens dans [`assets/css/tokens.css`](assets/css/tokens.css) ; repartition d'un 
 | Etats (toujours avec un mot)                      | `--color-success/-warning/-error/-info`         | `#157A50`, `#946000`, `#BF2B3B`, `#2F62D0`                       |
 | Categories (pastilles, carte)                     | `--color-cat-*`                                 | Soiree `#8B3FD9`, Sport `#158F55`, Conference `#2F62D0`, Hackathon `#0E8597`, Culture `#D63A6E`, Forum `#A0700A` |
 
-### Typo (Google Fonts, `<link>` + preconnect dans chaque page)
+### Typo (Google Fonts, `<link>` + preconnect dans `index.html`)
 
 - **Fredoka** 600/700 pour les titres (H1 36/42, H2 28/34, H3 22/28)
 - **Figtree** 400-700 pour le texte (16/24, detail 14/20, pastille 12 majuscules)
@@ -922,42 +1020,42 @@ dans `view/components/logo/logo.js` (`renderLogo()`, alt `"DayOut"`, 96 px de la
 fichier ou de variante, modifier `LOGO_LIGHT` (et `LOGO_RATIO` si le viewBox change). **Jamais** de logo
 tiers dans le header.
 
+### Header
+
+`view/layout/header/header.js` remplit `<header class="site-header" data-layout>` **une fois** : logo, recherche,
+menu (`NAV_ITEMS` : Carte, Evenements, Mon planning) et bouton Connexion. Au-dessus de 900 px, le menu est a droite
+(lien actif souligne en orange) ; en dessous, ligne 1 = logo + burger, ligne 2 = recherche, et le menu passe dans
+un panneau sous le header (`--z-menu`). `--header-min-height` (tokens.css, recalcule dans le `@media` de header.css)
+suit la hauteur reelle du header : la carte s'en sert pour remplir l'ecran.
+
 ### Footer
 
-`view/layout/footer/footer.js` remplit `<footer class="site-footer" data-layout>` (logo, accroche, credit),
-comme le header, avec un fallback `<noscript>` statique. **Absent de la page carte** (plein ecran). Liens
-FAQ / CGU / Mentions legales / Contact a ajouter quand ces pages existeront (**pas de lien casse** d'ici la).
+`view/layout/footer/footer.js` remplit `<footer class="site-footer" data-layout>` **une fois**, sur tous les ecrans
+(carte comprise, sous la carte) : logo (96 px), accroche, `<nav aria-label="Liens utiles">` (`FOOTER_LINKS` : FAQ, CGU,
+Mentions legales, Contact, vers les ecrans "Bientot disponible") et la ligne
+"Un projet G4B Digital · ISEP · APP Informatique 2026/2027". Pas de `<noscript>` : sans JS, `<main>` affiche un message.
 
 ---
 
-## Ajouter une page (checklist complete)
+## Ajouter un ecran (checklist complete)
 
-### 1. HTML
+### 1. Route
+
+Ajouter le chemin dans `PATHS` (`src/core/routes.js`) ; tout lien vers l'ecran s'ecrit `routeHref(PATHS.monEcran)`.
+
+### 2. Template (dans `index.html`)
 
 ```html
-<!-- pages/ma-page.html -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fredoka:wght@600;700&display=swap">
-<link rel="stylesheet" href="../assets/css/main.css">
-...
-<a class="skip-link" href="#main">Aller au contenu</a>
-<header class="site-header" data-layout>
-  <noscript><!-- nav de secours en liens relatifs --></noscript>
-</header>
-<main id="main" class="container" tabindex="-1">
-  <h1>Titre unique de la page</h1>
-  <p id="ma-page-error" class="alert alert--error" role="alert"></p>
-  <p id="ma-page-status" class="status-message" role="status"></p>
-</main>
-<footer class="site-footer" data-layout>
-  <noscript><!-- meme contenu en statique (voir pages/events.html) --></noscript>
-</footer>
-<script src="../src/config.local.js"></script>
-<script type="module" src="../src/pages/ma-page.js"></script>
+<template id="screen-mon-ecran">
+  <h1>Titre unique de l'ecran</h1>
+  <p id="mon-ecran-error" class="alert alert--error" role="alert"></p>
+  <p id="mon-ecran-status" class="status-message" role="status"></p>
+</template>
 ```
 
-### 2. Service (si besoin)
+Pas de `<head>`, de header ni de footer a recopier : la coquille les fournit.
+
+### 3. Service (si besoin)
 
 ```js
 // src/model/services/eventService.js
@@ -966,16 +1064,16 @@ export async function fetchEvent(id, { signal } = {}) {
 }
 ```
 
-### 3. View
+### 4. View
 
 ```js
-// src/view/MaPageView.js
+// src/view/MonEcranView.js : seul fichier qui connait les ids du template
 import { h } from "../shared/dom.js";
 
-export class MaPageView {
+export class MonEcranView {
     constructor(root = document) {
-        this.errorEl  = root.querySelector("#ma-page-error");
-        this.statusEl = root.querySelector("#ma-page-status");
+        this.errorEl  = root.querySelector("#mon-ecran-error");
+        this.statusEl = root.querySelector("#mon-ecran-status");
     }
 
     get isReady() {
@@ -995,18 +1093,20 @@ export class MaPageView {
 }
 ```
 
-### 4. Controleur
+### 5. Controleur (avec `stop()`)
 
 ```js
-// src/controller/MaPageController.js
+// src/controller/MonEcranController.js
 import { isApiError, messageFor } from "../core/errors.js";
 import { fetchEvent } from "../model/services/eventService.js";
-import { MaPageView } from "../view/MaPageView.js";
+import { MonEcranView } from "../view/MonEcranView.js";
 
-export class MaPageController {
-    constructor({ view = new MaPageView(), loadEvent = fetchEvent } = {}) {
+export class MonEcranController {
+    constructor({ view = new MonEcranView(), loadEvent = fetchEvent } = {}) {
         this.view = view;
         this.loadEvent = loadEvent;
+        this.abort = new AbortController();
+        this.stopped = false;
     }
 
     async start(id) {
@@ -1016,33 +1116,57 @@ export class MaPageController {
             return;
         }
         try {
-            this.view.showEvent(await this.loadEvent(id));
+            const event = await this.loadEvent(id, { signal: this.abort.signal });
+            if (!this.stopped) this.view.showEvent(event);
         } catch (err) {
+            if (this.stopped || (isApiError(err) && err.type === "abort")) return;
             if (!isApiError(err)) console.error(err);
             this.view.showError(messageFor(err));
         }
     }
+
+    stop() {
+        this.stopped = true;
+        this.abort.abort();
+    }
 }
 ```
 
-### 5. Point d'entree
+### 6. Module d'ecran et route
 
 ```js
-// src/pages/ma-page.js
-import { boot } from "../app/boot.js";
-import { MaPageController } from "../controller/MaPageController.js";
+// src/pages/monEcran.js
+import { PATHS } from "../core/routes.js";
+import { MonEcranController } from "../controller/MonEcranController.js";
 
-boot({ page: "ma-page" });   // ajouter dans NAV_ITEMS (view/layout/header/header.js) si besoin
+let controller = null;
 
-new MaPageController().start(new URLSearchParams(location.search).get("id"));
+export const monEcran = {
+    id: "mon-ecran",                 // = id de NAV_ITEMS (header) si l'ecran est dans le menu
+    path: PATHS.monEcran,
+    title: "Mon ecran",              // onglet ("DayOut — Mon ecran") et annonce du changement d'ecran
+    template: "screen-mon-ecran",
+    mainClass: "container",
+    mount({ params }) {
+        controller = new MonEcranController();
+        controller.start(params.get("id"));   // #/mon-ecran?id=42
+    },
+    unmount() {
+        controller?.stop();
+        controller = null;
+    },
+};
 ```
 
-### 6. Tests
+Puis l'ajouter a la liste de `src/pages/app.js` : `boot({ routes: [home, events, monEcran, ...placeholders], notFound })`.
+Si l'ecran doit apparaitre dans le menu, ajouter une entree a `NAV_ITEMS` (`view/layout/header/header.js`).
+
+### 7. Tests
 
 Ajouter au moins un test pour :
 
-- Le **mapper** si la page introduit une nouvelle ressource
-- Les **regles metier** si la page introduit du calcul client
+- Le **mapper** si l'ecran introduit une nouvelle ressource
+- Les **regles metier** si l'ecran introduit du calcul client
 - Le **contrat** se met a jour tout seul (il lit la spec du back)
 
 ---

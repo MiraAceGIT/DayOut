@@ -65,14 +65,15 @@ export function pinIcon({ size = 32, className = "map-pin__svg" } = {}) {
     class: className,
   });
   svg.append(
+    // Contour et point clairs : couleur portee par map.css (tokens), pas d'attribut en dur.
     svgEl("path", {
       d: ICONS["map-pin"][0][1].d,
+      class: "map-pin__outline",
       fill: "currentColor",
-      stroke: "#ffffff",
       "stroke-width": 1.5,
       "stroke-linejoin": "round",
     }),
-    svgEl("circle", { cx: 12, cy: 10, r: 3, fill: "#ffffff" }),
+    svgEl("circle", { cx: 12, cy: 10, r: 3, class: "map-pin__dot" }),
   );
   return svg;
 }
