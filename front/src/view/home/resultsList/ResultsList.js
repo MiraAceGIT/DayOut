@@ -21,13 +21,13 @@ export class ResultsList {
   }
 
   markSelected(id, { scroll = false } = {}) {
-    for (const btn of this.listEl.querySelectorAll(".event-row__select")) {
+    for (const btn of this.listEl.querySelectorAll(".event-card__select")) {
       const selected = btn.dataset.eventId === String(id);
       if (selected) {
         btn.setAttribute("aria-current", "true");
         if (scroll) {
           const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-          btn.closest(".event-row")?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+          btn.closest(".event-card")?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
         }
       } else {
         btn.removeAttribute("aria-current");

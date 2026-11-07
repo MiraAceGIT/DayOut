@@ -147,6 +147,7 @@ Ouvrir `index.html` directement par `file://` **ne marchera pas**.
 
 - **`/`** (`index.html`) : carte "Que faire autour de toi ?" (accueil plein ecran)
 - **`/pages/events.html`** : liste des evenements (cartes + footer)
+- **`/pages/event.html`** : detail statique du Hackathon IA inter-ecoles (ecran 02 des maquettes). Donnees d'exemple, blocs meteo/transports/mini-carte/discussion reserves et actions desactivees ; aucun chargement API a cette etape. Le header et le footer utilisent le gabarit partage via `src/pages/event.js` ; les styles sont isoles dans `src/view/event/event.css`.
 
 ---
 
@@ -266,11 +267,26 @@ shared/          -> rien (utilitaires purs)
 | `icon`        | `icon(name)`, `pinIcon()` : SVG Lucide via `createElementNS`         |
 | `pill`        | `renderCategoryPill`, `renderPricePill`, `renderPlacesPill` (+ `.pill`) |
 | `eventMeta`   | `joinMeta`, `placeOf`, `distanceText` (lignes de details)            |
-| `eventCard`   | carte complete (page evenements)                                     |
-| `eventRow`    | carte compacte de la liste de la carte (selection synchronisee)      |
-| `eventPopup`  | bulle du marqueur selectionne                                        |
+| `eventCard`   | rendu commun `.event-card` : variantes `grid`, `compact`, `popup` ; image avec remplacement, titre, categories, date, lieu, prix, places et lien detail |
+| `eventRow`    | adaptateur `<li>` vers `eventCard` compact (selection synchronisee)   |
+| `eventPopup`  | adaptateur vers `eventCard` popup avec action d'inscription           |
 | `tabs`        | `bindTabs(tabs)` : onglets ARIA sur markup existant (+ `.tabs`)      |
 | `liveStatus`  | `LiveStatus` : region `role=status`, texte immediat ou differe       |
+
+Pour afficher des cartes sur une autre page (recherche ou suggestions), reutiliser
+`renderEventCard(event)` avec un evenement normalise par le mapper. Ne pas recopier
+le HTML ou creer une autre classe de carte. Les trois variantes conservent `.event-card` :
+
+```js
+import { renderEventCard } from "./components/eventCard/eventCard.js";
+
+// Vue de page : la grille utilise le rendu complet par defaut.
+listEl.replaceChildren(...events.map((event) => renderEventCard(event)));
+```
+
+L'image absente, invalide ou inaccessible est remplacee par un visuel local neutre.
+Les titres pointent vers `pages/event.html?id=...`. Cette page detail est encore
+statique : le chargement de l'evenement correspondant sera ajoute lors de l'etape dynamique.
 
 ---
 

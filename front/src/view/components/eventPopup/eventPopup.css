@@ -1,44 +1,7 @@
-.event-popup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 15rem;
-  font-family: var(--font-body);
-  color: var(--color-text);
-}
-
-.event-popup__title {
-  margin-top: var(--space-2);
-  font-size: var(--font-size-h3);
-  line-height: var(--line-height-h3);
-}
-
-/* Specificite > ".leaflet-popup-content p" (marges 17 px de leaflet.css). */
-.leaflet-popup-content .event-popup__meta {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: var(--font-size-detail);
-  line-height: var(--line-height-detail);
-}
-
-.event-popup__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-  margin-top: var(--space-3);
-}
-
-.event-popup__link {
-  color: var(--color-link);
-  font-size: var(--font-size-detail);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.event-popup__link:hover { color: var(--color-link-hover); }
-
+/* Adaptations Leaflet ; le contenu utilise eventCard et sa classe commune. */
+.leaflet-popup-content .event-card__meta { margin: 0; }
+.leaflet-popup-content .event-card__link { color: var(--color-text); }
+.leaflet-popup-content .button--primary { color: var(--color-on-action); }
 .leaflet-popup-content-wrapper {
   border-radius: var(--radius-card);
   box-shadow: 0 6px 24px rgba(36, 18, 56, .18);
