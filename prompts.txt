@@ -36,3 +36,40 @@ Fais uniquement « Étape 1 : coquille et routeur », en respectant toutes les �
 Avant de modifier quoi que ce soit, annonce en quelques lignes les fichiers que tu vas créer, modifier et supprimer.
 
 À la fin : lance les tests et le typecheck, ajoute l'entrée dans prompts.txt, puis donne ton compte-rendu. Ne commite pas.
+
+07/11/2026 – Jakub Mazur – SCRUM-32 (étapes 2 à 5) – Relis en entier ../Claude_projet_contexte/SCRUM-32-PLAN.md (ignore les deux autres notes de ce dossier, elles sont obsolètes), puis front/README.md. L'étape 1 est déjà faite et relue (modifications non commitées).
+
+Ta mission : terminer le ticket SCRUM-32 en faisant les étapes 2, 3, 4 puis 5 du plan, dans l'ordre et sans t'arrêter entre les étapes. Respecte toutes les « Règles pour toutes les étapes », SAUF la règle Git, remplacée par celle-ci :
+
+1. Commence par commiter l'étape 1 telle quelle :
+   git add front prompts.txt
+   git commit -m "feat(front): turn index.html into an app shell with a hash router"
+2. Pour chaque étape (2 à 5) :
+   - annonce en quelques lignes les fichiers que tu vas toucher, puis code ;
+   - lance les tests (node --test "tests/**/*.test.js") et le typecheck (sh tools/typecheck.sh) depuis front/ ;
+   - s'ils échouent, corrige ; si tu n'y arrives pas, arrête-toi et explique ;
+   - commite uniquement front/ et prompts.txt, avec ces messages :
+     étape 2 : fix(front): clean up controllers, map and search listeners when leaving a screen
+     étape 3 : feat(front): complete header nav and add an accessible mobile burger menu
+     étape 4 : feat(front): show the useful links footer on every screen
+     étape 5 : docs(front): document the app shell and remove last hard-coded colors
+   - si le hook commit-msg refuse un message, corrige le format. N'utilise jamais --no-verify.
+3. Interdits : push, checkout, merge, rebase, reset, stash, amend, et toute modification hors de front/ et prompts.txt.
+4. Ajoute une seule entrée dans prompts.txt pour ce prompt (format du plan, avec « étapes 2 à 5 »), dans le commit de l'étape 2.
+
+Pour le visuel du header et du footer, regarde les pages 3 et 4 de ../Claude_projet_contexte/maquettes/DayOut_maquettes.pdf. Pour le contenu, c'est le plan qui prime : pas de cloche, pas d'avatar, pas de sélecteur de langue, menu = Carte, Événements, Mon planning + Connexion. Le site doit rester utilisable de 360 px à 1440 px de large.
+
+Ne me pose pas de question en cours de route : si un choix n'est pas tranché par le plan ou le README, prends l'option la plus cohérente avec eux et note-la dans le compte-rendu final.
+
+Vérifications :
+- Si tu lances un serveur, utilise un autre port que 5500 et 8000 (par exemple 5600). N'arrête que les processus que tu as toi-même lancés, par leur PID. Ne tue jamais un php -S existant.
+- À l'étape 5, valide au W3C (https://validator.w3.org/nu/?out=json) index.html et le HTML de chaque écran après exécution du JS (Edge headless --dump-dom, comme lors de l'audit). Corrige les erreurs.
+- Dis honnêtement ce que tu n'as pas pu vérifier.
+
+Compte-rendu final, en français :
+- ce qui a été fait à chaque étape (court) ;
+- git log --oneline -6 et git status --short ;
+- résultats des tests, du typecheck et du W3C ;
+- choix faits sans validation, et écarts par rapport au ticket (bascule Profil sans authentification, etc.) ;
+- checklist de test manuel pour Jakub : Chrome, Firefox et Edge, en largeur ordinateur et 360 px, burger au clavier compris ;
+- un brouillon de commentaire Jira pour SCRUM-32 (ne le publie nulle part).

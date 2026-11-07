@@ -14,6 +14,7 @@ export const events = {
     controller.start();
   },
   unmount() {
+    controller?.stop();
     controller = null;
   },
 };

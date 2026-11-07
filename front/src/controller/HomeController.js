@@ -28,6 +28,9 @@ export class HomeController {
     this.limit = Math.min(limit, MAX_EVENTS_LIMIT);
     // Incremente a chaque choix de point (clic ou localisation) : une position arrivee en retard est ignoree.
     this.pickSeq = 0;
+    this.abort = new AbortController();
+    this.stopped = false;
+    this.unbindSearch = () => {};
   }
 
   async start({ query = "" } = {}) {
@@ -42,7 +45,7 @@ export class HomeController {
       onSelect: (id) => this.select(id, { from: "list" }),
       onChangePoint: () => this.map.promptPick(),
     });
-    this.searchBox.bindLive((q) => this.search(q));
+    this.unbindSearch = this.searchBox.bindLive((q) => this.search(q));
     this.map.init({
       origin,
       radiusKm,
@@ -59,19 +62,32 @@ export class HomeController {
 
     this.view.showLoading();
     try {
-      this.state.load(await this.loadEvents({ limit: this.limit }), { limit: this.limit });
+      const events = await this.loadEvents({ limit: this.limit, signal: this.abort.signal });
+      if (this.stopped) return;
+      this.state.load(events, { limit: this.limit });
       const { categories } = this.state;
       this.view.renderCategoryFilters(categories, this.state.criteria.categories);
       this.map.renderLegend(categories);
       this.render();
     } catch (err) {
+      // Ecran quitte : ni l'annulation ni une reponse tardive ne s'affichent.
+      if (this.stopped || (isApiError(err) && err.type === "abort")) return;
       // ApiError = echec attendu ; toute autre erreur est un bug.
       if (!isApiError(err)) console.error(err);
       this.state.fail();
       this.view.showError(messageFor(err));
     } finally {
-      this.view.endLoading();
+      if (!this.stopped) this.view.endLoading();
     }
+  }
+
+  /** Quitte l'ecran : requete annulee, recherche du header debranchee, carte detruite. */
+  stop() {
+    this.stopped = true;
+    this.pickSeq += 1; // une position arrivee apres coup est ignoree
+    this.abort.abort();
+    this.unbindSearch();
+    this.map.destroy();
   }
 
   /** Les criteres sont toujours memorises ; la liste n'est dessinee qu'une fois les donnees chargees. */

@@ -36,12 +36,20 @@ export class SearchBox {
     if (this.inputEl) this.inputEl.value = query;
   }
 
+  /** Le champ survit aux changements d'ecran : renvoie la fonction qui retire les ecouteurs. */
   bindLive(onQuery) {
-    if (!this.inputEl) return;
-    this.inputEl.addEventListener("input", () => onQuery(this.inputEl.value));
-    this.inputEl.form?.addEventListener("submit", (e) => {
+    const input = this.inputEl;
+    if (!input) return () => {};
+    const onInput = () => onQuery(input.value);
+    const onSubmit = (e) => {
       e.preventDefault();
-      onQuery(this.inputEl.value);
-    });
+      onQuery(input.value);
+    };
+    input.addEventListener("input", onInput);
+    input.form?.addEventListener("submit", onSubmit);
+    return () => {
+      input.removeEventListener("input", onInput);
+      input.form?.removeEventListener("submit", onSubmit);
+    };
   }
 }

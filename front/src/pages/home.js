@@ -15,6 +15,7 @@ export const home = {
     controller.start({ query: new URLSearchParams(location.search).get("q") ?? "" });
   },
   unmount() {
+    controller?.stop();
     controller = null;
   },
 };

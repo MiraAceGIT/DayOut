@@ -148,6 +148,15 @@ export class LeafletMap {
     new Locate({ position: "topright" }).addTo(this.map);
   }
 
+  /** map.remove() retire aussi les ecouteurs poses par Leaflet hors du conteneur (window resize...). */
+  destroy() {
+    this.map?.remove();
+    this.map = null;
+    this.markers.clear();
+    this.selectedId = null;
+    this.handlers = null;
+  }
+
   focus() {
     this.containerEl?.focus();
   }
