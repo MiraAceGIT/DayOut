@@ -1,6 +1,5 @@
 import { h } from "../../../shared/dom.js";
-import { frontUrl } from "../../../core/config.js";
-import { loginUrl } from "../../../core/routes.js";
+import { loginUrl, routeUrl } from "../../../core/routes.js";
 import { formatEventWhen } from "../../../shared/format.js";
 import { colorCategoryOf } from "../category/category.js";
 import { distanceText, joinMeta, placeOf } from "../eventMeta/eventMeta.js";
@@ -20,7 +19,7 @@ export function renderEventPopup({ event, distanceKm }) {
     when ? h("p", { class: "event-popup__meta" }, when) : null,
     place ? h("p", { class: "event-popup__meta" }, place) : null,
     h("div", { class: "event-popup__actions" },
-      h("a", { class: "event-popup__link", href: frontUrl("pages/events.html").href },
+      h("a", { class: "event-popup__link", href: routeUrl("/events") },
         "Voir l'événement ", h("span", { "aria-hidden": "true" }, "→")),
       event.availability === "full"
         ? null

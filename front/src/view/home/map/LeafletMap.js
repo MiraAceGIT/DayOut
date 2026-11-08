@@ -152,6 +152,16 @@ export class LeafletMap {
     this.containerEl?.focus();
   }
 
+  /** On quitte la carte : Leaflet retire ses couches et ses ecouteurs (dont `resize` sur window). */
+  destroy() {
+    if (!this.map) return;
+    // Quittee pendant un zoom anime, Leaflet 1.9 finit l'animation 250 ms plus tard sur la carte
+    // detruite et plante (_onZoomTransitionEnd) : on marque l'animation terminee.
+    this.map._animatingZoom = false;
+    this.map.remove();
+    this.map = null;
+  }
+
   setOrigin(point, radiusKm) {
     if (!this.isAvailable) return;
     const latlng = [point.lat, point.lng];

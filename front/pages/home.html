@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>DayOut — Que faire autour de toi ?</title>
+</head>
+<body>
+  <!-- Contenu de la page seulement : src/app/router.js le copie dans le #app-root de index.html, entre header et footer. -->
+  <main id="app-root" class="map-layout">
+    <section class="map-panel" aria-labelledby="home-title">
+      <h1 id="home-title" class="map-panel__title">Que faire autour de toi ?</h1>
+
+      <div id="home-tabs" class="tabs" role="tablist" aria-label="Choix des événements">
+        <button type="button" class="tabs__tab" role="tab" id="home-tab-nearby"
+                aria-selected="true" aria-controls="home-panel-nearby">
+          À proximité <span aria-hidden="true">·</span> <span id="home-nearby-count">0</span>
+        </button>
+        <button type="button" class="tabs__tab" role="tab" id="home-tab-foryou"
+                aria-selected="false" aria-controls="home-panel-foryou" tabindex="-1">Pour toi</button>
+      </div>
+
+      <div id="home-panel-nearby" class="map-panel__tabpanel" role="tabpanel" aria-labelledby="home-tab-nearby">
+        <div class="point-card">
+          <div class="point-card__row">
+            <svg class="point-card__icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <p class="point-card__place">
+              <span class="point-card__caption">Point choisi</span>
+              <span id="home-point-label" class="point-card__label">ISEP – Notre-Dame-des-Champs</span>
+            </p>
+            <button type="button" id="home-point-change" class="link-button">Changer</button>
+          </div>
+
+          <div class="point-card__radius">
+            <label class="point-card__radius-label" for="home-radius">Rayon de recherche</label>
+            <output id="home-radius-value" class="point-card__radius-value" for="home-radius" aria-hidden="true">3 km</output>
+            <input id="home-radius" class="range" type="range" min="1" max="20" step="1" value="3"
+                   aria-valuetext="3 km">
+            <span class="point-card__bound" aria-hidden="true">1 km</span>
+            <span class="point-card__bound point-card__bound--end" aria-hidden="true">20 km</span>
+          </div>
+        </div>
+
+        <div id="home-filters" class="filter-row" role="group" aria-label="Filtres">
+          <button type="button" class="chip" data-filter="weekend" aria-pressed="false">Ce week-end</button>
+          <button type="button" class="chip" data-filter="free" aria-pressed="false">Gratuit</button>
+          <button type="button" class="chip" data-filter="available" aria-pressed="false">Places disponibles</button>
+        </div>
+
+        <div id="home-categories" class="filter-row" role="group" aria-label="Catégories" hidden></div>
+
+        <div class="results-head">
+          <p id="home-status" class="results-head__count" role="status"></p>
+          <p class="results-head__sort">Triés par date</p>
+        </div>
+        <p id="home-error" class="alert alert--error" role="alert"></p>
+        <ul id="home-list" class="event-list" aria-label="Événements trouvés" aria-busy="false"></ul>
+      </div>
+
+      <div id="home-panel-foryou" class="map-panel__tabpanel" role="tabpanel" aria-labelledby="home-tab-foryou" hidden>
+        <p class="foryou">
+          Connecte-toi pour voir les événements choisis pour toi.
+          <a id="home-login-link" href="pages/login.html">Se connecter</a>
+        </p>
+      </div>
+    </section>
+
+    <section class="map-view" aria-labelledby="home-map-title">
+      <h2 id="home-map-title" class="visually-hidden">Carte des événements</h2>
+      <p class="visually-hidden">La liste du panneau reprend tous les événements affichés sur la carte.</p>
+      <div id="home-map" class="map-view__map"></div>
+      <p class="map-view__hint">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        Clique sur la carte pour choisir un point, puis règle le rayon
+      </p>
+      <p id="home-map-status" class="map-view__status" role="status"></p>
+      <div id="home-legend" class="map-legend" hidden>
+        <h3 class="map-legend__title">Catégories</h3>
+        <ul class="map-legend__list"></ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
