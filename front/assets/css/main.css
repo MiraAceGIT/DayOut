@@ -14,7 +14,7 @@
 @import url("../../src/view/components/pill/pill.css");
 @import url("../../src/view/components/logo/logo.css");
 @import url("../../src/view/layout/header/header.css");
-@import url("../../src/view/layout/header/searchBox.css");
+@import url("../../src/view/components/searchBox/searchBox.css");
 @import url("../../src/view/layout/footer/footer.css");
 @import url("../../src/view/components/eventCard/eventCard.css");
 @import url("../../src/view/components/eventRow/eventRow.css");

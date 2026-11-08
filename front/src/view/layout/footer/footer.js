@@ -3,7 +3,7 @@ import { routeUrl } from "../../../core/routes.js";
 import { renderLogo } from "../../components/logo/logo.js";
 
 // Pages pas encore faites : le routeur affiche "Page introuvable" (pages/not-found.html) en attendant.
-export const FOOTER_LINKS = [
+const FOOTER_LINKS = [
   { label: "FAQ",              path: "/faq" },
   { label: "CGU",              path: "/cgu" },
   { label: "Mentions légales", path: "/legal-notice" },
@@ -22,7 +22,7 @@ export function renderFooter() {
     h("div", { class: "container site-footer__inner" },
       h("div", { class: "site-footer__brand" },
         renderLogo({ width: 96, className: "site-footer__logo" }),
-        h("p", { class: "site-footer__tagline" }, "Les sorties étudiantes inter-écoles, autour de toi."),
+        h("p", {}, "Les sorties étudiantes inter-écoles, autour de toi."),
       ),
       h("nav", { "aria-label": "Informations" },
         h("ul", { class: "site-footer__links" },

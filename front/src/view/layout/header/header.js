@@ -4,8 +4,8 @@ import { icon } from "../../components/icon/icon.js";
 import { renderLogo } from "../../components/logo/logo.js";
 import { renderSearchBox } from "../../components/searchBox/searchBox.js";
 
-// Routes de app/boot.js ; les pages pas encore faites affichent "Page introuvable" (pages/not-found.html).
-export const NAV_ITEMS = [
+// Routes de app/appRoutes.js ; les pages pas encore faites affichent "Page introuvable" (pages/not-found.html).
+const NAV_ITEMS = [
   { label: "Carte",          path: "/" },
   { label: "Pour toi",       path: "/for-you" },
   { label: "Mes événements", path: "/my-events" },

@@ -17,6 +17,10 @@ export class MapView {
     if (this.leaflet.init(options) === "unavailable") this.status.unavailable();
   }
 
+  destroy() {
+    this.leaflet.destroy();
+  }
+
   setOrigin(point, radiusKm) {
     this.leaflet.setOrigin(point, radiusKm);
   }
