@@ -31,6 +31,7 @@
  * @property {EventDto[]} items
  * @property {number} limit
  * @property {number} offset
+ * @property {boolean} has_more
  */
 
 export {};

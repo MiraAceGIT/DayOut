@@ -30,6 +30,12 @@
 .event-card__image { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: var(--color-surface-2); }
 .event-card__link { color: inherit; text-decoration: none; }
 .event-card__link:hover { text-decoration: underline; }
+/* Le lien du titre couvre aussi l'image et le corps de la carte. */
+.event-card__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-card); }
+.event-card__link:focus-visible { outline: none; box-shadow: none; }
+.event-card:has(.event-card__link:focus-visible) { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+/* L'action d'inscription de la bulle reste accessible au-dessus du lien etendu. */
+.event-card--popup .button { position: relative; z-index: 1; }
 .event-card__details { color: var(--color-link); font-size: var(--font-size-detail); font-weight: 600; min-height: var(--tap-target); display: inline-flex; align-items: center; align-self: start; }
 
 .event-card__title {

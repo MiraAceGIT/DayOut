@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatCoordinates, formatDistance, formatEventWhen, formatHour, formatPrice, pluralize } from "../src/shared/format.js";
+import { formatCoordinates, formatDate, formatDay, formatDistance, formatEventWhen, formatHour, formatPrice, formatRemainingPlaces, pluralize } from "../src/shared/format.js";
 import { distanceKm, isLatLng } from "../src/shared/geo.js";
 import { isInCoverageArea } from "../src/model/domain/coverageArea.js";
 import { resultsMessage } from "../src/view/home/resultsMessage.js";
@@ -16,15 +16,52 @@ describe("format", () => {
   });
 
   it("formatHour suit la typographie de la charte", () => {
-    assert.equal(formatHour(new Date(2026, 10, 15, 9, 0)), "9 h");
-    assert.equal(formatHour(new Date(2026, 10, 15, 18, 5)), "18 h 05");
+    assert.equal(formatHour("2026-11-15T08:00:00Z"), "9 h");
+    assert.equal(formatHour("2026-11-15T17:05:00Z"), "18 h 05");
+    assert.equal(formatHour("2026-11-14T23:00:00Z"), "0 h");
     assert.equal(formatHour("pas une date"), "");
   });
 
-  it("formatEventWhen n'ajoute la fin que le meme jour", () => {
-    const start = new Date(2026, 10, 15, 9);
-    assert.match(formatEventWhen(start, new Date(2026, 10, 15, 21), { withEnd: true }), /· 9 h – 21 h$/);
-    assert.match(formatEventWhen(start, new Date(2026, 10, 16, 2), { withEnd: true }), /· 9 h$/);
+  it("formatEventWhen affiche une plage horaire ou les deux dates selon le jour a Paris", () => {
+    const start = "2026-11-15T08:00:00Z";
+    assert.equal(formatEventWhen(start, "2026-11-15T20:00:00Z", { withEnd: true }), "Dim. 15 nov. · 9 h – 21 h");
+    assert.equal(formatEventWhen(start, "2026-11-16T01:00:00Z", { withEnd: true }), "Dim. 15 nov. · 9 h – Lun. 16 nov. · 2 h");
+    assert.equal(formatEventWhen("2026-11-07T23:30:00Z", "2026-11-08T02:00:00Z", { withEnd: true }), "Dim. 8 nov. · 0 h 30 – 3 h");
+    assert.equal(formatEventWhen(start, "2026-11-15T20:00:00Z"), "Dim. 15 nov. · 9 h");
+  });
+
+  it("utilise les jours et mois francais, l'annee sur le detail et aux changements d'annee", () => {
+    assert.equal(formatDay("2026-11-15T08:00:00Z", { withYear: true }), "Dim. 15 nov. 2026");
+    assert.equal(formatEventWhen("2026-11-15T08:00:00Z", "2026-11-15T20:00:00Z", { withEnd: true, withYear: true }), "Dim. 15 nov. 2026 · 9 h – 21 h");
+    assert.equal(formatEventWhen("2026-12-31T22:00:00Z", "2027-01-01T01:00:00Z", { withEnd: true }), "Jeu. 31 déc. 2026 · 23 h – Ven. 1 janv. 2027 · 2 h");
+    assert.equal(spaces(formatDate("2026-11-15T08:00:00Z", { options: { dateStyle: "long" } })), "15 novembre 2026");
+  });
+
+  it("applique le fuseau de Paris en hiver et en ete, independamment du fuseau du navigateur", () => {
+    assert.equal(formatHour("2026-01-15T08:00:00Z"), "9 h");
+    assert.equal(formatHour("2026-07-15T08:00:00Z"), "10 h");
+    assert.equal(formatHour("2026-03-29T00:30:00Z"), "1 h 30");
+    assert.equal(formatHour("2026-03-29T01:30:00Z"), "3 h 30");
+    assert.equal(formatHour("2026-10-25T00:30:00Z"), "2 h 30");
+    assert.equal(formatHour("2026-10-25T02:30:00Z"), "3 h 30");
+  });
+
+  it("tolere une date absente ou invalide et ne montre pas une fin anterieure au debut", () => {
+    assert.equal(formatEventWhen("invalide", "2026-11-15T20:00:00Z", { withEnd: true }), "");
+    assert.equal(formatDay(null), "");
+    assert.equal(formatDate(null, { fallback: "Date à préciser" }), "Date à préciser");
+    const start = "2026-11-15T08:00:00Z";
+    for (const end of [null, "invalide", "2026-11-15T07:00:00Z"]) {
+      assert.equal(formatEventWhen(start, end, { withEnd: true }), "Dim. 15 nov. · 9 h");
+    }
+  });
+
+  it("partage les libelles de places entre cartes et detail", () => {
+    assert.equal(formatRemainingPlaces(null), "Places illimitées");
+    assert.equal(formatRemainingPlaces(0), "Complet");
+    assert.equal(formatRemainingPlaces(1), "1 place restante");
+    assert.equal(formatRemainingPlaces(3), "3 places restantes");
+    assert.equal(formatRemainingPlaces(50), "50 places restantes");
   });
 
   it("formatDistance, formatCoordinates, pluralize", () => {

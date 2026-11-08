@@ -27,6 +27,7 @@ final class EventControllerTest extends HttpTestCase
         $data = $response->json()['data'];
         $this->assertSame(20, $data['limit']);
         $this->assertSame(0, $data['offset']);
+        $this->assertSame(false, $data['has_more']);
 
         $ids = array_column($data['items'], 'id');
         sort($ids);
@@ -47,6 +48,8 @@ final class EventControllerTest extends HttpTestCase
         $this->assertSame(3, $second['offset']);
         $this->assertCount(3, $first['items']);
         $this->assertCount(3, $second['items']);
+        $this->assertSame(true, $first['has_more']);
+        $this->assertSame(true, $second['has_more']);
         $this->assertSame([], array_intersect(array_column($first['items'], 'id'), array_column($second['items'], 'id')));
     }
 
@@ -68,7 +71,16 @@ final class EventControllerTest extends HttpTestCase
 
     public function testOffsetPastTheEndGivesAnEmptyPage(): void
     {
-        $this->assertSame([], $this->list('offset=10000')['items'], 'never page 1 again (infinite scroll)');
+        $page = $this->list('offset=10000');
+        $this->assertSame([], $page['items'], 'never page 1 again (infinite scroll)');
+        $this->assertSame(false, $page['has_more']);
+    }
+
+    public function testLastFullPageDoesNotClaimAnotherPageExists(): void
+    {
+        $page = $this->list('limit=1&offset=6');
+        $this->assertCount(1, $page['items']);
+        $this->assertSame(false, $page['has_more']);
     }
 
     public function testDefaultListHidesEventsThatAlreadyEnded(): void
@@ -107,6 +119,10 @@ final class EventControllerTest extends HttpTestCase
         $this->assertSame(false, $event['is_paid']);
         $this->assertSame(true, $event['school_restricted']);
         $this->assertSame('2026-11-07T20:00:00+00:00', $event['start_at']);
+        $this->assertArrayHasKey('creator', $event);
+        $this->assertSame(['id', 'display_name', 'description', 'avatar_url', 'school_name'], array_keys($event['creator']));
+        $this->assertTrue(is_int($event['creator']['id']));
+        $this->assertTrue(is_string($event['creator']['display_name']));
     }
 
     public function testInternalColumnsAreNotExposed(): void
@@ -125,6 +141,13 @@ final class EventControllerTest extends HttpTestCase
         $error = $this->assertError(404, 'EVENT_NOT_FOUND', $this->get('/events/99999'));
         $this->assertSame('Event not found', $error['message']);
         $this->assertSame(['id' => 99999], $error['details']);
+    }
+
+    public function testInvalidIdentifiersReturn404(): void
+    {
+        foreach (['abc', '0', '-1', '1.5', '1e2', '01', '9223372036854775808'] as $id) {
+            $this->assertError(404, 'NOT_FOUND', $this->get('/events/' . $id));
+        }
     }
 
     public function testDraftAndArchivedEventsAreNotExposed(): void

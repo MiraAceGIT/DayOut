@@ -553,10 +553,50 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | Methode | Chemin               | Query params                                   | 200 — shape (sous `data`)             | Erreurs                                               |
 | ------- | -------------------- | ---------------------------------------------- | ------------------------------------- | ----------------------------------------------------- |
 | GET     | `/health`            | —                                              | `{ api, db, time }`                   | —                                                     |
-| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (0-10000, def. 0), `from` (ISO 8601, def. maintenant) | `{ items: Event[], limit, offset }`   | `422 VALIDATION_ERROR` (param invalide ou hors bornes) |
-| GET     | `/events/{id}`       | — (`id` entier via regex `\d+`)                | `Event`                               | `404 EVENT_NOT_FOUND`, `404 NOT_FOUND` si `{id}` non num. |
+| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (0-10000, def. 0), `from` (ISO 8601, def. maintenant) | `{ items: Event[], limit, offset, has_more }` | `422 VALIDATION_ERROR` (param invalide ou hors bornes) |
+| GET     | `/events/{id}`       | — (`id` entier via regex `\d+`)                | `EventDetail` (`Event` + `creator`)     | `404 EVENT_NOT_FOUND`, `404 NOT_FOUND` si `{id}` non num. |
 | GET     | `/docs`              | —                                              | Swagger UI (hors enveloppe)           | `404` si `DOCS_ENABLED=false`                         |
 | GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | `404` si `DOCS_ENABLED=false`                         |
+
+### Pagination des evenements
+
+`EventController::index()` est l'equivalent de la methode `EvenementController::liste()`
+du ticket. Le service renvoie un `EventPageDto` ; le DAO applique le filtre `published`,
+`end_at > from`, le tri stable `start_at, id` et `LIMIT / OFFSET` via le QueryBuilder PDO.
+Les evenements en cours sont inclus jusqu'a leur fin.
+
+Exemples : `GET /events?limit=20&offset=0`, puis `GET /events?limit=20&offset=20`.
+Conserver le meme `from` ISO 8601 entre les pages fixe le filtre temporel.
+Le service lit au plus `limit + 1` lignes pour calculer `has_more`, mais ne renvoie
+que `limit` evenements. Une derniere page pleine a aussi `has_more: false` ; un offset
+au-dela des resultats renvoie `items: []`. Ce filtre temporel ne constitue pas un
+instantane des donnees : une creation ou une modification concurrente peut encore deplacer les pages.
+
+### Detail d'un evenement
+
+`EventController::show()` correspond a `EvenementController::detail($id)` dans le ticket.
+`EventService::getPublishedDetail()` appelle le DAO `findPublishedDetailById()` : une
+requete preparee joint `users`, `creator_profiles`, `schools`, `event_categories` et
+`categories`. Les categories inactives sont exclues apres la jointure pour conserver
+un evenement qui n'a aucune categorie active. L'ordre reste `label, id`.
+
+Le compteur du detail est recalcule par une sous-requete `COUNT(*)` sur `registrations`,
+avec `status <> 'cancelled'`, conformement a `fn_registration_is_active` : `registered`,
+`attended` et `no_show` sont comptes. Cette sous-requete evite de multiplier les inscrits
+par le nombre de categories. Le feed conserve son compteur denormalise pour ses performances.
+
+`EventDetailDto` conserve tous les champs publics d'`EventDto` et ajoute `creator`
+(`id`, `display_name`, `description`, `avatar_url`, `school_name`). Le nom et la description
+proviennent de `creator_profiles`, avec le nom et la bio utilisateur en secours ;
+l'ecole et l'avatar peuvent etre `null`. Aucun email, telephone, score de fiabilite ou
+champ de moderation n'est expose. Les statuts non `published` restent invisibles.
+
+Avant l'acces a la base, `show()` rejette avec une 404 les identifiants non decimaux,
+nuls, negatifs, avec zero initial ou hors de la plage des entiers PHP. Le service est
+instancie a la premiere utilisation, apres validation : un identifiant invalide ne
+depend pas de la disponibilite de la base. Les valeurs non numeriques sont aussi
+rejetees par le routeur. Un evenement inexistant ou non publie produit la meme
+erreur `EVENT_NOT_FOUND` (HTTP 404), sans indiquer s'il s'agit d'un brouillon ou d'une archive.
 
 ### Format de reponse
 

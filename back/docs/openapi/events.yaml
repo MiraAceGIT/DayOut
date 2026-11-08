@@ -9,6 +9,8 @@ paths:
       summary: Liste des evenements publies a venir
       description: >-
         Evenements publies pas encore termines a `from` (ceux en cours compris), tries par `start_at` puis `id`.
+        `has_more` indique si d'autres evenements existent apres cette page.
+        Conserver le meme `from` entre les pages pour fixer le filtre temporel.
         Un parametre invalide ou hors bornes donne 422 `VALIDATION_ERROR`.
       operationId: listEvents
       parameters:
@@ -43,12 +45,15 @@ paths:
     get:
       tags: [events]
       summary: Detail d'un evenement publie
+      description: >-
+        Charge par identifiant les categories actives et le profil public du createur avec jointures.
+        registered_count est recalcule depuis les inscriptions non annulees, independamment du nombre de categories.
       operationId: getEvent
       parameters:
         - name: id
           in: path
           required: true
-          description: Identifiant numerique (un `id` non numerique donne aussi 404).
+          description: Identifiant decimal positif sans zero initial, representable par un entier PHP. Toute valeur invalide donne 404.
           schema: { type: integer, minimum: 1 }
       responses:
         "200":
@@ -59,7 +64,7 @@ paths:
                 type: object
                 required: [data]
                 properties:
-                  data: { $ref: "#/components/schemas/Event" }
+                  data: { $ref: "#/components/schemas/EventDetail" }
         "404":
           description: Evenement inexistant ou non publie (`EVENT_NOT_FOUND`), ou `id` non numerique (`NOT_FOUND`)
           content:
@@ -69,6 +74,25 @@ paths:
 
 components:
   schemas:
+    Creator:
+      type: object
+      description: Profil public du createur. Nom et description du profil, ou nom et bio de l'utilisateur en secours.
+      required: [id, display_name, description, avatar_url, school_name]
+      properties:
+        id: { type: integer, example: 2 }
+        display_name: { type: string, example: Garage ISEP }
+        description: { type: string, nullable: true }
+        avatar_url: { type: string, format: uri, nullable: true }
+        school_name: { type: string, nullable: true, example: ISEP }
+
+    EventDetail:
+      allOf:
+        - $ref: "#/components/schemas/Event"
+        - type: object
+          required: [creator]
+          properties:
+            creator: { $ref: "#/components/schemas/Creator" }
+
     Category:
       type: object
       description: CategoryDto. Seules les categories actives sont exposees.
@@ -139,10 +163,11 @@ components:
 
     EventPage:
       type: object
-      required: [items, limit, offset]
+      required: [items, limit, offset, has_more]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/Event" }
         limit: { type: integer, example: 20 }
         offset: { type: integer, example: 0 }
+        has_more: { type: boolean, description: D'autres evenements existent apres cette page. }

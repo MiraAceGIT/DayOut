@@ -8,6 +8,7 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { toCategory } from "../src/model/mappers/categoryMapper.js";
 import { toEvent, toEventDto } from "../src/model/mappers/eventMapper.js";
+import { toCreator } from "../src/model/mappers/eventDetailMapper.js";
 
 const BACK = fileURLToPath(new URL("../../back/", import.meta.url));
 const DTO_FILE = new URL("../src/model/dto/", import.meta.url);
@@ -15,7 +16,8 @@ const DTO_FILE = new URL("../src/model/dto/", import.meta.url);
 function loadSpec() {
   const php = [process.env.PHP, "php", "C:/xampp/php/php.exe"].filter(Boolean)
     .find((bin) => bin === "php" || existsSync(bin));
-  const code = 'require "autoload.php"; echo json_encode(App\\Docs\\OpenApiSpec::load("docs/openapi"));';
+  // L'assembleur est autonome : le front n'a pas besoin d'installer les dependances Composer du back.
+  const code = 'require "src/Core/Yaml.php"; require "src/Docs/OpenApiSpec.php"; echo json_encode(App\\Docs\\OpenApiSpec::load("docs/openapi"));';
   try {
     return JSON.parse(execFileSync(php, ["-r", code], { cwd: BACK, encoding: "utf8" }));
   } catch (error) {
@@ -59,6 +61,15 @@ describe("contrat avec la spec OpenAPI du back", { skip }, () => {
 
   it("le typedef CategoryDto suit le schema Category", () => {
     assert.deepEqual(typedefProperties("categoryDto.js", "CategoryDto"), Object.keys(schemas.Category.properties));
+  });
+
+  it("le detail ajoute le createur au contrat de la liste", () => {
+    assert.deepEqual(typedefProperties("eventDetailDto.js", "CreatorDto"), Object.keys(schemas.Creator.properties));
+    assert.equal(schemas.EventDetail.allOf[0].$ref, "#/components/schemas/Event");
+    assert.deepEqual(Object.keys(schemas.EventDetail.allOf[1].properties), ["creator"]);
+    const fields = Object.keys(schemas.Creator.properties);
+    const read = keysReadBy(toCreator, Object.fromEntries(fields.map(field => [field, sample(schemas.Creator.properties[field])])));
+    assert.deepEqual([...read], fields);
   });
 
   it("toEvent lit chaque champ du schema Event, et seulement ceux-la", () => {

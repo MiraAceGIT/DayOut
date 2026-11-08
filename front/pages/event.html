@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Découvre le Hackathon IA inter-écoles : programme, infos pratiques et inscription sur DayOut.">
+  <meta name="description" content="Découvre les informations pratiques et l’organisateur d’un événement étudiant sur DayOut.">
   <meta name="theme-color" content="#241238">
-  <title>Hackathon IA inter-écoles — DayOut</title>
+  <title>Événement — DayOut</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,23 +18,34 @@
   <header class="site-header" data-layout>
     <noscript><nav class="site-nav" aria-label="Navigation principale"><a class="site-nav__link" href="../index.html">Carte</a><a class="site-nav__link" href="events.html">Événements</a></nav></noscript>
   </header>
-  <main id="main" class="event-page" tabindex="-1">
-    <!-- Contenu de demonstration : aucun appel API pour cette integration statique. -->
-    <div class="event-preview"><div class="container">Aperçu statique · Données d’exemple, inscriptions et services à venir.</div></div>
+  <main id="main" class="event-page" tabindex="-1" aria-busy="true">
+    <section id="event-state" class="container event-state" aria-labelledby="event-state-title">
+      <p id="event-state-code" class="event-state__code" hidden>404</p>
+      <h1 id="event-state-title" tabindex="-1">Détail de l’événement</h1>
+      <p id="event-status" class="status-message" role="status">Chargement de l’événement…</p>
+      <p id="event-error" class="alert alert--error" role="alert"></p>
+      <noscript><p>Active JavaScript pour consulter les informations de cet événement.</p></noscript>
+      <div class="event-state__actions">
+        <a class="button button--secondary" href="events.html">Retour aux événements</a>
+        <button id="event-retry" class="button button--primary" type="button" hidden>Réessayer</button>
+      </div>
+    </section>
+    <!-- Aucun contenu d'evenement n'est visible avant une reponse valide de l'API. -->
+    <div id="event-detail" hidden>
     <header class="event-hero" aria-labelledby="event-title">
       <div class="container event-hero__inner">
         <a class="event-back" href="events.html">← Retour aux événements</a>
         <div class="event-hero__grid">
           <div class="event-hero__content">
-            <div class="event-tags"><span>Hackathon</span><span>Gratuit</span><span>Ouvert à toutes les écoles</span></div>
-            <h1 id="event-title">Hackathon IA inter-écoles</h1>
-            <p>12 h pour prototyper une IA utile à la vie étudiante, en équipes mixtes de 3 à 5 étudiants.</p>
+            <div id="event-tags" class="event-tags"></div>
+            <h1 id="event-title"></h1>
+            <p id="event-venue"></p>
             <dl class="event-hero__facts">
-              <div><dt>Date et horaires</dt><dd><time datetime="2026-11-15T09:00:00+01:00">Dimanche 15 novembre 2026 · 9 h</time> – <time datetime="2026-11-15T21:00:00+01:00">21 h</time></dd></div>
-              <div><dt>Adresse</dt><dd>Garage ISEP · 10 rue de Vanves, 92130 Issy-les-Moulineaux</dd></div>
+              <div><dt>Date et horaires</dt><dd id="event-date"></dd></div>
+              <div><dt>Adresse</dt><dd id="event-address"></dd></div>
             </dl>
           </div>
-          <img class="event-hero__image" src="../assets/img/hackathon-cover.svg" alt="Illustration du hackathon : des ordinateurs reliés autour d’un réseau d’intelligence artificielle." width="640" height="480" fetchpriority="high">
+          <img id="event-cover" class="event-hero__image" src="../assets/img/event-cover-placeholder.svg" alt="" width="640" height="480" fetchpriority="high">
         </div>
       </div>
     </header>
@@ -43,52 +54,32 @@
         <section class="event-panel" aria-labelledby="practical-title">
           <h2 id="practical-title" class="visually-hidden">Infos pratiques</h2>
           <dl class="event-facts">
-            <div><dt>Organisation</dt><dd>Garage ISEP · club de l’ISEP</dd></div>
-            <div><dt>Sur place</dt><dd>En intérieur · 60 places · Toutes les écoles</dd></div>
+            <div><dt>Organisation</dt><dd data-event-creator-name></dd></div>
+            <div><dt>Accès</dt><dd id="event-practical-summary"></dd></div>
           </dl>
         </section>
         <section class="event-panel" aria-labelledby="about-title">
           <h2 id="about-title">À propos</h2>
-          <p>Rejoins des étudiants de plusieurs écoles d’ingénieurs pour imaginer, coder et présenter un service d’IA en 12 heures. Mentors du Garage ISEP sur place, repas offerts le midi et le soir.</p>
-          <p>Pense à apporter ton ordinateur et ton chargeur. Débutant ou déjà à l’aise avec l’IA, tu trouveras ta place dans une équipe !</p>
+          <p id="event-description" class="event-description"></p>
         </section>
         <section id="event-weather" class="event-panel" aria-labelledby="weather-title">
-          <div class="event-section-heading"><h2 id="weather-title">Météo prévue</h2><span class="event-placeholder-badge">Exemple</span></div>
-          <p class="event-note">Aperçu pour le dimanche 15 novembre · Les prévisions réelles seront disponibles prochainement.</p>
-          <div class="event-weather">
-            <div class="event-weather__summary"><strong>12 °C</strong><span>Éclaircies · 10 % de pluie</span></div>
-            <ul class="event-hours" aria-label="Exemple de météo heure par heure">
-              <li><time datetime="2026-11-15T09:00:00+01:00">9 h</time><span>Nuageux</span><strong>8 °C</strong></li>
-              <li><time datetime="2026-11-15T12:00:00+01:00">12 h</time><span>Éclaircies</span><strong>12 °C</strong></li>
-              <li><time datetime="2026-11-15T15:00:00+01:00">15 h</time><span>Ensoleillé</span><strong>13 °C</strong></li>
-              <li><time datetime="2026-11-15T18:00:00+01:00">18 h</time><span>Éclaircies</span><strong>10 °C</strong></li>
-              <li><time datetime="2026-11-15T21:00:00+01:00">21 h</time><span>Nuageux</span><strong>7 °C</strong></li>
-            </ul>
-          </div>
-          <p class="event-note">Événement en intérieur : la météo compte surtout pour le trajet.</p>
+          <div class="event-section-heading"><h2 id="weather-title">Météo prévue</h2><span class="event-placeholder-badge">À venir</span></div>
+          <p class="event-note">Les prévisions pour le lieu et la date de l’événement seront disponibles prochainement.</p>
         </section>
         <section id="event-transports" class="event-panel" aria-labelledby="transport-title">
           <div class="event-section-heading"><h2 id="transport-title">Y aller</h2><a href="#event-map">Voir la mini-carte</a></div>
-          <p class="event-note">Depuis ton école · Exemple : ISEP — Notre-Dame-des-Champs</p>
-          <ul class="event-transports" aria-label="Exemples de trajets">
-            <li class="event-transports__recommended"><strong>Métro 12</strong><span>28 min · 1 correspondance</span><small>Le plus rapide</small></li>
-            <li><strong>Bus 89 + 126</strong><span>41 min</span></li>
-            <li><strong>Vélib’</strong><span>24 min · 6,1 km</span></li>
-          </ul>
-          <h3>Arrêts proches</h3>
-          <ul class="event-stops"><li>Corentin Celton (M12) · 4 min à pied</li><li>Issy — Val de Seine (T2, RER C) · 9 min à pied</li></ul>
-          <p class="event-note">Trajets et arrêts donnés à titre d’exemple. Le calcul d’itinéraire sera disponible prochainement.</p>
+          <p class="event-note">Les itinéraires en transports et à vélo ainsi que les arrêts proches seront disponibles prochainement.</p>
         </section>
         <section id="event-map" class="event-panel event-map" aria-labelledby="map-title">
           <div class="event-section-heading"><h2 id="map-title">Le lieu sur la carte</h2><span class="event-placeholder-badge">Aperçu</span></div>
           <figure class="event-map__figure">
             <div class="event-map__placeholder">
               <img class="event-map__illustration" src="../assets/img/event-map-placeholder.svg" alt="" width="640" height="300" loading="lazy">
-              <div class="event-map__location"><span class="event-map__pin" aria-hidden="true"></span><strong>Garage ISEP</strong><span>Issy-les-Moulineaux</span></div>
+              <div class="event-map__location"><span class="event-map__pin" aria-hidden="true"></span><strong id="event-map-name"></strong><span id="event-map-city"></span></div>
             </div>
             <figcaption>Schéma décoratif, sans position géographique réelle. La carte interactive sera disponible prochainement.</figcaption>
           </figure>
-          <p class="event-map__address">10 rue de Vanves, 92130 Issy-les-Moulineaux</p>
+          <p id="event-map-address" class="event-map__address"></p>
         </section>
         <section id="event-discussion" class="event-panel" aria-labelledby="discussion-title">
           <div class="event-section-heading"><h2 id="discussion-title">Discussion de l’événement</h2><span class="event-placeholder-badge">Réservée aux inscrits</span></div>
@@ -110,14 +101,14 @@
       </div>
       <aside class="event-sidebar" aria-label="Inscription et organisateur">
         <section class="event-panel event-registration" aria-labelledby="registration-title">
-          <div class="event-section-heading"><h2 id="registration-title">Gratuit</h2><span class="event-places">3 places restantes</span></div>
+          <div class="event-section-heading"><h2 id="registration-title"></h2><span id="event-places" class="event-places"></span></div>
           <label class="visually-hidden" for="event-capacity">Places occupées</label>
-          <progress id="event-capacity" value="57" max="60">57 inscrits sur 60 places</progress>
-          <p class="event-note">57 inscrits sur 60 places · <strong>3 places restantes</strong></p>
-          <button class="button button--primary" type="button" disabled aria-describedby="registration-help">Je m’inscris</button>
+          <progress id="event-capacity" value="0" max="1"></progress>
+          <p id="event-registration-count" class="event-note"></p>
+          <button id="event-register" class="button button--primary" type="button" disabled aria-describedby="registration-help">Je m’inscris</button>
           <p id="registration-help" class="event-note">L’inscription sera disponible prochainement.</p>
-          <div class="event-callout"><strong>Ton entrée, simplement</strong><p>Ton QR code de présence sera disponible dans « Mes événements » après inscription.</p></div>
-          <div class="event-callout"><strong>Ta fiabilité compte</strong><p>Le nombre d’inscriptions gratuites autorisées dépendra de ton niveau de fiabilité.</p></div>
+          <div id="event-free-entry" class="event-callout"><strong>Ton entrée, simplement</strong><p>Ton QR code de présence sera disponible dans « Mes événements » après inscription.</p></div>
+          <div id="event-free-reliability" class="event-callout"><strong>Ta fiabilité compte</strong><p>Le nombre d’inscriptions gratuites autorisées dépendra de ton niveau de fiabilité.</p></div>
           <p class="event-note">Préviens l’organisateur si tu ne peux plus venir.</p>
         </section>
         <section id="event-planning" class="event-panel event-planning" aria-labelledby="planning-title">
@@ -128,14 +119,16 @@
         </section>
         <section class="event-panel" aria-labelledby="organizer-title">
           <h2 id="organizer-title">L’organisateur</h2>
-          <div class="event-organizer"><span class="event-avatar" aria-hidden="true">GI</span><div><h3>Garage ISEP</h3><p class="event-note">Club étudiant · ISEP</p></div></div>
-          <p class="event-note event-organizer__description">Le club réunit les étudiants autour de projets tech et accompagne les équipes pendant ce hackathon inter-écoles.</p>
+          <div class="event-organizer"><span id="event-creator-avatar" class="event-avatar" aria-hidden="true"></span><div><h3 data-event-creator-name></h3><p id="event-creator-school" class="event-note"></p></div></div>
+          <p id="event-creator-description" class="event-note event-organizer__description"></p>
         </section>
         <p class="event-note event-ticket-note">Pour les événements payants, la billetterie sera celle de l’organisateur. DayOut ne gère aucun paiement.</p>
       </aside>
     </div>
+    </div>
   </main>
   <footer class="site-footer" data-layout><noscript><div class="container site-footer__inner"><p class="site-footer__brand">DayOut</p><p class="site-footer__tagline">Les sorties étudiantes inter-écoles, autour de toi.</p><p class="site-footer__credit">Réalisé par G4B Digital</p></div></noscript></footer>
+  <script src="../src/config.local.js"></script>
   <script type="module" src="../src/pages/event.js"></script>
 </body>
 </html>

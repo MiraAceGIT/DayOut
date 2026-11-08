@@ -5,7 +5,10 @@ import { categoryClass, colorCategoryOf } from "../category/category.js";
 import { distanceText, joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/pill.js";
 
-/** Meme composant pour la grille, les resultats de recherche et les bulles de carte. */
+/** Meme composant pour la grille, les resultats de recherche et les bulles de carte.
+ * @param event
+ * @param {{ variant?: "grid"|"compact"|"popup", distanceKm?: number|null, selected?: boolean, onSelect?: (id: number) => void }} [options]
+ */
 export function renderEventCard(event, { variant = "grid", distanceKm = null, selected = false, onSelect } = {}) {
   const compact = variant === "compact";
   const popup = variant === "popup";
@@ -34,7 +37,7 @@ export function renderEventCard(event, { variant = "grid", distanceKm = null, se
           : h("a", { class: "event-card__link", href: detailUrl.href }, event.title),
       ),
       event.startAt ? h("p", { class: "event-card__meta" },
-        h("time", { datetime: event.startAt }, formatEventWhen(event.startAt, event.endAt, { withEnd: !compact }))) : null,
+        h("time", { datetime: event.startAt, title: "Heure de Paris" }, formatEventWhen(event.startAt, event.endAt, { withEnd: !compact }))) : null,
       event.venueName || event.city
         ? h("p", { class: "event-card__meta" }, joinMeta(event.venueName, event.city)) : null,
       compact || distanceKm !== null
@@ -42,9 +45,7 @@ export function renderEventCard(event, { variant = "grid", distanceKm = null, se
       !compact && !popup && event.description ? h("p", { class: "event-card__desc" }, event.description) : null,
       h("div", { class: "pill-row event-card__status" },
         renderPricePill(event),
-        event.remainingPlaces === null
-          ? h("span", { class: "pill pill--neutral" }, "Places illimitées")
-          : renderPlacesPill(event, { showPlenty: true }),
+        renderPlacesPill(event, { showPlenty: true }),
       ),
       compact ? h("a", { class: "event-card__details", href: detailUrl.href },
         "Voir l’événement", h("span", { class: "visually-hidden" }, ` : ${event.title}`)) : null,

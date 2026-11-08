@@ -1,4 +1,7 @@
 import { boot } from "../app/boot.js";
+import { EventDetailController } from "../controller/EventDetailController.js";
 
-// Integration statique : le contenu est dans pages/event.html.
 boot({ page: "event" });
+
+const ids = new URLSearchParams(location.search).getAll("id");
+new EventDetailController().start(ids.length === 1 ? ids[0] : null);

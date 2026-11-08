@@ -79,6 +79,7 @@ export class HomeController {
     if (!this.state.isReady) return;
     const result = this.state.results();
     this.view.showResults(result, this.state.selectedId);
+    this.view.showSuggestions(this.state.suggestions());
     this.map.showEvents(result.items, this.state.selectedId);
   }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Model\Dao;
 
 use App\Core\Orm\Query\QueryBuilder;
+use App\Core\Orm\Caster;
 use DateTimeInterface;
 
 /** Seuls les events `published` sont exposes. */
@@ -64,6 +65,44 @@ final class Event extends Model
     public function findPublishedById(int $id): ?array
     {
         return $this->published()->where('id', $id)->first();
+    }
+
+    /** Detail public en une requete ; le COUNT est independant des categories (pas de multiplication). */
+    public function findPublishedDetailById(int $id): ?array
+    {
+        $columns = array_map(
+            static fn (string $column): string => 'events.' . $column,
+            array_values(array_diff(self::COLUMNS, ['registered_count'])),
+        );
+        $rows = $this->table()
+            ->select(...$columns)
+            ->selectRaw("(SELECT COUNT(*) FROM registrations AS r WHERE r.event_id = events.id AND r.status <> 'cancelled') AS registered_count")
+            ->selectRaw('u.id AS detail_creator_id, u.first_name AS detail_first_name, u.last_name AS detail_last_name, u.avatar_url AS detail_avatar_url, u.bio AS detail_bio')
+            ->selectRaw('cp.display_name AS detail_display_name, cp.description AS detail_creator_description, s.name AS detail_school_name, s.short_name AS detail_school_short_name')
+            ->selectRaw('c.id AS detail_category_id, c.slug AS detail_category_slug, c.label AS detail_category_label, c.active AS detail_category_active')
+            ->join('users AS u', 'u.id', '=', 'events.creator_id')
+            ->leftJoin('creator_profiles AS cp', 'cp.user_id', '=', 'u.id')
+            ->leftJoin('schools AS s', 's.id', '=', 'u.school_id')
+            ->leftJoin('event_categories AS ec', 'ec.event_id', '=', 'events.id')
+            ->leftJoin('categories AS c', 'c.id', '=', 'ec.category_id')
+            ->where('events.id', $id)
+            ->where('events.status', 'published')
+            ->orderBy('c.label')
+            ->orderBy('c.id')
+            ->get();
+
+        if ($rows === []) {
+            return null;
+        }
+        $event = Caster::apply($rows[0], self::CASTS, self::class);
+        // Filtrer apres la LEFT JOIN garde les evenements sans categorie active.
+        $event['categories'] = [];
+        foreach ($rows as $row) {
+            if ((int) $row['detail_category_active'] === 1) {
+                $event['categories'][] = ['slug' => $row['detail_category_slug'], 'label' => $row['detail_category_label']];
+            }
+        }
+        return $event;
     }
 
     private function published(): QueryBuilder

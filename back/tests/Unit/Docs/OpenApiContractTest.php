@@ -6,6 +6,8 @@ namespace Tests\Unit\Docs;
 use App\Core\Router;
 use App\Docs\OpenApiSpec;
 use App\Model\Dto\CategoryDto;
+use App\Model\Dto\CreatorDto;
+use App\Model\Dto\EventPageDto;
 use App\Model\Mappers\EventMapper;
 use ReflectionProperty;
 use Tests\Support\AppRouter;
@@ -87,6 +89,25 @@ final class OpenApiContractTest extends TestCase
         $schema = $this->spec()['components']['schemas']['Category'];
 
         $this->assertSame(array_keys((new CategoryDto('s', 'l'))->jsonSerialize()), array_keys($schema['properties']));
+    }
+
+    public function testEventPageSchemaMatchesDto(): void
+    {
+        $schema = $this->spec()['components']['schemas']['EventPage'];
+        $keys = array_keys((new EventPageDto([], 20, 0, false))->jsonSerialize());
+        $this->assertSame($keys, array_keys($schema['properties']));
+        $this->assertSame($keys, $schema['required']);
+    }
+
+    public function testCreatorAndDetailSchemasMatchPublicDto(): void
+    {
+        $schemas = $this->spec()['components']['schemas'];
+        $keys = array_keys((new CreatorDto(1, 'Garage', null, null, null))->jsonSerialize());
+        $this->assertSame($keys, array_keys($schemas['Creator']['properties']));
+        $this->assertSame($keys, $schemas['Creator']['required']);
+        $this->assertSame('#/components/schemas/Event', $schemas['EventDetail']['allOf'][0]['$ref']);
+        $this->assertSame(['creator'], $schemas['EventDetail']['allOf'][1]['required']);
+        $this->assertSame('#/components/schemas/Creator', $schemas['EventDetail']['allOf'][1]['properties']['creator']['$ref']);
     }
 
     public function testBearerTokenIsOfferedButOptional(): void

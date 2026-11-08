@@ -17,10 +17,11 @@ use Tests\TestCase;
 final class EventServiceTest extends TestCase
 {
     private EventService $service;
+    private PDO $pdo;
 
     public function setUp(): void
     {
-        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $pdo = $this->pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $pdo->exec('CREATE TABLE events (
             id INTEGER PRIMARY KEY, creator_id INTEGER, title TEXT, slug TEXT, description TEXT, cover_image_url TEXT,
             start_at TEXT, end_at TEXT, venue_name TEXT, address_line TEXT, city TEXT, postal_code TEXT,
@@ -70,6 +71,40 @@ final class EventServiceTest extends TestCase
     {
         $this->assertSame([1], self::ids($this->upcoming('2026-11-08T01:00:00Z')));
         $this->assertSame([], $this->upcoming('2026-11-08T02:00:00Z'));
+    }
+
+    public function testPageUsesLimitOffsetAndReportsTheLastPage(): void
+    {
+        $from = new DateTimeImmutable('2026-10-19T00:00:00Z');
+        $first = $this->service->listUpcomingPage($from, 1, 0);
+        $last = $this->service->listUpcomingPage($from, 1, 1);
+        $empty = $this->service->listUpcomingPage($from, 1, 2);
+
+        $this->assertSame([2], self::ids($first->items));
+        $this->assertSame(true, $first->hasMore);
+        $this->assertSame(1, $first->limit);
+        $this->assertSame(0, $first->offset);
+        $this->assertSame([1], self::ids($last->items));
+        $this->assertSame(false, $last->hasMore, 'exactly one item on the final page');
+        $this->assertSame('soiree', $last->items[0]->categories[0]->slug);
+        $this->assertSame([], $empty->items);
+        $this->assertSame(false, $empty->hasMore);
+    }
+
+    public function testPageOrderIsStableWhenEventsStartAtTheSameTime(): void
+    {
+        $this->pdo->exec("INSERT INTO events (id, title, slug, description, start_at, end_at, status) VALUES
+            (5, 'Match bis', 'match-bis', 'd', '2026-11-05 18:00:00', '2026-11-05 20:00:00', 'published'),
+            (6, 'Archive', 'archive', 'd', '2026-11-05 18:00:00', '2026-11-05 20:00:00', 'archived')");
+        $from = new DateTimeImmutable('2026-10-19T00:00:00Z');
+
+        $ids = [];
+        for ($offset = 0; $offset < 3; $offset++) {
+            $page = $this->service->listUpcomingPage($from, 1, $offset);
+            $ids = array_merge($ids, self::ids($page->items));
+            $this->assertSame($offset < 2, $page->hasMore);
+        }
+        $this->assertSame([2, 5, 1], $ids, 'ties ordered by id; no draft, archive or ended event');
     }
 
     public function testFromIsComparedInUtc(): void
