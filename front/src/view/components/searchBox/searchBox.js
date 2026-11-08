@@ -1,6 +1,6 @@
 import { h } from "../../../shared/dom.js";
-import { frontUrl } from "../../../core/config.js";
-import { icon } from "../../components/icon/icon.js";
+import { routeUrl } from "../../../core/routes.js";
+import { icon } from "../icon/icon.js";
 
 // Prive a ce module : les autres views passent par SearchBox, jamais par l'id.
 const INPUT_ID = "site-search";
@@ -10,7 +10,7 @@ export function renderSearchBox() {
   return h("form", {
     class: "site-search",
     role: "search",
-    action: frontUrl("index.html").href,
+    action: routeUrl("/"),
     method: "get",
   },
     h("label", { class: "visually-hidden", for: INPUT_ID }, "Rechercher un événement ou un lieu"),
@@ -36,12 +36,13 @@ export class SearchBox {
     if (this.inputEl) this.inputEl.value = query;
   }
 
-  bindLive(onQuery) {
+  /** Le header reste affiche : `signal` retire ces ecouteurs quand on quitte la carte. */
+  bindLive(onQuery, { signal } = {}) {
     if (!this.inputEl) return;
-    this.inputEl.addEventListener("input", () => onQuery(this.inputEl.value));
+    this.inputEl.addEventListener("input", () => onQuery(this.inputEl.value), { signal });
     this.inputEl.form?.addEventListener("submit", (e) => {
       e.preventDefault();
       onQuery(this.inputEl.value);
-    });
+    }, { signal });
   }
 }
