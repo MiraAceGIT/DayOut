@@ -1,6 +1,6 @@
-import { boot } from "../app/boot.js";
 import { EventsController } from "../controller/EventsController.js";
 
-boot({ page: "events" });
-
-new EventsController().start();
+/** Lance la liste une fois pages/events.html affiche (route `/events`, voir app/appRoutes.js). */
+export function mountEvents() {
+  new EventsController().start();
+}

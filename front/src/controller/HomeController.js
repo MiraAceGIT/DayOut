@@ -6,7 +6,7 @@ import { MapSearch } from "../model/state/MapSearch.js";
 import { COVERAGE_AREA, isInCoverageArea } from "../model/domain/coverageArea.js";
 import { HomeView } from "../view/home/HomeView.js";
 import { MapView } from "../view/home/map/MapView.js";
-import { SearchBox } from "../view/layout/header/searchBox.js";
+import { SearchBox } from "../view/components/searchBox/searchBox.js";
 
 export class HomeController {
   constructor({
@@ -30,7 +30,8 @@ export class HomeController {
     this.pickSeq = 0;
   }
 
-  async start({ query = "" } = {}) {
+  /** @param {{ query?: string, signal?: AbortSignal }} [options] `signal` : annule quand on quitte la carte. */
+  async start({ query = "", signal } = {}) {
     if (!this.view.isReady) return;
     this.state.setQuery(query);
     const { origin, radiusKm } = this.state.criteria;
@@ -42,7 +43,7 @@ export class HomeController {
       onSelect: (id) => this.select(id, { from: "list" }),
       onChangePoint: () => this.map.promptPick(),
     });
-    this.searchBox.bindLive((q) => this.search(q));
+    this.searchBox.bindLive((q) => this.search(q), { signal });
     this.map.init({
       origin,
       radiusKm,
@@ -53,13 +54,20 @@ export class HomeController {
         onLocate: () => this.locate(),
       },
     });
+    // On quitte la carte : Leaflet est detruit, une localisation en cours est ignoree (pickSeq).
+    signal?.addEventListener("abort", () => {
+      this.pickSeq += 1;
+      this.map.destroy();
+    });
     this.searchBox.setQuery(query);
     this.view.setOrigin(origin);
     this.view.setRadius(radiusKm);
 
     this.view.showLoading();
     try {
-      this.state.load(await this.loadEvents({ limit: this.limit }), { limit: this.limit });
+      const events = await this.loadEvents({ limit: this.limit });
+      if (signal?.aborted) return; // carte quittee pendant le chargement
+      this.state.load(events, { limit: this.limit });
       const { categories } = this.state;
       this.view.renderCategoryFilters(categories, this.state.criteria.categories);
       this.map.renderLegend(categories);

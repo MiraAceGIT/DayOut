@@ -2,23 +2,11 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Découvre les informations pratiques et l’organisateur d’un événement étudiant sur DayOut.">
-  <meta name="theme-color" content="#241238">
   <title>Événement — DayOut</title>
-  <link rel="icon" href="data:,">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fredoka:wght@600;700&display=swap">
-  <link rel="stylesheet" href="../assets/css/main.css">
-  <link rel="stylesheet" href="../src/view/event/event.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">Aller au contenu</a>
-  <header class="site-header" data-layout>
-    <noscript><nav class="site-nav" aria-label="Navigation principale"><a class="site-nav__link" href="../index.html">Carte</a><a class="site-nav__link" href="events.html">Événements</a></nav></noscript>
-  </header>
-  <main id="main" class="event-page" tabindex="-1" aria-busy="true">
+  <!-- Contenu de la page seulement : src/app/router.js le copie dans le #app-root de index.html, entre header et footer. -->
+  <main id="app-root" class="event-page">
     <section id="event-state" class="container event-state" aria-labelledby="event-state-title">
       <p id="event-state-code" class="event-state__code" hidden>404</p>
       <h1 id="event-state-title" tabindex="-1">Détail de l’événement</h1>
@@ -26,7 +14,7 @@
       <p id="event-error" class="alert alert--error" role="alert"></p>
       <noscript><p>Active JavaScript pour consulter les informations de cet événement.</p></noscript>
       <div class="event-state__actions">
-        <a class="button button--secondary" href="events.html">Retour aux événements</a>
+        <a class="button button--secondary" href="my-events">Retour aux événements</a>
         <button id="event-retry" class="button button--primary" type="button" hidden>Réessayer</button>
       </div>
     </section>
@@ -34,7 +22,7 @@
     <div id="event-detail" hidden>
     <header class="event-hero" aria-labelledby="event-title">
       <div class="container event-hero__inner">
-        <a class="event-back" href="events.html">← Retour aux événements</a>
+        <a class="event-back" href="my-events">← Retour aux événements</a>
         <div class="event-hero__grid">
           <div class="event-hero__content">
             <div id="event-tags" class="event-tags"></div>
@@ -45,7 +33,7 @@
               <div><dt>Adresse</dt><dd id="event-address"></dd></div>
             </dl>
           </div>
-          <img id="event-cover" class="event-hero__image" src="../assets/img/event-cover-placeholder.svg" alt="" width="640" height="480" fetchpriority="high">
+          <img id="event-cover" class="event-hero__image" src="assets/img/event-cover-placeholder.svg" alt="" width="640" height="480" fetchpriority="high">
         </div>
       </div>
     </header>
@@ -74,7 +62,7 @@
           <div class="event-section-heading"><h2 id="map-title">Le lieu sur la carte</h2><span class="event-placeholder-badge">Aperçu</span></div>
           <figure class="event-map__figure">
             <div class="event-map__placeholder">
-              <img class="event-map__illustration" src="../assets/img/event-map-placeholder.svg" alt="" width="640" height="300" loading="lazy">
+              <img class="event-map__illustration" src="assets/img/event-map-placeholder.svg" alt="" width="640" height="300" loading="lazy">
               <div class="event-map__location"><span class="event-map__pin" aria-hidden="true"></span><strong id="event-map-name"></strong><span id="event-map-city"></span></div>
             </div>
             <figcaption>Schéma décoratif, sans position géographique réelle. La carte interactive sera disponible prochainement.</figcaption>
@@ -127,8 +115,5 @@
     </div>
     </div>
   </main>
-  <footer class="site-footer" data-layout><noscript><div class="container site-footer__inner"><p class="site-footer__brand">DayOut</p><p class="site-footer__tagline">Les sorties étudiantes inter-écoles, autour de toi.</p><p class="site-footer__credit">Réalisé par G4B Digital</p></div></noscript></footer>
-  <script src="../src/config.local.js"></script>
-  <script type="module" src="../src/pages/event.js"></script>
 </body>
 </html>

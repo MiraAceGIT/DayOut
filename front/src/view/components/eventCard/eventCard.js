@@ -1,5 +1,6 @@
 import { h, isSafeUrl } from "../../../shared/dom.js";
 import { frontUrl } from "../../../core/config.js";
+import { routeUrl } from "../../../core/routes.js";
 import { formatEventWhen } from "../../../shared/format.js";
 import { categoryClass, colorCategoryOf } from "../category/category.js";
 import { distanceText, joinMeta } from "../eventMeta/eventMeta.js";
@@ -12,7 +13,7 @@ import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/p
 export function renderEventCard(event, { variant = "grid", distanceKm = null, selected = false, onSelect } = {}) {
   const compact = variant === "compact";
   const popup = variant === "popup";
-  const detailUrl = frontUrl("pages/event.html");
+  const detailUrl = new URL(routeUrl("/event"));
   detailUrl.searchParams.set("id", String(event.id));
   const fallback = frontUrl("assets/img/event-cover-placeholder.svg").href;
   const image = h("img", {

@@ -5,7 +5,7 @@ import { frontUrl } from "../../core/config.js";
 export class EventDetailView {
   constructor(root = document) {
     this.root = root;
-    this.main = root.querySelector("#main");
+    this.main = root.querySelector("#app-root");
     this.detail = /** @type {HTMLElement|null} */ (root.querySelector("#event-detail"));
     this.state = /** @type {HTMLElement|null} */ (root.querySelector("#event-state"));
     this.stateTitle = /** @type {HTMLElement|null} */ (root.querySelector("#event-state-title"));
