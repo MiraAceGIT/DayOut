@@ -7,16 +7,18 @@ use JsonSerializable;
 
 final readonly class EventPageDto implements JsonSerializable
 {
-    /** @param list<EventDto> $items */
+    /** @param list<EventDetailDto> $items evenements avec leur createur */
     public function __construct(
         public array $items,
         public int $limit,
         public int $offset,
         public bool $hasMore,
+        /** Nombre total de resultats (null : non calcule, cf. listUpcomingPage). */
+        public ?int $total = null,
     ) {
     }
 
-    /** @return array{items: list<EventDto>, limit: int, offset: int, has_more: bool} */
+    /** @return array{items: list<EventDetailDto>, limit: int, offset: int, has_more: bool, total: ?int} */
     public function jsonSerialize(): array
     {
         return [
@@ -24,6 +26,7 @@ final readonly class EventPageDto implements JsonSerializable
             'limit' => $this->limit,
             'offset' => $this->offset,
             'has_more' => $this->hasMore,
+            'total' => $this->total,
         ];
     }
 }

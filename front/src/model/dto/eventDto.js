@@ -28,10 +28,11 @@
 /**
  * Reponse de GET /events (EventController::index).
  * @typedef {object} EventPageDto
- * @property {EventDto[]} items
+ * @property {import("./eventDetailDto.js").EventDetailDto[]} items evenements avec leur createur
  * @property {number} limit
  * @property {number} offset
  * @property {boolean} has_more
+ * @property {number|null} total nombre d'evenements correspondant aux filtres
  */
 
 export {};

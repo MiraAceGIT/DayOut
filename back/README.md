@@ -553,7 +553,7 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | Methode | Chemin               | Query params                                   | 200 — shape (sous `data`)             | Erreurs                                               |
 | ------- | -------------------- | ---------------------------------------------- | ------------------------------------- | ----------------------------------------------------- |
 | GET     | `/health`            | —                                              | `{ api, db, time }`                   | —                                                     |
-| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (0-10000, def. 0), `from` (ISO 8601, def. maintenant) | `{ items: Event[], limit, offset, has_more }` | `422 VALIDATION_ERROR` (param invalide ou hors bornes) |
+| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (0-10000, def. 0), `from` (ISO 8601, def. maintenant) + filtres (`EventFindQuery`, voir ci-dessous) | `{ items: EventDetail[], limit, offset, has_more, total }` | `422 VALIDATION_ERROR` (param invalide ou hors bornes) |
 | GET     | `/events/{id}`       | — (`id` entier via regex `\d+`)                | `EventDetail` (`Event` + `creator`)     | `404 EVENT_NOT_FOUND`, `404 NOT_FOUND` si `{id}` non num. |
 | GET     | `/docs`              | —                                              | Swagger UI (hors enveloppe)           | `404` si `DOCS_ENABLED=false`                         |
 | GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | `404` si `DOCS_ENABLED=false`                         |
@@ -561,29 +561,36 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 ### Pagination des evenements
 
 `EventController::index()` est l'equivalent de la methode `EvenementController::liste()`
-du ticket. Le service renvoie un `EventPageDto` ; le DAO applique le filtre `published`,
-`end_at > from`, le tri stable `start_at, id` et `LIMIT / OFFSET` via le QueryBuilder PDO.
+du ticket. La query string est lue par `EventFindQuery` (`src/Model/Query`), qui valide
+et convertit les filtres en `EventSearchParams`. Le DAO `Event::findManyPublished()` applique
+le filtre `published`, `end_at > from`, les filtres optionnels, le tri (`sort_by` puis `id`)
+et `LIMIT / OFFSET`, et renvoie `[items, total]`. Le service renvoie un `EventPageDto`.
 Les evenements en cours sont inclus jusqu'a leur fin.
+
+Filtres : `start_from` / `start_to` (debut), `q` (titre, lieu, ville), `city`,
+`categories` et `ids` (CSV), `creator_id`, `is_free`, `available`, `sort_by`
+(`start_at`, `created_at`, `title`, `price_cents`), `sort_dir` (`asc`, `desc`).
+
+Chaque element porte son `creator`, comme le detail : categories et createurs sont charges
+en une requete chacun pour toute la page (pas de N+1).
 
 Exemples : `GET /events?limit=20&offset=0`, puis `GET /events?limit=20&offset=20`.
 Conserver le meme `from` ISO 8601 entre les pages fixe le filtre temporel.
-Le service lit au plus `limit + 1` lignes pour calculer `has_more`, mais ne renvoie
-que `limit` evenements. Une derniere page pleine a aussi `has_more: false` ; un offset
+`total` vient d'un `COUNT(*)` sur la meme requete filtree, et `has_more` vaut
+`offset + nombre d'elements < total`. Une derniere page pleine a aussi `has_more: false` ; un offset
 au-dela des resultats renvoie `items: []`. Ce filtre temporel ne constitue pas un
 instantane des donnees : une creation ou une modification concurrente peut encore deplacer les pages.
 
 ### Detail d'un evenement
 
 `EventController::show()` correspond a `EvenementController::detail($id)` dans le ticket.
-`EventService::getPublishedDetail()` appelle le DAO `findPublishedDetailById()` : une
-requete preparee joint `users`, `creator_profiles`, `schools`, `event_categories` et
-`categories`. Les categories inactives sont exclues apres la jointure pour conserver
-un evenement qui n'a aucune categorie active. L'ordre reste `label, id`.
+`EventService::getPublishedDetail()` charge l'evenement comme un element de liste :
+`Event::findPublishedById()`, puis `Category::listActiveByEvent()` (categories actives,
+ordre `label, id`) et `Creator::listPublicByIds()` (jointures `creator_profiles`, `schools`).
 
-Le compteur du detail est recalcule par une sous-requete `COUNT(*)` sur `registrations`,
-avec `status <> 'cancelled'`, conformement a `fn_registration_is_active` : `registered`,
-`attended` et `no_show` sont comptes. Cette sous-requete evite de multiplier les inscrits
-par le nombre de categories. Le feed conserve son compteur denormalise pour ses performances.
+`registered_count` est la colonne denormalisee, tenue a jour par les triggers de
+`registrations` (`sp_registered_count_add`, inscriptions actives au sens de
+`fn_registration_is_active`) : la liste et le detail affichent le meme compteur.
 
 `EventDetailDto` conserve tous les champs publics d'`EventDto` et ajoute `creator`
 (`id`, `display_name`, `description`, `avatar_url`, `school_name`). Le nom et la description

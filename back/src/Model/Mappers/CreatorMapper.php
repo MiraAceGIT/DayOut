@@ -7,7 +7,7 @@ use App\Model\Dto\CreatorDto;
 
 final class CreatorMapper
 {
-    /** Ligne issue des jointures publiques du detail. */
+    /** Ligne aux alias `detail_*` de Creator::listPublicByIds. */
     public static function toDto(array $row): CreatorDto
     {
         return new CreatorDto(

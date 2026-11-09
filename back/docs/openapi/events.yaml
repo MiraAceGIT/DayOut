@@ -8,8 +8,9 @@ paths:
       tags: [events]
       summary: Liste des evenements publies a venir
       description: >-
-        Evenements publies pas encore termines a `from` (ceux en cours compris), tries par `start_at` puis `id`.
-        `has_more` indique si d'autres evenements existent apres cette page.
+        Evenements publies pas encore termines a `from` (ceux en cours compris), filtres par les parametres
+        ci-dessous (combines en ET), tries par `sort_by` (defaut `start_at`) puis `id`.
+        `total` compte les evenements correspondant aux filtres ; `has_more` indique si d'autres existent apres cette page.
         Conserver le meme `from` entre les pages pour fixer le filtre temporel.
         Un parametre invalide ou hors bornes donne 422 `VALIDATION_ERROR`.
       operationId: listEvents
@@ -28,6 +29,49 @@ paths:
             Instant de reference, ISO 8601 avec fuseau (defaut : maintenant). Ecrire `Z` ou encoder le `+` (`%2B`),
             sinon la query string le lit comme un espace.
           schema: { type: string, format: date-time, example: "2026-11-01T00:00:00Z" }
+        - name: start_from
+          in: query
+          description: Debut au plus tot (inclus), ISO 8601 avec fuseau.
+          schema: { type: string, format: date-time, example: "2026-11-07T00:00:00Z" }
+        - name: start_to
+          in: query
+          description: Debut strictement avant cet instant, ISO 8601 avec fuseau.
+          schema: { type: string, format: date-time, example: "2026-11-09T00:00:00Z" }
+        - name: q
+          in: query
+          description: Texte recherche dans le titre, le lieu ou la ville (insensible a la casse ; `%` et `_` litteraux).
+          schema: { type: string, maxLength: 100, example: jazz }
+        - name: city
+          in: query
+          description: Ville exacte.
+          schema: { type: string, maxLength: 80, example: Paris }
+        - name: categories
+          in: query
+          description: Slugs de categories actives separes par des virgules (au moins une correspond), 50 au plus.
+          schema: { type: string, example: "soiree,sport" }
+        - name: ids
+          in: query
+          description: Identifiants separes par des virgules, 50 au plus.
+          schema: { type: string, example: "1,4,7" }
+        - name: creator_id
+          in: query
+          description: Evenements d'un createur.
+          schema: { type: integer, minimum: 1 }
+        - name: is_free
+          in: query
+          description: "`true` : gratuits uniquement ; `false` : payants uniquement ; absent : tous."
+          schema: { type: boolean }
+        - name: available
+          in: query
+          description: "`true` : uniquement les evenements sans limite de places ou non complets."
+          schema: { type: boolean, default: false }
+        - name: sort_by
+          in: query
+          description: Tri principal, toujours departage par `id` dans le meme sens.
+          schema: { type: string, enum: [start_at, created_at, title, price_cents], default: start_at }
+        - name: sort_dir
+          in: query
+          schema: { type: string, enum: [asc, desc], default: asc }
       responses:
         "200":
           description: Une page d'evenements
@@ -46,8 +90,8 @@ paths:
       tags: [events]
       summary: Detail d'un evenement publie
       description: >-
-        Charge par identifiant les categories actives et le profil public du createur avec jointures.
-        registered_count est recalcule depuis les inscriptions non annulees, independamment du nombre de categories.
+        Meme representation qu'un element de `GET /events` : categories actives et profil public du createur.
+        registered_count est le compteur d'inscriptions actives tenu a jour par la base.
       operationId: getEvent
       parameters:
         - name: id
@@ -163,11 +207,12 @@ components:
 
     EventPage:
       type: object
-      required: [items, limit, offset, has_more]
+      required: [items, limit, offset, has_more, total]
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/Event" }
+          items: { $ref: "#/components/schemas/EventDetail" }
         limit: { type: integer, example: 20 }
         offset: { type: integer, example: 0 }
         has_more: { type: boolean, description: D'autres evenements existent apres cette page. }
+        total: { type: integer, nullable: true, example: 42, description: Nombre total d'evenements correspondant aux filtres. }

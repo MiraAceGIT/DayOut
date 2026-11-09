@@ -8,6 +8,7 @@ use App\Core\Orm\Connection;
 use App\Core\Request;
 use App\Core\Http\ExceptionRenderer;
 use App\Model\Dao\Category;
+use App\Model\Dao\Creator;
 use App\Model\Dao\Event;
 use App\Model\Exceptions\EventException;
 use App\Model\Services\EventService;
@@ -54,7 +55,7 @@ final class EventDetailServiceTest extends TestCase
             (3, 'Alex', 'Durand', NULL, NULL, 'Un autre organisateur', 'private2@example.test', 'secret-hash', 'secret-phone', 50)");
         $this->pdo->exec("INSERT INTO creator_profiles VALUES (2, 'Garage ISEP', 'Des projets tech entre etudiants.', 'secret-review')");
         $this->pdo->exec("INSERT INTO events (id, creator_id, title, slug, description, start_at, end_at, status, capacity, registered_count) VALUES
-            (1, 2, 'Hackathon', 'hackathon', 'Description', '2026-11-15 09:00:00', '2026-11-15 21:00:00', 'published', 100, 99),
+            (1, 2, 'Hackathon', 'hackathon', 'Description', '2026-11-15 09:00:00', '2026-11-15 21:00:00', 'published', 100, 3),
             (2, 3, 'Rencontre', 'rencontre', 'Description', '2026-11-16 09:00:00', '2026-11-16 21:00:00', 'published', NULL, 0),
             (3, 2, 'Draft', 'draft', 'd', '2026-11-16 09:00:00', '2026-11-16 21:00:00', 'draft', NULL, 0),
             (4, 2, 'Archive', 'archive', 'd', '2026-11-16 09:00:00', '2026-11-16 21:00:00', 'archived', NULL, 0),
@@ -63,16 +64,16 @@ final class EventDetailServiceTest extends TestCase
         $this->pdo->exec('INSERT INTO event_categories VALUES (1, 1), (1, 2), (1, 3), (2, 3)');
         $this->pdo->exec("INSERT INTO registrations VALUES (1, 1, 'registered'), (2, 1, 'attended'), (3, 1, 'no_show'), (4, 1, 'cancelled'), (5, 2, 'cancelled')");
         $connection = new Connection($this->pdo);
-        $this->service = new EventService(new Event($connection), new Category($connection));
+        $this->service = new EventService(new Event($connection), new Category($connection), new Creator($connection));
     }
 
-    public function testLoadsCategoriesCreatorAndActiveCountInOneQuery(): void
+    public function testLoadsEventCategoriesAndCreatorLikeAListItem(): void
     {
         $detail = $this->service->getPublishedDetail(1);
-        $this->assertSame(1, $this->pdo->queries);
+        $this->assertSame(3, $this->pdo->queries, 'event, categories, creator');
         $this->assertSame(1, $detail->event->id);
         $this->assertSame(['bde', 'tech'], array_map(static fn ($c): string => $c->slug, $detail->event->categories));
-        $this->assertSame(3, $detail->event->registeredCount, 'not cached 99, not multiplied by categories, cancelled excluded');
+        $this->assertSame(3, $detail->event->registeredCount, 'denormalized column (kept by triggers), not multiplied by categories');
         $this->assertSame('Garage ISEP', $detail->creator->displayName);
         $this->assertSame('Des projets tech entre etudiants.', $detail->creator->description);
         $this->assertSame('ISEP', $detail->creator->schoolName);

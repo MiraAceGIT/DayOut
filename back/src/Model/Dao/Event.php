@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Model\Dao;
 
 use App\Core\Orm\Query\QueryBuilder;
-use App\Core\Orm\Caster;
 use DateTimeInterface;
 
 /** Seuls les events `published` sont exposes. */
@@ -62,47 +61,84 @@ final class Event extends Model
             ->get();
     }
 
+    /** sort_by expose => colonne SQL (whitelist : jamais d'identifiant venu du client). */
+    private const SORT_MAP = [
+        'start_at'    => 'start_at',
+        'created_at'  => 'created_at',
+        'title'       => 'title',
+        'price_cents' => 'price_cents',
+    ];
+
+    /**
+     * Events publies filtres par `$params` + total sans pagination. Tri departage par id (pages stables).
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: int} [items, total]
+     */
+    public function findManyPublished(?EventSearchParams $params = null): array
+    {
+        $param = $params ?? new EventSearchParams();
+        $query = $this->published();
+
+        if ($param->endingAfter !== null) {
+            $query->where('end_at', '>', $param->endingAfter);
+        }
+        if ($param->startFrom !== null) {
+            $query->where('start_at', '>=', $param->startFrom);
+        }
+        if ($param->startTo !== null) {
+            $query->where('start_at', '<', $param->startTo);
+        }
+        if ($param->text !== null) {
+            // ESCAPE '!' : portable MariaDB/SQLite ; la collation *_ci rend la recherche insensible a la casse et aux accents.
+            $like = '%' . strtr($param->text, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+            $query->whereRaw(
+                "title LIKE ? ESCAPE '!' OR venue_name LIKE ? ESCAPE '!' OR city LIKE ? ESCAPE '!'",
+                [$like, $like, $like],
+            );
+        }
+        if ($param->city !== null) {
+            $query->where('city', $param->city);
+        }
+        if ($param->ids) {
+            $query->whereIn('id', $param->ids);
+        }
+        if ($param->categories) {
+            $placeholders = implode(', ', array_fill(0, count($param->categories), '?'));
+            $query->whereRaw(
+                'EXISTS (SELECT 1 FROM event_categories AS ec JOIN categories AS c ON c.id = ec.category_id'
+                . " WHERE ec.event_id = events.id AND c.active = 1 AND c.slug IN ($placeholders))",
+                $param->categories,
+            );
+        }
+        if ($param->creatorId !== null) {
+            $query->where('creator_id', $param->creatorId);
+        }
+        if ($param->isFree !== null) {
+            $query->where('is_paid', !$param->isFree);
+        }
+        if ($param->onlyAvailable) {
+            $query->whereRaw('capacity IS NULL OR registered_count < capacity');
+        }
+
+        // COUNT ignore ORDER BY / LIMIT / OFFSET (Compiler::count).
+        $total = $query->count();
+
+        $orderColumn = self::SORT_MAP[$param->sortBy] ?? self::SORT_MAP['start_at'];
+        $orderDir    = $param->sortDir === 'desc' ? 'DESC' : 'ASC';
+
+        $items = $query
+            ->orderBy($orderColumn, $orderDir)
+            ->orderBy('id', $orderDir)
+            ->limit($param->limit)
+            ->offset($param->offset)
+            ->get();
+
+        return [$items, $total];
+    }
+
     public function findPublishedById(int $id): ?array
     {
         return $this->published()->where('id', $id)->first();
-    }
-
-    /** Detail public en une requete ; le COUNT est independant des categories (pas de multiplication). */
-    public function findPublishedDetailById(int $id): ?array
-    {
-        $columns = array_map(
-            static fn (string $column): string => 'events.' . $column,
-            array_values(array_diff(self::COLUMNS, ['registered_count'])),
-        );
-        $rows = $this->table()
-            ->select(...$columns)
-            ->selectRaw("(SELECT COUNT(*) FROM registrations AS r WHERE r.event_id = events.id AND r.status <> 'cancelled') AS registered_count")
-            ->selectRaw('u.id AS detail_creator_id, u.first_name AS detail_first_name, u.last_name AS detail_last_name, u.avatar_url AS detail_avatar_url, u.bio AS detail_bio')
-            ->selectRaw('cp.display_name AS detail_display_name, cp.description AS detail_creator_description, s.name AS detail_school_name, s.short_name AS detail_school_short_name')
-            ->selectRaw('c.id AS detail_category_id, c.slug AS detail_category_slug, c.label AS detail_category_label, c.active AS detail_category_active')
-            ->join('users AS u', 'u.id', '=', 'events.creator_id')
-            ->leftJoin('creator_profiles AS cp', 'cp.user_id', '=', 'u.id')
-            ->leftJoin('schools AS s', 's.id', '=', 'u.school_id')
-            ->leftJoin('event_categories AS ec', 'ec.event_id', '=', 'events.id')
-            ->leftJoin('categories AS c', 'c.id', '=', 'ec.category_id')
-            ->where('events.id', $id)
-            ->where('events.status', 'published')
-            ->orderBy('c.label')
-            ->orderBy('c.id')
-            ->get();
-
-        if ($rows === []) {
-            return null;
-        }
-        $event = Caster::apply($rows[0], self::CASTS, self::class);
-        // Filtrer apres la LEFT JOIN garde les evenements sans categorie active.
-        $event['categories'] = [];
-        foreach ($rows as $row) {
-            if ((int) $row['detail_category_active'] === 1) {
-                $event['categories'][] = ['slug' => $row['detail_category_slug'], 'label' => $row['detail_category_label']];
-            }
-        }
-        return $event;
     }
 
     private function published(): QueryBuilder

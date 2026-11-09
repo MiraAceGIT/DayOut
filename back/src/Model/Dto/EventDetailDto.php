@@ -5,7 +5,7 @@ namespace App\Model\Dto;
 
 use JsonSerializable;
 
-/** Le detail conserve les champs de la liste et ajoute le profil public du createur. */
+/** Event + profil public du createur : utilise par le detail et par chaque element des listes. */
 final readonly class EventDetailDto implements JsonSerializable
 {
     public function __construct(public EventDto $event, public CreatorDto $creator)

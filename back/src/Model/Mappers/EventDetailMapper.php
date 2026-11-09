@@ -11,4 +11,10 @@ final class EventDetailMapper
     {
         return new EventDetailDto(EventMapper::toDto($row), CreatorMapper::toDto($row));
     }
+
+    /** @return list<EventDetailDto> */
+    public static function toDtos(array $rows): array
+    {
+        return array_map(self::toDto(...), array_values($rows));
+    }
 }

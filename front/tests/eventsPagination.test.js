@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { event, eventDto } from "./fixtures.js";
+import { creatorDto, eventDetail as event, eventDto } from "./fixtures.js";
 
 // Le controleur importe la configuration navigateur ; la vue sera injectee.
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});
@@ -29,7 +29,7 @@ describe("pagination de la liste", () => {
     const controller = new EventsController({ view, limit: 2, loadEvents: async (options) => {
       calls.push(options);
       return { items: options.offset === 0 ? [event({ id: 1 }), event({ id: 2 })] : [event({ id: 3 })],
-        offset: options.offset, limit: 2, hasMore: options.offset === 0 };
+        offset: options.offset, limit: 2, hasMore: options.offset === 0, total: 3 };
     } });
     await controller.start();
     await view.handlers.onLoadMore();
@@ -49,7 +49,7 @@ describe("pagination de la liste", () => {
     const controller = new EventsController({ view, limit: 1, loadEvents: async ({ offset }) => {
       offsets.push(offset);
       if (offset === 1 && fail) { fail = false; throw new ApiError("Offline", { type: "network" }); }
-      return { items: [event({ id: offset + 1 })], offset, limit: 1, hasMore: offset === 0 };
+      return { items: [event({ id: offset + 1 })], offset, limit: 1, hasMore: offset === 0, total: 2 };
     } });
     await controller.start();
     await controller.loadMore();
@@ -74,7 +74,7 @@ describe("pagination de la liste", () => {
     const pending = controller.start();
     await controller.loadMore();
     assert.equal(calls, 1);
-    resolvePage({ items: [], limit: 20, offset: 0, hasMore: false });
+    resolvePage({ items: [], limit: 20, offset: 0, hasMore: false, total: 0 });
     await pending;
     await controller.loadMore();
     assert.equal(calls, 1);
@@ -85,7 +85,7 @@ describe("pagination de la liste", () => {
   it("ne demande pas d'offset au-dela de la limite de l'API", async () => {
     const view = viewStub();
     const controller = new EventsController({ view, loadEvents: async () => ({
-      items: [event({ id: 1 })], limit: 20, offset: 10000, hasMore: true,
+      items: [event({ id: 1 })], limit: 20, offset: 10000, hasMore: true, total: 20000,
     }) });
     await controller.start();
     assert.equal(view.pagination.limitReached, true);
@@ -99,7 +99,7 @@ describe("service de liste", () => {
     const urls = [];
     globalThis.fetch = async (url) => {
       urls.push(new URL(String(url)));
-      return new Response(JSON.stringify({ data: { items: [eventDto()], limit: 2, offset: 4, has_more: true } }),
+      return new Response(JSON.stringify({ data: { items: [{ ...eventDto(), creator: creatorDto() }], limit: 2, offset: 4, has_more: true, total: 7 } }),
         { status: 200, headers: { "content-type": "application/json" } });
     };
     try {
@@ -110,6 +110,8 @@ describe("service de liste", () => {
       assert.equal(page.hasMore, true);
       assert.equal(page.items[0].remainingPlaces, 238);
       assert.equal(page.offset, 4);
+      assert.equal(page.total, 7);
+      assert.equal(page.items[0].creator.displayName, "Garage ISEP");
       assert.ok(Array.isArray(await fetchUpcomingEvents({ limit: 100 })));
       assert.equal(urls[1].searchParams.get("offset"), "0");
     } finally { globalThis.fetch = previousFetch; }

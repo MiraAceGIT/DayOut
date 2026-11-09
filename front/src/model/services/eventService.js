@@ -1,6 +1,5 @@
 import { api } from "../../core/api.js";
-import { toEvents } from "../mappers/eventMapper.js";
-import { toEventDetail } from "../mappers/eventDetailMapper.js";
+import { toEventDetail, toEventDetails } from "../mappers/eventDetailMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */
 
@@ -16,7 +15,9 @@ export async function fetchUpcomingEventPage({ limit = 20, offset = 0, from, sig
   if (from) query.set("from", from);
   /** @type {EventPageDto} */
   const page = await api.get(`/events?${query}`, { signal });
-  return { items: toEvents(page.items), limit: page.limit, offset: page.offset, hasMore: page.has_more };
+  return {
+    items: toEventDetails(page.items), limit: page.limit, offset: page.offset, hasMore: page.has_more, total: page.total ?? null,
+  };
 }
 
 /** Compatibilite avec l'accueil : il ne consomme que les evenements de la premiere page.

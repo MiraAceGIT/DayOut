@@ -7,8 +7,8 @@ use App\Core\Controller;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
+use App\Model\Query\EventFindQuery;
 use App\Model\Services\EventService;
-use DateTimeImmutable;
 
 final class EventController extends Controller
 {
@@ -21,16 +21,9 @@ final class EventController extends Controller
 
     public function index(Request $request): Response
     {
-        $query = $this->validateQuery($request, [
-            'limit'  => 'int|min:1|max:100',
-            'offset' => 'int|min:0|max:10000',
-            'from'   => 'datetime',
-        ]);
-        $limit  = $query['limit'] ?? 20;
-        $offset = $query['offset'] ?? 0;
-        $from   = new DateTimeImmutable($query['from'] ?? 'now');
+        $query = EventFindQuery::fromQuery($request->query());
 
-        return $this->ok($this->events()->listUpcomingPage($from, $limit, $offset));
+        return $this->ok($this->events()->searchPage($query->toParams()));
     }
 
     public function show(Request $request): Response

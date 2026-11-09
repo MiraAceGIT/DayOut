@@ -15,3 +15,8 @@ export function toCreator(dto) {
 export function toEventDetail(dto) {
   return { ...toEvent(dto), creator: toCreator(dto.creator) };
 }
+
+/** Elements de GET /events : chacun porte son createur. */
+export function toEventDetails(dtos) {
+  return Array.isArray(dtos) ? dtos.map(toEventDetail) : [];
+}

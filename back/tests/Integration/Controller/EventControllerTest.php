@@ -136,6 +136,13 @@ final class EventControllerTest extends HttpTestCase
         }
     }
 
+    public function testListItemsCarryTheSameCreatorAsTheDetail(): void
+    {
+        foreach ($this->list()['items'] as $event) {
+            $this->assertSame($this->get('/events/' . $event['id'])->json()['data']['creator'], $event['creator'], "event {$event['id']}");
+        }
+    }
+
     public function testShowUnknownEventReturns404(): void
     {
         $error = $this->assertError(404, 'EVENT_NOT_FOUND', $this->get('/events/99999'));
