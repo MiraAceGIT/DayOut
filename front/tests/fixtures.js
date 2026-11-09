@@ -29,6 +29,7 @@ export function eventDto(overrides = {}) {
     is_paid: true,
     external_ticket_url: null,
     school_restricted: false,
+    status: "published",
     categories: [{ slug: "soiree", label: "Soirée" }],
     creator: creatorDto(),
     ...overrides,

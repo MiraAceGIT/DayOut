@@ -130,7 +130,7 @@ final class EventControllerTest extends HttpTestCase
         $events = [$this->get('/events/1')->json()['data'], ...$this->list()['items']];
 
         foreach ($events as $event) {
-            foreach (['creator_id', 'restricted_school_id', 'status', 'published_at', 'created_at', 'updated_at'] as $key) {
+            foreach (['creator_id', 'restricted_school_id', 'published_at', 'created_at', 'updated_at'] as $key) {
                 $this->assertFalse(array_key_exists($key, $event), "event {$event['id']} exposes $key");
             }
         }

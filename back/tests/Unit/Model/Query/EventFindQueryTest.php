@@ -66,6 +66,7 @@ final class EventFindQueryTest extends TestCase
             [['sort_dir' => 'up'], 'sort_dir'],
             [['is_free' => 'yes'], 'is_free'],
             [['start_to' => '2026-11-07'], 'start_to'],
+            [['start_from' => '2026-11-09T00:00:00Z', 'start_to' => '2026-11-07T00:00:00Z'], 'start_to'],
             [['ids' => implode(',', range(1, 51))], 'ids'],
         ] as [$input, $field]) {
             $e = $this->assertThrows(ValidationException::class, fn () => EventFindQuery::fromQuery($input), $field);

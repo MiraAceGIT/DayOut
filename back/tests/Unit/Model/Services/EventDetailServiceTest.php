@@ -43,7 +43,7 @@ final class EventDetailServiceTest extends TestCase
             external_ticket_url TEXT, school_restricted INTEGER DEFAULT 0, restricted_school_id INTEGER,
             status TEXT, published_at TEXT, created_at TEXT)');
         $this->pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, school_id INTEGER,
-            avatar_url TEXT, bio TEXT, email TEXT, password_hash TEXT, phone TEXT, reliability_score INTEGER)');
+            avatar_url TEXT, bio TEXT, email TEXT, password_hash TEXT, phone TEXT, reliability_score INTEGER, banned INTEGER DEFAULT 0)');
         $this->pdo->exec('CREATE TABLE creator_profiles (user_id INTEGER PRIMARY KEY, display_name TEXT, description TEXT, review_notes TEXT)');
         $this->pdo->exec('CREATE TABLE schools (id INTEGER PRIMARY KEY, name TEXT, short_name TEXT)');
         $this->pdo->exec('CREATE TABLE categories (id INTEGER PRIMARY KEY, slug TEXT, label TEXT, active INTEGER)');
@@ -51,8 +51,8 @@ final class EventDetailServiceTest extends TestCase
         $this->pdo->exec('CREATE TABLE registrations (id INTEGER PRIMARY KEY, event_id INTEGER, status TEXT)');
         $this->pdo->exec("INSERT INTO schools VALUES (1, 'Institut superieur', 'ISEP')");
         $this->pdo->exec("INSERT INTO users VALUES
-            (2, 'Camille', 'Martin', 1, 'https://example.test/avatar.jpg', 'Bio publique', 'private@example.test', 'secret-hash', 'secret-phone', 80),
-            (3, 'Alex', 'Durand', NULL, NULL, 'Un autre organisateur', 'private2@example.test', 'secret-hash', 'secret-phone', 50)");
+            (2, 'Camille', 'Martin', 1, 'https://example.test/avatar.jpg', 'Bio publique', 'private@example.test', 'secret-hash', 'secret-phone', 80, 0),
+            (3, 'Alex', 'Durand', NULL, NULL, 'Un autre organisateur', 'private2@example.test', 'secret-hash', 'secret-phone', 50, 0)");
         $this->pdo->exec("INSERT INTO creator_profiles VALUES (2, 'Garage ISEP', 'Des projets tech entre etudiants.', 'secret-review')");
         $this->pdo->exec("INSERT INTO events (id, creator_id, title, slug, description, start_at, end_at, status, capacity, registered_count) VALUES
             (1, 2, 'Hackathon', 'hackathon', 'Description', '2026-11-15 09:00:00', '2026-11-15 21:00:00', 'published', 100, 3),
@@ -83,7 +83,7 @@ final class EventDetailServiceTest extends TestCase
     public function testMissingProfileSchoolAndActiveCategoryDoNotHideTheEvent(): void
     {
         $detail = $this->service->findOne(2);
-        $this->assertSame('Alex Durand', $detail->creator->displayName);
+        $this->assertSame('Alex D.', $detail->creator->displayName);
         $this->assertSame('Un autre organisateur', $detail->creator->description);
         $this->assertSame(null, $detail->creator->schoolName);
         $this->assertSame(null, $detail->creator->avatarUrl);
@@ -112,7 +112,7 @@ final class EventDetailServiceTest extends TestCase
         $this->assertSame(1, $data['id']);
         $this->assertSame(3, $data['registered_count']);
         $this->assertSame(['id', 'display_name', 'description', 'avatar_url', 'school_name'], array_keys($data['creator']));
-        foreach (['creator_id', 'status', 'detail_creator_id', 'detail_category_id'] as $internal) {
+        foreach (['creator_id', 'detail_creator_id', 'detail_category_id'] as $internal) {
             $this->assertArrayNotHasKey($internal, $data);
         }
         foreach (['email', 'password_hash', 'phone', 'reliability_score', 'review_notes', 'secret-'] as $private) {

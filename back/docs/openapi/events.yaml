@@ -111,7 +111,7 @@ paths:
                   data: { $ref: "#/components/schemas/Event" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: L'utilisateur n'est pas un createur approuve (`CREATOR_REQUIRED`)
+          description: L'utilisateur n'est pas un createur approuve et non banni, ni un admin (`CREATOR_REQUIRED`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -120,6 +120,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "422": { $ref: "#/components/responses/ValidationError" }
         "500": { $ref: "#/components/responses/InternalError" }
 
@@ -157,9 +158,12 @@ paths:
       tags: [events]
       summary: Modifier un evenement
       description: >-
-        Modification partielle par son createur, quel que soit le statut. Seuls les champs envoyes changent ;
-        `null` vide un champ facultatif. Les regles croisees (fin apres debut, prix et `is_paid`) sont verifiees
-        avec les valeurs actuelles pour les champs non envoyes.
+        Modification partielle par son createur, en `draft` ou `published` uniquement. Seuls les champs envoyes
+        changent ; `null` vide un champ facultatif. `{"status": "published"}` publie un brouillon (refuse s'il est
+        deja termine) et `{"status": "cancelled"}` annule un event publie ; `status` doit etre envoye seul. Les regles croisees (fin apres debut, prix et `is_paid`) sont
+        verifiees avec les valeurs actuelles pour les champs non envoyes. Une fois publie, `restricted_school_id`
+        est fige ; avec des inscriptions, `start_at`, `end_at`, `is_paid`, `price_cents` et `currency` aussi.
+        `capacity` ne peut pas descendre sous le nombre d'inscrits.
       operationId: updateEvent
       security:
         - bearerAuth: []
@@ -186,28 +190,32 @@ paths:
                   data: { $ref: "#/components/schemas/Event" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: L'evenement appartient a un autre createur (`EVENT_FORBIDDEN`)
+          description: Createur non actif (`CREATOR_REQUIRED`) ou event publie d'un autre createur (`EVENT_FORBIDDEN`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
-          description: Evenement inexistant (`EVENT_NOT_FOUND`)
+          description: Evenement inexistant, ou brouillon d'un autre createur (`EVENT_NOT_FOUND`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
-          description: Slug deja utilise (`CONFLICT`)
+          description: >-
+            Slug deja utilise (`CONFLICT`), statut incompatible (`EVENT_INVALID_STATUS` : modification d'un event
+            annule ou archive, publication d'un event non brouillon, annulation d'un event non publie)
+            ou champ fige (`EVENT_FIELDS_LOCKED`, `details.fields`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "422": { $ref: "#/components/responses/ValidationError" }
         "500": { $ref: "#/components/responses/InternalError" }
     delete:
       tags: [events]
       summary: Supprimer un evenement
       description: >-
-        Suppression definitive par son createur, seulement si aucune inscription n'est active :
-        sinon 409 `EVENT_HAS_REGISTRATIONS` (les inscriptions seraient effacees en cascade).
+        Suppression definitive par son createur, reservee aux brouillons. Un event publie a un historique
+        (inscriptions, clics, signalements) : l'annuler avec `PATCH {"status": "cancelled"}`.
       operationId: deleteEvent
       security:
         - bearerAuth: []
@@ -222,17 +230,17 @@ paths:
           description: Evenement supprime
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: L'evenement appartient a un autre createur (`EVENT_FORBIDDEN`)
+          description: Createur non actif (`CREATOR_REQUIRED`) ou event publie d'un autre createur (`EVENT_FORBIDDEN`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
-          description: Evenement inexistant (`EVENT_NOT_FOUND`)
+          description: Evenement inexistant, ou brouillon d'un autre createur (`EVENT_NOT_FOUND`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
-          description: Des inscriptions sont actives (`EVENT_HAS_REGISTRATIONS`)
+          description: L'evenement n'est pas un brouillon (`EVENT_INVALID_STATUS`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -240,6 +248,12 @@ paths:
 
 components:
   responses:
+    UnsupportedMediaType:
+      description: Corps non JSON (`UNSUPPORTED_MEDIA_TYPE`) ; envoyer `Content-Type application/json`
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
     Unauthorized:
       description: Authentification requise (`UNAUTHORIZED`)
       headers:
@@ -258,7 +272,7 @@ components:
         title: { type: string, maxLength: 180, example: Soiree de rentree }
         slug: { type: string, maxLength: 200, pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", example: soiree-de-rentree }
         description: { type: string, maxLength: 16000 }
-        cover_image_url: { type: string, format: uri, maxLength: 255, nullable: true }
+        cover_image_url: { type: string, format: uri, pattern: "^https://", maxLength: 255, nullable: true, description: URL https publique }
         start_at: { type: string, format: date-time, example: "2026-11-07T20:00:00Z" }
         end_at: { type: string, format: date-time, description: Strictement apres start_at, example: "2026-11-08T02:00:00Z" }
         venue_name: { type: string, maxLength: 160, nullable: true }
@@ -271,18 +285,18 @@ components:
         price_cents: { type: integer, minimum: 0, maximum: 4294967295, description: "> 0 si et seulement si is_paid" }
         currency: { type: string, enum: [EUR] }
         is_paid: { type: boolean }
-        external_ticket_url: { type: string, format: uri, maxLength: 255, nullable: true }
+        external_ticket_url: { type: string, format: uri, pattern: "^https://", maxLength: 255, nullable: true, description: URL https publique }
         restricted_school_id: { type: integer, minimum: 1, nullable: true, description: Reserve aux etudiants de cette ecole }
 
     EventUpdate:
       type: object
-      description: EventUpdateDto. Tout est optionnel mais au moins un champ est requis ; null interdit pour les champs obligatoires a la creation.
+      description: EventUpdateDto. Tout est optionnel mais au moins un champ est requis ; title, slug et description ne peuvent etre ni null ni vides.
       minProperties: 1
       properties:
         title: { type: string, maxLength: 180, example: Soiree de rentree }
         slug: { type: string, maxLength: 200, pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", example: soiree-de-rentree }
         description: { type: string, maxLength: 16000 }
-        cover_image_url: { type: string, format: uri, maxLength: 255, nullable: true }
+        cover_image_url: { type: string, format: uri, pattern: "^https://", maxLength: 255, nullable: true, description: URL https publique }
         start_at: { type: string, format: date-time, example: "2026-11-07T20:00:00Z" }
         end_at: { type: string, format: date-time, description: Strictement apres start_at, example: "2026-11-08T02:00:00Z" }
         venue_name: { type: string, maxLength: 160, nullable: true }
@@ -295,8 +309,12 @@ components:
         price_cents: { type: integer, minimum: 0, maximum: 4294967295, description: "> 0 si et seulement si is_paid" }
         currency: { type: string, enum: [EUR] }
         is_paid: { type: boolean }
-        external_ticket_url: { type: string, format: uri, maxLength: 255, nullable: true }
+        external_ticket_url: { type: string, format: uri, pattern: "^https://", maxLength: 255, nullable: true, description: URL https publique }
         restricted_school_id: { type: integer, minimum: 1, nullable: true, description: Reserve aux etudiants de cette ecole }
+        status:
+          type: string
+          enum: [published, cancelled]
+          description: Transition de statut ; doit etre envoye seul.
 
     Creator:
       type: object
@@ -341,6 +359,7 @@ components:
         - is_paid
         - external_ticket_url
         - school_restricted
+        - status
         - categories
         - creator
       properties:
@@ -373,6 +392,10 @@ components:
         is_paid: { type: boolean }
         external_ticket_url: { type: string, format: uri, nullable: true }
         school_restricted: { type: boolean, description: Reserve aux etudiants d'une ecole }
+        status:
+          type: string
+          enum: [draft, published, cancelled, archived]
+          description: Toujours `published` en lecture publique ; les ecritures renvoient l'etat reel.
         categories:
           type: array
           description: Triees par `label` puis `id` ; [] si aucune.

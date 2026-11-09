@@ -40,6 +40,7 @@ export function toEvent(dto) {
     position: latitude !== null && longitude !== null ? { lat: latitude, lng: longitude } : null,
     externalTicketUrl: dto.external_ticket_url ?? null,
     schoolRestricted: Boolean(dto.school_restricted),
+    status: dto.status ?? "published",
     categories: Array.isArray(dto.categories) ? dto.categories.map(toCategory) : [],
     creator: dto.creator ? toCreator(dto.creator) : null,
   };
@@ -72,6 +73,7 @@ export function toEventDto(event) {
     is_paid: event.isPaid,
     external_ticket_url: event.externalTicketUrl,
     school_restricted: event.schoolRestricted,
+    status: event.status,
     categories: event.categories.map(toCategoryDto),
     creator: event.creator ? toCreatorDto(event.creator) : null,
   });

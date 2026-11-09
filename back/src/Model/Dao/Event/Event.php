@@ -120,8 +120,21 @@ final class Event extends Model
         return $this->query()->where('id', $id)->first();
     }
 
+    /** Changement de statut atomique : 0 si l'event n'est plus dans le statut `$from`. */
+    public function changeStatus(int $id, string $from, string $to, array $server = []): int
+    {
+        return $this->table()->where('id', $id)->where('status', $from)->update(['status' => $to] + $server);
+    }
+
+    public function deleteDraft(int $id): int
+    {
+        return $this->table()->where('id', $id)->where('status', 'draft')->delete();
+    }
+
     private function published(): QueryBuilder
     {
-        return $this->query()->where('status', 'published');
+        return $this->query()
+            ->where('status', 'published')
+            ->whereRaw('NOT EXISTS (SELECT 1 FROM users AS banned_creator WHERE banned_creator.id = events.creator_id AND banned_creator.banned = 1)');
     }
 }

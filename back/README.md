@@ -406,6 +406,7 @@ final readonly class EventUpdateDto
 | Regle      | Accepte                                                              |
 | ---------- | -------------------------------------------------------------------- |
 | `required` | present, non `null`, ni chaine vide (apres trim), ni tableau vide    |
+| `filled`   | si present : ni chaine vide (apres trim), ni tableau vide (PATCH)    |
 | `nullable` | `null` autorise (les autres regles sont ignorees)                    |
 | `string`   | chaine                                                               |
 | `int`      | entier ou chaine d'entier (`"12"`), caste en int                     |
@@ -413,7 +414,7 @@ final readonly class EventUpdateDto
 | `bool`     | `true`/`false`, `1`/`0`, `"true"`/`"false"`, caste en bool           |
 | `array`    | tableau                                                              |
 | `email`    | adresse email valide                                                 |
-| `url`      | URL `http://` ou `https://` (refuse `javascript:`...)                |
+| `url`      | URL `https://` publique : ni identifiants, ni `localhost`/IP privee, caracteres RFC 3986 |
 | `date`     | `AAAA-MM-JJ` (refuse `2026-02-31`)                                   |
 | `datetime` | ISO 8601 avec fuseau (`2026-11-07T20:00:00Z`, `...+01:00`)           |
 | `slug`     | minuscules, chiffres et tirets simples                               |
@@ -573,9 +574,9 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | GET     | `/health`            | —                                              | `{ api, db, time }`                   | —                                                     |
 | GET     | `/events`            | `limit` (1-100, def. 20), `offset` (0-10000, def. 0), `from` (ISO 8601, def. maintenant) + filtres (`EventFindQuery`, voir ci-dessous) | `{ items: Event[], limit, offset, has_more, total }` | `422 VALIDATION_ERROR` (param invalide ou hors bornes) |
 | GET     | `/events/{id}`       | — (`id` entier via regex `\d+`)                | `Event` (avec `creator`)                | `404 EVENT_NOT_FOUND`, `404 NOT_FOUND` si `{id}` non num. |
-| POST    | `/events`            | — ; body `EventCreate` ; **auth**              | `201` `Event` (cree en `draft`)       | `401`, `403 CREATOR_REQUIRED`, `409 CONFLICT` (slug), `422` |
-| PATCH   | `/events/{id}`       | — ; body `EventUpdate` (partiel) ; **auth**    | `Event`                               | `401`, `403 EVENT_FORBIDDEN`, `404`, `409`, `422`     |
-| DELETE  | `/events/{id}`       | — ; **auth**                                   | `204`                                 | `401`, `403 EVENT_FORBIDDEN`, `404`, `409 EVENT_HAS_REGISTRATIONS` |
+| POST    | `/events`            | — ; body `EventCreate` ; **auth**              | `201` `Event` (cree en `draft`)       | `401`, `403 CREATOR_REQUIRED`, `409 CONFLICT` (slug), `415`, `422` |
+| PATCH   | `/events/{id}`       | — ; body `EventUpdate` (partiel, ou `{"status": ...}` seul) ; **auth** | `Event`                               | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` / `EVENT_FIELDS_LOCKED`, `415`, `422` |
+| DELETE  | `/events/{id}`       | — ; **auth** ; brouillons uniquement           | `204`                                 | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` |
 | GET     | `/creators`          | `q`, `school_id`, `ids` (CSV), `has_upcoming_events`, `from`, `sort_by` (`display_name`, `created_at`), `sort_dir`, `limit`, `offset` (`CreatorFindQuery`) | `{ items: Creator[], limit, offset, has_more, total }` (approuves, non bannis) | `422 VALIDATION_ERROR` |
 | GET     | `/docs`              | —                                              | Swagger UI (hors enveloppe)           | `404` si `DOCS_ENABLED=false`                         |
 | GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | `404` si `DOCS_ENABLED=false`                         |
@@ -611,12 +612,24 @@ instantane des donnees : une creation ou une modification concurrente peut encor
 seul le futur middleware d'authentification le posera apres verification du token. **Tant qu'il
 n'existe pas, toutes les ecritures repondent 401.**
 
-- `create` : createur approuve ou admin, non banni (`Creator::canPublish`), sinon `403 CREATOR_REQUIRED`.
-  L'event est cree en `draft` ; `creator_id` et `status` sont fixes par le serveur.
-- `update` : proprietaire uniquement (`403 EVENT_FORBIDDEN`), tout statut. Les regles croisees
+Toute ecriture exige un createur approuve (ou admin) non banni (`Creator::canPublish`), sinon
+`403 CREATOR_REQUIRED` : un createur banni perd aussi la main sur ses events existants. Sur l'event
+d'un autre : `403 EVENT_FORBIDDEN` s'il est publie, `404` sinon (un brouillon ne doit pas se reveler).
+Le corps doit etre en `Content-Type: application/json` (`415` sinon : pas de requete CSRF « simple »).
+Chaque ecriture est tracee par `Log::audit` (`event.create`, `event.update`...).
+
+- `create` : l'event est cree en `draft` ; `creator_id` et `status` sont fixes par le serveur.
+- `update` : en `draft` ou `published` seulement (`409 EVENT_INVALID_STATUS`). Les regles croisees
   (fin apres debut, prix / `is_paid`) se verifient avec les valeurs actuelles des champs non envoyes.
-- `delete` : proprietaire uniquement, refuse si `registered_count > 0` (`409 EVENT_HAS_REGISTRATIONS`) :
-  `fk_reg_event` est en `ON DELETE CASCADE` et effacerait les inscriptions.
+  Publie, `restricted_school_id` est fige ; avec des inscriptions, `start_at`, `end_at`, `is_paid`,
+  `price_cents` et `currency` aussi (`409 EVENT_FIELDS_LOCKED`, `details.fields`). `capacity` ne peut
+  pas descendre sous `registered_count` (`422` sur `capacity`).
+- Changement de statut par `PATCH`, avec `status` seul dans le corps :
+  - `{"status": "published"}` : `draft` -> `published` et `published_at`, refuse si l'event est deja termine ;
+  - `{"status": "cancelled"}` : `published` -> `cancelled` ; inscriptions et historique conserves.
+- `delete` : brouillons uniquement (`DELETE ... WHERE status = 'draft'`, atomique). Un event publie a un
+  historique (inscriptions, clics, presences, signalements) que les `ON DELETE CASCADE` effaceraient :
+  il s'annule.
 
 ### Detail d'un evenement
 
@@ -631,9 +644,11 @@ ordre `label, id`) et `Creator::listPublicByIds()` (jointures `creator_profiles`
 
 Un seul DTO, `EventDto`, sert en liste et en detail ; il contient `creator`
 (`id`, `display_name`, `description`, `avatar_url`, `school_name`). Le nom et la description
-proviennent de `creator_profiles`, avec le nom et la bio utilisateur en secours ;
+proviennent de `creator_profiles`, avec en secours le prenom et l'initiale du nom (« Alice A. »,
+jamais le nom complet) et la bio utilisateur ;
 l'ecole et l'avatar peuvent etre `null`. Aucun email, telephone, score de fiabilite ou
-champ de moderation n'est expose. Les statuts non `published` restent invisibles.
+champ de moderation n'est expose. Les statuts non `published` et les events de createurs bannis
+restent invisibles en lecture publique.
 
 Avant l'acces a la base, `findOne()` rejette avec une 404 les identifiants non decimaux,
 nuls, negatifs, avec zero initial ou hors de la plage des entiers PHP. Le service est

@@ -17,11 +17,19 @@ final class EventException extends BusinessException
 
     public static function creatorRequired(): self
     {
-        return new self(ErrorKind::Forbidden, 'CREATOR_REQUIRED', 'Only approved creators can create events');
+        return new self(ErrorKind::Forbidden, 'CREATOR_REQUIRED', 'Only approved creators can manage events');
     }
 
-    public static function hasRegistrations(int $id): self
+    public static function invalidStatus(int $id, string $status, string $action): self
     {
-        return new self(ErrorKind::Conflict, 'EVENT_HAS_REGISTRATIONS', 'Event has registrations and cannot be deleted', ['id' => $id]);
+        return new self(ErrorKind::Conflict, 'EVENT_INVALID_STATUS', "Cannot $action an event that is $status",
+            ['id' => $id, 'status' => $status, 'action' => $action]);
+    }
+
+    /** @param list<string> $fields */
+    public static function fieldsLocked(int $id, array $fields, string $reason): self
+    {
+        return new self(ErrorKind::Conflict, 'EVENT_FIELDS_LOCKED', "These fields can no longer be changed: $reason",
+            ['id' => $id, 'fields' => $fields]);
     }
 }

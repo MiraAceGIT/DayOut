@@ -30,7 +30,11 @@ final class Database
 
     private static function connect(): PDO
     {
-        $config = self::$config ?? throw new RuntimeException('Database::configure() was not called');
+        return self::open(self::$config ?? throw new RuntimeException('Database::configure() was not called'));
+    }
+
+    public static function open(Config $config): PDO
+    {
         $dsn = "mysql:host={$config->dbHost};port={$config->dbPort};dbname={$config->dbName};charset=utf8mb4";
 
         try {
@@ -42,7 +46,7 @@ final class Database
                 PDO::ATTR_TIMEOUT            => self::CONNECT_TIMEOUT,
             ]);
             // Casts et bindings supposent une session UTC (DEFAULT CURRENT_TIMESTAMP compris).
-            $pdo->exec("SET time_zone = '+00:00'");
+            $pdo->exec("SET time_zone = '+00:00', sql_mode = 'STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ERROR_FOR_DIVISION_BY_ZERO'");
         } catch (PDOException $e) {
             // Jamais $e->getMessage() ici : il peut exposer host/user. Il reste journalise via `previous`.
             throw new RuntimeException('Database connection failed', 0, $e);

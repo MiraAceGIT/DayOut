@@ -62,6 +62,10 @@ final class Request
         if (trim($this->rawBody) === '') {
             return $this->json = [];
         }
+        $type = strtolower(trim(explode(';', $this->header('content-type') ?? '')[0]));
+        if ($type !== 'application/json' && !str_ends_with($type, '+json')) {
+            throw HttpException::unsupportedMediaType();
+        }
         try {
             $data = json_decode($this->rawBody, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {

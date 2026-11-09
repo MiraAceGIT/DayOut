@@ -36,6 +36,7 @@ final class EventMapper
             isPaid: $row['is_paid'],
             externalTicketUrl: $row['external_ticket_url'],
             schoolRestricted: $row['school_restricted'],
+            status: $row['status'],
             categories: CategoryMapper::toDtos($row['categories'] ?? []),
             creator: CreatorMapper::toDto($row),
         );

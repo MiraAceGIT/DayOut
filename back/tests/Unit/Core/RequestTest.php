@@ -9,20 +9,31 @@ use Tests\TestCase;
 
 final class RequestTest extends TestCase
 {
+    private const JSON = ['content-type' => 'application/json'];
+
     public function testJsonBodyIsDecoded(): void
     {
-        $request = new Request('POST', '/', rawBody: '{"title":"Soiree"}');
+        $request = new Request('POST', '/', headers: self::JSON, rawBody: '{"title":"Soiree"}');
         $this->assertSame(['title' => 'Soiree'], $request->json());
         $this->assertSame([], (new Request('POST', '/', rawBody: '  '))->json());
     }
 
+    public function testNonJsonBodyIs415(): void
+    {
+        foreach ([[], ['content-type' => 'text/plain'], ['content-type' => 'application/x-www-form-urlencoded']] as $headers) {
+            $e = $this->assertThrows(HttpException::class, fn () => (new Request('POST', '/', headers: $headers, rawBody: '{"a":1}'))->json());
+            $this->assertSame(415, $e->status);
+        }
+        $this->assertSame(['a' => 1], (new Request('POST', '/', headers: ['content-type' => 'application/merge-patch+json; charset=utf-8'], rawBody: '{"a":1}'))->json());
+    }
+
     public function testInvalidJsonIs400WithoutParserDetails(): void
     {
-        $e = $this->assertThrows(HttpException::class, fn () => (new Request('POST', '/', rawBody: '{"a":'))->json());
+        $e = $this->assertThrows(HttpException::class, fn () => (new Request('POST', '/', headers: self::JSON, rawBody: '{"a":'))->json());
         $this->assertSame(400, $e->status);
         $this->assertSame('Invalid JSON body', $e->getMessage());
 
-        $e = $this->assertThrows(HttpException::class, fn () => (new Request('POST', '/', rawBody: '"text"'))->json());
+        $e = $this->assertThrows(HttpException::class, fn () => (new Request('POST', '/', headers: self::JSON, rawBody: '"text"'))->json());
         $this->assertSame('JSON body must be an object or array', $e->getMessage());
     }
 

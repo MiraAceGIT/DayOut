@@ -23,6 +23,7 @@
  * @property {boolean} is_paid
  * @property {string|null} external_ticket_url
  * @property {boolean} school_restricted
+ * @property {"draft"|"published"|"cancelled"|"archived"} status
  * @property {CategoryDto[]} categories
  * @property {CreatorDto} creator
  */

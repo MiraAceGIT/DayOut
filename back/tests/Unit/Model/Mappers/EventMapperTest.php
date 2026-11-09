@@ -35,7 +35,7 @@ final class EventMapperTest extends TestCase
         $this->assertSame([
             'id', 'title', 'slug', 'description', 'cover_image_url', 'start_at', 'end_at', 'venue_name',
             'address_line', 'city', 'postal_code', 'latitude', 'longitude', 'capacity', 'registered_count',
-            'price_cents', 'currency', 'is_paid', 'external_ticket_url', 'school_restricted', 'categories', 'creator',
+            'price_cents', 'currency', 'is_paid', 'external_ticket_url', 'school_restricted', 'status', 'categories', 'creator',
         ], array_keys($json));
         $this->assertSame('BDE ISEP', $json['creator']->displayName);
         $this->assertSame(12, $json['registered_count']);
@@ -97,7 +97,7 @@ final class EventMapperTest extends TestCase
             'description'  => [self::input(['description' => str_repeat('a', 16001)]), 'Must be at most 16000 characters'],
             'restricted_school_id' => [self::input(['restricted_school_id' => 4294967296]), 'Must be at most 4294967295'],
             'capacity'     => [self::input(['capacity' => 0]), 'Must be at least 1'],
-            'cover_image_url' => [self::input(['cover_image_url' => 'javascript:alert(1)']), 'Must be a valid http(s) URL'],
+            'cover_image_url' => [self::input(['cover_image_url' => 'javascript:alert(1)']), 'Must be a public https URL'],
         ];
         foreach ($cases as $field => [$body, $message]) {
             $e = $this->assertThrows(ValidationException::class, fn () => EventCreateDto::fromArray($body), $field);
@@ -141,7 +141,7 @@ final class EventMapperTest extends TestCase
 
     public function testUpdateDtoKeepsOnlySentFieldsAndDistinguishesNullFromAbsent(): void
     {
-        $dto = EventUpdateDto::fromArray(['title' => 'Nouveau titre', 'cover_image_url' => null, 'id' => 99, 'status' => 'published']);
+        $dto = EventUpdateDto::fromArray(['title' => 'Nouveau titre', 'cover_image_url' => null, 'id' => 99, 'creator_id' => 1]);
 
         $this->assertSame(['title', 'cover_image_url'], $dto->provided, 'server fields ignored');
         $this->assertSame('Nouveau titre', $dto->title);

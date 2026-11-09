@@ -9,9 +9,9 @@ use App\Core\Validator;
 final readonly class EventUpdateDto
 {
     public const RULES = [
-        'title'                => 'string|max:180',
-        'slug'                 => 'string|slug|max:200',
-        'description'          => 'string|max:16000',
+        'title'                => 'filled|string|max:180',
+        'slug'                 => 'filled|string|slug|max:200',
+        'description'          => 'filled|string|max:16000',
         'cover_image_url'      => 'nullable|url|max:255',
         'start_at'             => 'datetime',
         'end_at'               => 'datetime',
@@ -27,6 +27,7 @@ final readonly class EventUpdateDto
         'is_paid'              => 'bool',
         'external_ticket_url'  => 'nullable|url|max:255',
         'restricted_school_id' => 'nullable|int|min:1|max:' . EventCreateDto::INT_UNSIGNED_MAX,
+        'status'               => 'in:published,cancelled',
     ];
 
     /** @param list<string> $provided */
@@ -50,6 +51,7 @@ final readonly class EventUpdateDto
         public ?bool $isPaid = null,
         public ?string $externalTicketUrl = null,
         public ?int $restrictedSchoolId = null,
+        public ?string $status = null,
     ) {
     }
 
@@ -58,6 +60,9 @@ final readonly class EventUpdateDto
         $v = Validator::check($json, self::RULES);
         if ($v === []) {
             throw ValidationException::field('body', 'No writable field (allowed: ' . implode(', ', array_keys(self::RULES)) . ')');
+        }
+        if (isset($v['status']) && count($v) > 1) {
+            throw ValidationException::field('status', 'Must be sent alone');
         }
         if (isset($v['start_at'], $v['end_at'])) {
             EventCreateDto::checkDates($v['start_at'], $v['end_at']);
@@ -86,6 +91,7 @@ final readonly class EventUpdateDto
             isPaid: $v['is_paid'] ?? null,
             externalTicketUrl: $v['external_ticket_url'] ?? null,
             restrictedSchoolId: $v['restricted_school_id'] ?? null,
+            status: $v['status'] ?? null,
         );
     }
 

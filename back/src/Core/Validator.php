@@ -13,7 +13,7 @@ final class Validator
 
     /** Regle => argument attendu : null (aucun), 'int' (min:3) ou 'list' (in:a,b). */
     private const RULES = [
-        'required' => null, 'nullable' => null, 'string' => null, 'int' => null, 'number' => null, 'bool' => null,
+        'required' => null, 'nullable' => null, 'filled' => null, 'string' => null, 'int' => null, 'number' => null, 'bool' => null,
         'array'    => null, 'email'    => null, 'url'    => null, 'date' => null, 'datetime' => null, 'slug' => null,
         'min'      => 'int', 'max'     => 'int', 'in'    => 'list',
     ];
@@ -98,6 +98,7 @@ final class Validator
     {
         return match ($rule) {
             'required', 'nullable' => null,
+            'filled'   => self::isBlank($value) ? 'This field cannot be empty' : null,
             'string'   => is_string($value) ? null : 'Must be a string',
             'int'      => self::toInt($value) ? null : 'Must be an integer',
             'number'   => self::toNumber($value) ? null : 'Must be a number',
@@ -105,9 +106,7 @@ final class Validator
             'array'    => is_array($value) ? null : 'Must be an array',
             'email'    => is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL) !== false
                 ? null : 'Must be a valid email address',
-            'url'      => is_string($value) && preg_match('#^https?://#i', $value) === 1
-                && filter_var($value, FILTER_VALIDATE_URL) !== false
-                ? null : 'Must be a valid http(s) URL',
+            'url'      => is_string($value) && self::isPublicHttpsUrl($value) ? null : 'Must be a public https URL',
             'slug'     => is_string($value) && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $value) === 1
                 ? null : 'Must be lowercase letters, digits and single dashes',
             'date'     => self::isDate($value, ['Y-m-d']) ? null : 'Must be a date (YYYY-MM-DD)',
@@ -119,6 +118,23 @@ final class Validator
                 ? null : 'Must be one of: ' . str_replace(',', ', ', (string) $arg),
             default    => throw new LogicException("Rule '$rule' is declared in RULES but not implemented"),
         };
+    }
+
+    /** https, sans identifiants, caracteres RFC 3986 uniquement, hote public (ni localhost ni IP privee). */
+    private static function isPublicHttpsUrl(string $value): bool
+    {
+        if (preg_match('#^https://[A-Za-z0-9\-._~:/?\#\[\]@!$&\'()*+,;=%]+$#', $value) !== 1
+            || filter_var($value, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+        $parts = parse_url($value);
+        $host = strtolower(trim((string) ($parts['host'] ?? ''), '[]'));
+        if ($host === '' || isset($parts['user']) || isset($parts['pass'])
+            || $host === 'localhost' || str_ends_with($host, '.localhost') || !str_contains($host, '.') && filter_var($host, FILTER_VALIDATE_IP) === false) {
+            return false;
+        }
+        return filter_var($host, FILTER_VALIDATE_IP) === false
+            || filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
     }
 
     private static function isBlank(mixed $value): bool

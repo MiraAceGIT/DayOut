@@ -35,12 +35,12 @@ final class EventServiceTest extends TestCase
             status TEXT, published_at TEXT, created_at TEXT)');
         $pdo->exec('CREATE TABLE categories (id INTEGER PRIMARY KEY, slug TEXT, label TEXT, icon TEXT, active INTEGER DEFAULT 1)');
         $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, school_id INTEGER,
-            avatar_url TEXT, bio TEXT, email TEXT, password_hash TEXT)');
+            avatar_url TEXT, bio TEXT, email TEXT, password_hash TEXT, banned INTEGER DEFAULT 0)');
         $pdo->exec('CREATE TABLE creator_profiles (user_id INTEGER PRIMARY KEY, display_name TEXT, description TEXT)');
         $pdo->exec('CREATE TABLE schools (id INTEGER PRIMARY KEY, name TEXT, short_name TEXT)');
         $pdo->exec("INSERT INTO schools VALUES (1, 'Institut superieur', 'ISEP')");
-        $pdo->exec("INSERT INTO users VALUES (1, 'Camille', 'Martin', 1, NULL, 'Bio', 'secret@example.test', 'secret-hash'),
-            (2, 'Alex', 'Durand', NULL, NULL, NULL, 'secret2@example.test', 'secret-hash')");
+        $pdo->exec("INSERT INTO users VALUES (1, 'Camille', 'Martin', 1, NULL, 'Bio', 'secret@example.test', 'secret-hash', 0),
+            (2, 'Alex', 'Durand', NULL, NULL, NULL, 'secret2@example.test', 'secret-hash', 0)");
         $pdo->exec("INSERT INTO creator_profiles VALUES (1, 'Garage ISEP', 'Projets tech')");
         $pdo->exec('CREATE TABLE event_categories (event_id INTEGER, category_id INTEGER, PRIMARY KEY (event_id, category_id))');
         $pdo->exec("INSERT INTO events (id, creator_id, title, slug, description, start_at, end_at, status) VALUES
@@ -168,7 +168,7 @@ final class EventServiceTest extends TestCase
 
         [$match, $soiree] = $page->items;
         $this->assertSame(2, $match->creator->id);
-        $this->assertSame('Alex Durand', $match->creator->displayName, 'no creator profile: user name');
+        $this->assertSame('Alex D.', $match->creator->displayName, 'no creator profile: user name');
         $this->assertSame(null, $match->creator->schoolName);
         $this->assertSame('Garage ISEP', $soiree->creator->displayName);
         $this->assertSame('ISEP', $soiree->creator->schoolName);
@@ -211,5 +211,13 @@ final class EventServiceTest extends TestCase
             $this->assertSame('EVENT_NOT_FOUND', $e->errorCode);
             $this->assertSame(['id' => $id], $e->details);
         }
+    }
+
+    public function testEventsOfBannedCreatorsAreHidden(): void
+    {
+        $this->pdo->exec('UPDATE users SET banned = 1 WHERE id = 2');
+
+        $this->assertSame([1], $this->search([]));
+        $this->assertThrows(EventException::class, fn () => $this->service->findOne(2));
     }
 }

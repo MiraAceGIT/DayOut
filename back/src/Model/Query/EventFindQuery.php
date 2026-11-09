@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Query;
 
+use App\Core\ValidationException;
 use App\Core\Validator;
 use App\Model\Dao\Event\EventSearchParams;
 use DateTimeImmutable;
@@ -52,6 +53,11 @@ final readonly class EventFindQuery
     public static function fromQuery(array $query): self
     {
         $clean = Validator::check(array_diff_key($query, ['ids' => 1, 'categories' => 1]), self::RULES);
+
+        if (isset($clean['start_from'], $clean['start_to'])
+            && new DateTimeImmutable($clean['start_to']) <= new DateTimeImmutable($clean['start_from'])) {
+            throw ValidationException::field('start_to', 'Must be after start_from');
+        }
 
         return new self(
             from:       self::date($clean['from'] ?? null),

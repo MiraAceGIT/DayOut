@@ -57,7 +57,9 @@ final class EventWriteServiceTest extends TestCase
         $pdo->exec("INSERT INTO creator_profiles VALUES (2, 'BDE ISEP', NULL)");
         $pdo->exec("INSERT INTO events (id, creator_id, title, slug, description, start_at, end_at, status, is_paid, price_cents, registered_count) VALUES
             (10, 2, 'Soiree', 'soiree', 'd', '2026-11-07 20:00:00', '2026-11-08 02:00:00', 'published', 1, 1500, 0),
-            (11, 2, 'Gala', 'gala', 'd', '2026-12-01 20:00:00', '2026-12-02 02:00:00', 'published', 0, 0, 4)");
+            (11, 2, 'Gala', 'gala', 'd', '2026-12-01 20:00:00', '2026-12-02 02:00:00', 'published', 0, 0, 4),
+            (12, 3, 'Brouillon Epita', 'brouillon-epita', 'd', '2030-01-01 20:00:00', '2030-01-02 02:00:00', 'draft', 0, 0, 0),
+            (13, 2, 'Annule', 'annule', 'd', '2030-01-01 20:00:00', '2030-01-02 02:00:00', 'cancelled', 0, 0, 0)");
 
         $connection = new Connection($pdo);
         $this->service = new EventService(new Event($connection), new Category($connection), new Creator($connection));
@@ -106,7 +108,7 @@ final class EventWriteServiceTest extends TestCase
                 fn () => $this->service->create(EventCreateDto::fromArray(self::body()), $userId), "user $userId");
             $this->assertSame('CREATOR_REQUIRED', $e->errorCode);
         }
-        $this->assertSame(['2'], array_map('strval', $this->column('SELECT COUNT(*) FROM events')), 'nothing written');
+        $this->assertSame(['4'], array_map('strval', $this->column('SELECT COUNT(*) FROM events')), 'nothing written');
     }
 
     public function testOwnerUpdatesOnlyTheSentFields(): void
@@ -148,13 +150,15 @@ final class EventWriteServiceTest extends TestCase
         $this->assertSame(['Soiree'], $this->column('SELECT title FROM events WHERE id = 10'));
     }
 
-    public function testDeleteRefusesEventsWithRegistrations(): void
+    public function testOnlyDraftsCanBeDeleted(): void
     {
-        $e = $this->assertThrows(EventException::class, fn () => $this->service->delete(11, self::OWNER));
-        $this->assertSame('EVENT_HAS_REGISTRATIONS', $e->errorCode);
+        $e = $this->assertThrows(EventException::class, fn () => $this->service->delete(10, self::OWNER));
+        $this->assertSame('EVENT_INVALID_STATUS', $e->errorCode);
+        $this->assertSame(['id' => 10, 'status' => 'published', 'action' => 'delete'], $e->details);
 
-        $this->service->delete(10, self::OWNER);
-        $this->assertSame([11], array_map('intval', $this->column('SELECT id FROM events')));
+        $draft = $this->service->create(EventCreateDto::fromArray(self::body()), self::OWNER);
+        $this->service->delete($draft->id, self::OWNER);
+        $this->assertSame([10, 11, 12, 13], array_map('intval', $this->column('SELECT id FROM events ORDER BY id')));
     }
 
     public function testControllerReturns201And204WithTheAuthenticatedUser(): void
@@ -162,14 +166,121 @@ final class EventWriteServiceTest extends TestCase
         $controller = new EventController($this->service);
         $auth = [RequireAuth::USER_ID => self::OWNER];
 
-        $created = $controller->create(new Request('POST', '/events', rawBody: (string) json_encode(self::body()), attributes: $auth));
+        $json = ['content-type' => 'application/json'];
+        $created = $controller->create(new Request('POST', '/events', headers: $json, rawBody: (string) json_encode(self::body()), attributes: $auth));
         $this->assertSame(201, $created->status);
         $id = self::json($created)['data']['id'];
 
-        $updated = $controller->update(new Request('PATCH', "/events/$id", rawBody: '{"city":"Paris"}', params: ['id' => (string) $id], attributes: $auth));
+        $updated = $controller->update(new Request('PATCH', "/events/$id", headers: $json, rawBody: '{"city":"Paris"}', params: ['id' => (string) $id], attributes: $auth));
         $this->assertSame('Paris', self::json($updated)['data']['city']);
 
         $deleted = $controller->delete(new Request('DELETE', "/events/$id", params: ['id' => (string) $id], attributes: $auth));
         $this->assertSame(204, $deleted->status);
+    }
+
+    public function testBannedCreatorLosesControlOverHisEvents(): void
+    {
+        $this->pdo->exec('UPDATE users SET banned = 1 WHERE id = ' . self::OWNER);
+
+        foreach ([
+            fn () => $this->service->update(10, EventUpdateDto::fromArray(['external_ticket_url' => 'https://phishing.example']), self::OWNER),
+            fn () => $this->service->delete(10, self::OWNER),
+            fn () => $this->service->update(10, EventUpdateDto::fromArray(['status' => 'cancelled']), self::OWNER),
+        ] as $call) {
+            $this->assertSame('CREATOR_REQUIRED', $this->assertThrows(EventException::class, $call)->errorCode);
+        }
+    }
+
+    public function testDraftOfAnotherCreatorLooksMissing(): void
+    {
+        $draft = $this->assertThrows(EventException::class, fn () => $this->service->delete(12, self::OWNER));
+        $published = $this->assertThrows(EventException::class, fn () => $this->service->delete(10, self::OTHER_CREATOR));
+
+        $this->assertSame('EVENT_NOT_FOUND', $draft->errorCode);
+        $this->assertSame('EVENT_FORBIDDEN', $published->errorCode);
+    }
+
+    public function testCancelledEventsCannotBeUpdated(): void
+    {
+        $e = $this->assertThrows(EventException::class, fn () => $this->service->update(13, EventUpdateDto::fromArray(['title' => 'Retour']), self::OWNER));
+        $this->assertSame('EVENT_INVALID_STATUS', $e->errorCode);
+    }
+
+    public function testStatusMustBeSentAlone(): void
+    {
+        $e = $this->assertThrows(ValidationException::class, fn () => EventUpdateDto::fromArray(['status' => 'published', 'title' => 'x']));
+        $this->assertSame(['status' => 'Must be sent alone'], $e->errors);
+
+        foreach (['draft', 'archived', null] as $status) {
+            $this->assertThrows(ValidationException::class, fn () => EventUpdateDto::fromArray(['status' => $status]), var_export($status, true));
+        }
+    }
+
+    public function testEmptyTitleIsRejectedOnUpdate(): void
+    {
+        foreach (['', '   '] as $title) {
+            $e = $this->assertThrows(ValidationException::class, fn () => EventUpdateDto::fromArray(['title' => $title]));
+            $this->assertSame(['title' => 'This field cannot be empty'], $e->errors);
+        }
+    }
+
+    public function testFieldsAreLockedOnceRegistrationsOrPublicationExist(): void
+    {
+        $dates = $this->assertThrows(EventException::class,
+            fn () => $this->service->update(11, EventUpdateDto::fromArray(['start_at' => '2026-12-01T21:00:00Z', 'title' => 'Gala 2']), self::OWNER));
+        $this->assertSame('EVENT_FIELDS_LOCKED', $dates->errorCode);
+        $this->assertSame(['start_at'], $dates->details['fields']);
+
+        $school = $this->assertThrows(EventException::class,
+            fn () => $this->service->update(10, EventUpdateDto::fromArray(['restricted_school_id' => null]), self::OWNER));
+        $this->assertSame(['restricted_school_id'], $school->details['fields']);
+
+        $this->assertSame('Gala 2', $this->service->update(11, EventUpdateDto::fromArray(['title' => 'Gala 2']), self::OWNER)->title);
+        $this->assertSame('2026-11-07T21:00:00+00:00', $this->service->update(10, EventUpdateDto::fromArray(['start_at' => '2026-11-07T21:00:00Z']), self::OWNER)->startAt,
+            'no registration: dates still editable');
+    }
+
+    public function testCapacityCannotDropBelowRegistrations(): void
+    {
+        $e = $this->assertThrows(ValidationException::class, fn () => $this->service->update(11, EventUpdateDto::fromArray(['capacity' => 3]), self::OWNER));
+        $this->assertSame(['capacity' => 'Must be at least 4 (current registrations)'], $e->errors);
+        $this->assertSame(4, $this->service->update(11, EventUpdateDto::fromArray(['capacity' => 4]), self::OWNER)->capacity);
+    }
+
+    public function testPublishThenCancel(): void
+    {
+        $draft = $this->service->create(EventCreateDto::fromArray(self::body([
+            'start_at' => '2030-05-01T18:00:00Z', 'end_at' => '2030-05-01T23:00:00Z',
+        ])), self::OWNER);
+        $this->assertSame('draft', $draft->status);
+        $this->assertThrows(EventException::class, fn () => $this->service->findOne($draft->id), 'draft hidden');
+
+        $published = $this->service->update($draft->id, EventUpdateDto::fromArray(['status' => 'published']), self::OWNER);
+        $this->assertSame('published', $published->status);
+        $this->assertSame($draft->id, $this->service->findOne($draft->id)->id);
+        $this->assertSame(1, count($this->column("SELECT published_at FROM events WHERE id = {$draft->id} AND published_at IS NOT NULL")));
+        $again = $this->assertThrows(EventException::class, fn () => $this->service->update($draft->id, EventUpdateDto::fromArray(['status' => 'published']), self::OWNER));
+        $this->assertSame(['id' => $draft->id, 'status' => 'published', 'action' => 'publish'], $again->details);
+
+        $this->assertSame('cancelled', $this->service->update($draft->id, EventUpdateDto::fromArray(['status' => 'cancelled']), self::OWNER)->status);
+        $this->assertThrows(EventException::class, fn () => $this->service->findOne($draft->id), 'cancelled hidden');
+        $this->assertSame('EVENT_INVALID_STATUS', $this->assertThrows(EventException::class, fn () => $this->service->update($draft->id, EventUpdateDto::fromArray(['status' => 'cancelled']), self::OWNER))->errorCode);
+    }
+
+    public function testEndedDraftCannotBePublished(): void
+    {
+        $draft = $this->service->create(EventCreateDto::fromArray(self::body([
+            'start_at' => '2020-01-01T18:00:00Z', 'end_at' => '2020-01-01T23:00:00Z',
+        ])), self::OWNER);
+        $e = $this->assertThrows(ValidationException::class, fn () => $this->service->update($draft->id, EventUpdateDto::fromArray(['status' => 'published']), self::OWNER));
+        $this->assertSame(['end_at' => 'Must be in the future to publish'], $e->errors);
+    }
+
+    public function testSubSecondDatesAreComparedLikeTheDatabase(): void
+    {
+        $e = $this->assertThrows(ValidationException::class, fn () => EventCreateDto::fromArray(self::body([
+            'start_at' => '2026-11-20T20:00:00.100Z', 'end_at' => '2026-11-20T20:00:00.900Z',
+        ])));
+        $this->assertSame(['end_at' => 'Must be after start_at'], $e->errors);
     }
 }
