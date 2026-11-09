@@ -30,7 +30,7 @@ d'auth (base) sont prets pour la suite.
 - Documentation OpenAPI 3 servie en dev, verifiee par un test de contrat
 - ORM maison (`App\Core\Orm`) : QueryBuilder fluide, casts, batch anti N+1
 - Logger structure (JSON) avec `requestId`, audit separe, rotation quotidienne
-- Validation d'entrees par regles (`Validator`) et DTO d'entree (`EventInputDto`)
+- Validation d'entrees par regles (`Validator`) et DTO d'ecriture (`EventCreateDto`, `EventUpdateDto`)
 - Gestion d'erreurs centralisee (exceptions HTTP, metier, triggers MariaDB)
 - Runner de tests maison (unitaires + integration) sans framework
 
@@ -206,11 +206,12 @@ back/
 │   │   ├── Log/        ← journalisation (error / info / audit) + ErrorHandler
 │   │   └── Orm/        ← moteur ORM maison (Connection, Caster, QueryBuilder, Compiler, Grammar)
 │   ├── Model/          ← M
-│   │   ├── Dao/        ← Model.php (base) + une classe par table
+│   │   ├── Dao/        ← Model.php (base) + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php
+│   │   ├── Query/      ← lecture des query strings : EventFindQuery, CreatorFindQuery ; ParsesQueryString (trait commun)
 │   │   ├── Services/   ← regles metier (appelle les DAO, leve des exceptions metier)
 │   │   ├── Exceptions/ ← BusinessException, ErrorKind, une classe par ressource
-│   │   ├── Dto/        ← contrat JSON (immuables, jsonSerialize)
-│   │   └── Mappers/    ← ligne du Model <-> DTO (toDto / toDtos / toRow / fromInput)
+│   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
+│   │   └── Mappers/    ← ligne du Model <-> DTO (toDto / toDtos / toRow / toUpdateRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
 │   └── Controller/     ← C : logique HTTP, une classe par ressource
 ├── config/config.php   ← charge le .env, construit la Config
@@ -249,12 +250,17 @@ back/
 
 - `final readonly class ... implements JsonSerializable`
 - Proprietes en **camelCase** cote PHP ; `jsonSerialize()` renvoie les noms **snake_case** cote API
-- Un DTO d'entree **distinct** pour les ecritures (`EventInputDto`), qui porte ses regles (`RULES`) et ne contient que ce qu'un client peut envoyer
+- Un DTO par usage, comme `XxxCreateDTO` / `XxxUpdateDTO` / `XxxDTO` en Pydantic :
+  - `EventDto` : lecture (ce que l'API renvoie)
+  - `EventCreateDto` : corps de creation, champs obligatoires et valeurs par defaut
+  - `EventUpdateDto` : corps de modification partielle, tout optionnel ; `provided` distingue « absent » de « null »
+- Les DTO d'ecriture portent leurs regles (`RULES`) et se construisent par `fromArray($json)`, qui valide (422 sinon)
+  et ignore ce qu'un client ne peut pas ecrire (`id`, `creator_id`, `status`...)
 
 #### Mapper
 
 - Conversion **ligne du Model <-> DTO**
-- `toDto(array $row)`, `toDtos(array $rows)`, `toRow(InputDto $input)`, `fromInput(array $json)` (validation)
+- `toDto(array $row)`, `toDtos(array $rows)`, `toRow(CreateDto)`, `toUpdateRow(UpdateDto)` : aucune validation (faite par les DTO)
 - Seuls a connaitre les noms du JSON (renommer un champ cote API ne touche qu'ici)
 
 #### Exceptions
@@ -285,7 +291,7 @@ HTTP -> public/.htaccess -> public/index.php
 ### Declarer un model
 
 ```php
-// src/Model/Dao/User.php
+// src/Model/Dao/User/User.php (namespace App\Model\Dao\User)
 final class User extends Model
 {
     protected const TABLE    = 'users';
@@ -338,7 +344,7 @@ Voir *Gestion des erreurs* (section 13) et [`infra/README.md`](../infra/README.m
 ### DTO de sortie (immuable)
 
 ```php
-// src/Model/Dto/EventDto.php
+// src/Model/Dto/Event/EventDto.php
 final readonly class EventDto implements JsonSerializable
 {
     public function __construct(
@@ -365,21 +371,33 @@ final readonly class EventDto implements JsonSerializable
 }
 ```
 
-### DTO d'entree (avec regles de validation)
+### DTO d'ecriture (avec regles de validation)
 
 ```php
-// src/Model/Dto/EventInputDto.php
-final readonly class EventInputDto
+// src/Model/Dto/Event/EventCreateDto.php : tout ce qu'il faut pour creer
+final readonly class EventCreateDto
 {
     public const RULES = [
-        'title'       => 'required|string|min:3|max:150',
-        'start_at'    => 'required|datetime',
-        'end_at'      => 'required|datetime',
-        'capacity'    => 'nullable|int|min:1',
-        'is_paid'     => 'bool',
-        'price_cents' => 'nullable|int|min:0',
+        'title'    => 'required|string|max:180',
+        'start_at' => 'required|datetime',
+        'capacity' => 'nullable|int|min:1|max:4294967295',
         // ...
     ];
+
+    public static function fromArray(array $json): self; // valide + regles croisees (dates, prix)
+}
+
+// src/Model/Dto/Event/EventUpdateDto.php : memes champs, tous optionnels
+final readonly class EventUpdateDto
+{
+    public const RULES = [
+        'title'    => 'string|max:180',   // pas de required ; null refuse (colonne NOT NULL)
+        'capacity' => 'nullable|int|min:1|max:4294967295',
+        // ...
+    ];
+
+    public static function fromArray(array $json): self; // 422 si corps vide
+    public function has(string $field): bool;           // champ envoye ?
 }
 ```
 
@@ -408,8 +426,8 @@ final readonly class EventInputDto
 ```php
 public function create(Request $request): Response
 {
-    $data = $this->validate($request, EventInputDto::RULES);
-    $id = $this->events->create($data, ['creator_id' => $userId, 'status' => 'draft']);
+    $dto = EventCreateDto::fromArray($request->json());
+    $id = $this->events->create(EventMapper::toRow($dto), ['creator_id' => $userId, 'status' => 'draft']);
     return $this->ok(['id' => $id], 201);
 }
 ```
@@ -442,8 +460,8 @@ Fichiers dans [`src/Model/Mappers/`](src/Model/Mappers/) :
 ```php
 EventMapper::toDto(array $row): EventDto                  // 1 ligne -> DTO
 EventMapper::toDtos(array $rows): array                   // liste -> liste de DTO
-EventMapper::toRow(EventInputDto $input): array           // DTO d'entree -> colonnes SQL
-EventMapper::fromInput(array $json): EventInputDto        // JSON brut -> DTO valide (ValidationException sinon)
+EventMapper::toRow(EventCreateDto $dto): array            // creation -> colonnes SQL
+EventMapper::toUpdateRow(EventUpdateDto $dto): array      // modification -> colonnes envoyees uniquement
 ```
 
 ### Regle
@@ -529,9 +547,9 @@ Ne jamais appeler `find()` dans une boucle. Charger les relations en **une** req
 puis les rattacher en PHP avec `Rows::keyBy` / `Rows::groupBy` :
 
 ```php
-// 2 requetes au total, quel que soit le nombre d'events
-$items   = $this->events->listPublishedEndingAfter($from, $limit, $offset);
-$byEvent = $this->categories->listForEvents(array_column($items, 'id'));
+// Nombre de requetes constant, quel que soit le nombre d'events
+[$items] = $this->events->findManyPublished($params);
+$byEvent = $this->categories->listActiveByEvent(array_column($items, 'id'));
 $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []], $items);
 ```
 
@@ -553,18 +571,22 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | Methode | Chemin               | Query params                                   | 200 — shape (sous `data`)             | Erreurs                                               |
 | ------- | -------------------- | ---------------------------------------------- | ------------------------------------- | ----------------------------------------------------- |
 | GET     | `/health`            | —                                              | `{ api, db, time }`                   | —                                                     |
-| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (0-10000, def. 0), `from` (ISO 8601, def. maintenant) + filtres (`EventFindQuery`, voir ci-dessous) | `{ items: EventDetail[], limit, offset, has_more, total }` | `422 VALIDATION_ERROR` (param invalide ou hors bornes) |
-| GET     | `/events/{id}`       | — (`id` entier via regex `\d+`)                | `EventDetail` (`Event` + `creator`)     | `404 EVENT_NOT_FOUND`, `404 NOT_FOUND` si `{id}` non num. |
+| GET     | `/events`            | `limit` (1-100, def. 20), `offset` (0-10000, def. 0), `from` (ISO 8601, def. maintenant) + filtres (`EventFindQuery`, voir ci-dessous) | `{ items: Event[], limit, offset, has_more, total }` | `422 VALIDATION_ERROR` (param invalide ou hors bornes) |
+| GET     | `/events/{id}`       | — (`id` entier via regex `\d+`)                | `Event` (avec `creator`)                | `404 EVENT_NOT_FOUND`, `404 NOT_FOUND` si `{id}` non num. |
+| POST    | `/events`            | — ; body `EventCreate` ; **auth**              | `201` `Event` (cree en `draft`)       | `401`, `403 CREATOR_REQUIRED`, `409 CONFLICT` (slug), `422` |
+| PATCH   | `/events/{id}`       | — ; body `EventUpdate` (partiel) ; **auth**    | `Event`                               | `401`, `403 EVENT_FORBIDDEN`, `404`, `409`, `422`     |
+| DELETE  | `/events/{id}`       | — ; **auth**                                   | `204`                                 | `401`, `403 EVENT_FORBIDDEN`, `404`, `409 EVENT_HAS_REGISTRATIONS` |
+| GET     | `/creators`          | `q`, `school_id`, `ids` (CSV), `has_upcoming_events`, `from`, `sort_by` (`display_name`, `created_at`), `sort_dir`, `limit`, `offset` (`CreatorFindQuery`) | `{ items: Creator[], limit, offset, has_more, total }` (approuves, non bannis) | `422 VALIDATION_ERROR` |
 | GET     | `/docs`              | —                                              | Swagger UI (hors enveloppe)           | `404` si `DOCS_ENABLED=false`                         |
 | GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | `404` si `DOCS_ENABLED=false`                         |
 
 ### Pagination des evenements
 
-`EventController::index()` est l'equivalent de la methode `EvenementController::liste()`
+`EventController::findMany()` est l'equivalent de la methode `EvenementController::liste()`
 du ticket. La query string est lue par `EventFindQuery` (`src/Model/Query`), qui valide
 et convertit les filtres en `EventSearchParams`. Le DAO `Event::findManyPublished()` applique
 le filtre `published`, `end_at > from`, les filtres optionnels, le tri (`sort_by` puis `id`)
-et `LIMIT / OFFSET`, et renvoie `[items, total]`. Le service renvoie un `EventPageDto`.
+et `LIMIT / OFFSET`, et renvoie `[items, total]`. Le service renvoie un `PageDto` (generique, commun a toutes les listes).
 Les evenements en cours sont inclus jusqu'a leur fin.
 
 Filtres : `start_from` / `start_to` (debut), `q` (titre, lieu, ville), `city`,
@@ -581,10 +603,25 @@ Conserver le meme `from` ISO 8601 entre les pages fixe le filtre temporel.
 au-dela des resultats renvoie `items: []`. Ce filtre temporel ne constitue pas un
 instantane des donnees : une creation ou une modification concurrente peut encore deplacer les pages.
 
+### Ecritures (create / update / delete)
+
+`EventController::create()`, `update()` et `delete()` sont declares avec le middleware `RequireAuth`
+(`src/Core/Http/RequireAuth.php`) : sans attribut `user_id` sur la requete, reponse `401 UNAUTHORIZED`
+(en-tete `WWW-Authenticate: Bearer`). Cet attribut ne peut pas venir du client (ni query, ni header) :
+seul le futur middleware d'authentification le posera apres verification du token. **Tant qu'il
+n'existe pas, toutes les ecritures repondent 401.**
+
+- `create` : createur approuve ou admin, non banni (`Creator::canPublish`), sinon `403 CREATOR_REQUIRED`.
+  L'event est cree en `draft` ; `creator_id` et `status` sont fixes par le serveur.
+- `update` : proprietaire uniquement (`403 EVENT_FORBIDDEN`), tout statut. Les regles croisees
+  (fin apres debut, prix / `is_paid`) se verifient avec les valeurs actuelles des champs non envoyes.
+- `delete` : proprietaire uniquement, refuse si `registered_count > 0` (`409 EVENT_HAS_REGISTRATIONS`) :
+  `fk_reg_event` est en `ON DELETE CASCADE` et effacerait les inscriptions.
+
 ### Detail d'un evenement
 
-`EventController::show()` correspond a `EvenementController::detail($id)` dans le ticket.
-`EventService::getPublishedDetail()` charge l'evenement comme un element de liste :
+`EventController::findOne()` correspond a `EvenementController::detail($id)` dans le ticket.
+`EventService::findOne()` charge l'evenement comme un element de liste :
 `Event::findPublishedById()`, puis `Category::listActiveByEvent()` (categories actives,
 ordre `label, id`) et `Creator::listPublicByIds()` (jointures `creator_profiles`, `schools`).
 
@@ -592,13 +629,13 @@ ordre `label, id`) et `Creator::listPublicByIds()` (jointures `creator_profiles`
 `registrations` (`sp_registered_count_add`, inscriptions actives au sens de
 `fn_registration_is_active`) : la liste et le detail affichent le meme compteur.
 
-`EventDetailDto` conserve tous les champs publics d'`EventDto` et ajoute `creator`
+Un seul DTO, `EventDto`, sert en liste et en detail ; il contient `creator`
 (`id`, `display_name`, `description`, `avatar_url`, `school_name`). Le nom et la description
 proviennent de `creator_profiles`, avec le nom et la bio utilisateur en secours ;
 l'ecole et l'avatar peuvent etre `null`. Aucun email, telephone, score de fiabilite ou
 champ de moderation n'est expose. Les statuts non `published` restent invisibles.
 
-Avant l'acces a la base, `show()` rejette avec une 404 les identifiants non decimaux,
+Avant l'acces a la base, `findOne()` rejette avec une 404 les identifiants non decimaux,
 nuls, negatifs, avec zero initial ou hors de la plage des entiers PHP. Le service est
 instancie a la premiere utilisation, apres validation : un identifiant invalide ne
 depend pas de la disponibilite de la base. Les valeurs non numeriques sont aussi
@@ -1095,14 +1132,15 @@ Verifier `tests/Unit/Docs/OpenApiContractTest.php` : il indique exactement ce qu
 
 ## 21) Ajouter une route (checklist complete)
 
-1. **DAO** dans `src/Model/Dao/` (herite de `App\Model\Dao\Model`, voir section 11)
+1. **DAO** dans `src/Model/Dao/<Ressource>/` (herite de `App\Model\Dao\Model`, voir section 11), avec ses
+   `XxxSearchParams` a cote s'il a une recherche filtree (et `Query/XxxFindQuery` pour la lire)
    avec une methode nommee par besoin metier (`findPublishedById`, pas `find` public).
 2. **Service** dans `src/Model/Services/` : appelle les DAO, applique les regles,
    leve des exceptions metier (`throw UserException::notFound($id)`), renvoie des DTO.
-3. **DTO** dans `src/Model/Dto/` (`final readonly class ... implements JsonSerializable` :
+3. **DTO** dans `src/Model/Dto/<Ressource>/` (ex. `Dto/Event/`) (`final readonly class ... implements JsonSerializable` :
    proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case).
 4. **Mapper** dans `src/Model/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`) ;
-   pour une ressource ecrite, un DTO d'entree distinct avec `RULES`, `fromInput($json)` et `toRow($inputDto)`.
+   pour une ressource ecrite, `XxxCreateDto` / `XxxUpdateDto` avec `RULES` et `fromArray($json)`, et `toRow` / `toUpdateRow` dans le mapper.
 5. **Controller** dans `src/Controller/` (herite de `App\Core\Controller`) ;
    instancie son service dans le constructeur, logique HTTP seulement, **renvoie** une `Response`.
 6. **Documentation** dans `docs/openapi/<ressource>.yaml` (sinon `OpenApiContractTest` echoue).

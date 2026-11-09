@@ -3,11 +3,10 @@ declare(strict_types=1);
 
 namespace App\Model\Mappers;
 
-use App\Model\Dto\CreatorDto;
+use App\Model\Dto\Creator\CreatorDto;
 
 final class CreatorMapper
 {
-    /** Ligne aux alias `detail_*` de Creator::listPublicByIds. */
     public static function toDto(array $row): CreatorDto
     {
         return new CreatorDto(
@@ -17,5 +16,11 @@ final class CreatorMapper
             avatarUrl: $row['detail_avatar_url'],
             schoolName: $row['detail_school_short_name'] ?? $row['detail_school_name'],
         );
+    }
+
+    /** @return list<CreatorDto> */
+    public static function toDtos(array $rows): array
+    {
+        return array_map(self::toDto(...), array_values($rows));
     }
 }

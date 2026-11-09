@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { parseEventId } from "../src/model/domain/eventId.js";
-import { toEventDetail } from "../src/model/mappers/eventDetailMapper.js";
+import { toEvent } from "../src/model/mappers/eventMapper.js";
 import { eventDto } from "./fixtures.js";
 
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});
@@ -22,7 +22,7 @@ function viewStub() {
   };
 }
 
-const detail = () => toEventDetail({ ...eventDto(), creator: {
+const detail = () => toEvent({ ...eventDto(), creator: {
   id: 2, display_name: "Garage ISEP", description: null, avatar_url: null, school_name: null,
 } });
 

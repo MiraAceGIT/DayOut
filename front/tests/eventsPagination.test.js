@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { creatorDto, eventDetail as event, eventDto } from "./fixtures.js";
+import { creatorDto, event, eventDto } from "./fixtures.js";
 
 // Le controleur importe la configuration navigateur ; la vue sera injectee.
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});

@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Model\Dao;
+namespace App\Model\Dao\Category;
 
 use App\Core\Orm\Rows;
+use App\Model\Dao\Model;
 
-/** Seules les categories `active` sont exposees. */
 final class Category extends Model
 {
     protected const TABLE = 'categories';

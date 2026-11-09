@@ -26,9 +26,9 @@ final class RouterTest extends HttpTestCase
 
     public function testWrongMethodReturns405WithAllowHeader(): void
     {
-        $response = $this->post('/events', ['title' => 'x']);
+        $response = $this->request('PUT', '/events', ['title' => 'x']);
 
         $this->assertError(405, 'METHOD_NOT_ALLOWED', $response);
-        $this->assertSame('GET', $response->header('Allow'));
+        $this->assertSame('GET, POST', $response->header('Allow'));
     }
 }

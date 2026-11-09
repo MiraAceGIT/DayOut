@@ -1,5 +1,5 @@
 import { api } from "../../core/api.js";
-import { toEventDetail, toEventDetails } from "../mappers/eventDetailMapper.js";
+import { toEvent, toEvents } from "../mappers/eventMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */
 
@@ -16,7 +16,7 @@ export async function fetchUpcomingEventPage({ limit = 20, offset = 0, from, sig
   /** @type {EventPageDto} */
   const page = await api.get(`/events?${query}`, { signal });
   return {
-    items: toEventDetails(page.items), limit: page.limit, offset: page.offset, hasMore: page.has_more, total: page.total ?? null,
+    items: toEvents(page.items), limit: page.limit, offset: page.offset, hasMore: page.has_more, total: page.total ?? null,
   };
 }
 
@@ -31,7 +31,7 @@ export async function fetchUpcomingEvents(options = {}) {
  * @param {{ signal?: AbortSignal }} [options]
  */
 export async function fetchEvent(id, { signal } = {}) {
-  /** @type {import("../dto/eventDetailDto.js").EventDetailDto} */
+  /** @type {import("../dto/eventDto.js").EventDto} */
   const dto = await api.get(`/events/${encodeURIComponent(id)}`, { signal });
-  return toEventDetail(dto);
+  return toEvent(dto);
 }

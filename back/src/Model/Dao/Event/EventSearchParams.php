@@ -1,17 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Model\Dao;
+namespace App\Model\Dao\Event;
 
+use App\Model\Dao\Model;
 use DateTimeImmutable;
 
-/** Criteres deja valides consommes par Event::findManyPublished ; null = critere inactif. */
 final readonly class EventSearchParams
 {
     /**
      * @param list<int>|null    $ids
-     * @param list<string>|null $categories slugs (OU entre eux)
-     * @param string            $sortBy     cle de Event::SORT_MAP (inconnue = start_at)
+     * @param list<string>|null $categories
      */
     public function __construct(
         public ?DateTimeImmutable $endingAfter = null,

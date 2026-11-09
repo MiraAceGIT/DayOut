@@ -3,10 +3,9 @@ declare(strict_types=1);
 
 namespace App\Model\Mappers;
 
-use App\Core\ValidationException;
-use App\Core\Validator;
-use App\Model\Dto\EventDto;
-use App\Model\Dto\EventInputDto;
+use App\Model\Dto\Event\EventCreateDto;
+use App\Model\Dto\Event\EventDto;
+use App\Model\Dto\Event\EventUpdateDto;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -14,7 +13,6 @@ final class EventMapper
 {
     private const DB_DATETIME = 'Y-m-d H:i:s';
 
-    /** `$row` : ligne d'event, ses categories sous la cle `categories` (absente = aucune). */
     public static function toDto(array $row): EventDto
     {
         return new EventDto(
@@ -39,6 +37,7 @@ final class EventMapper
             externalTicketUrl: $row['external_ticket_url'],
             schoolRestricted: $row['school_restricted'],
             categories: CategoryMapper::toDtos($row['categories'] ?? []),
+            creator: CreatorMapper::toDto($row),
         );
     }
 
@@ -49,50 +48,11 @@ final class EventMapper
     }
 
     /**
-     * JSON recu -> EventInputDto ; ValidationException (422, un message par champ) si invalide.
-     * Regles croisees verifiees ici plutot que par les CHECK SQL, dont l'erreur ne cite pas le champ.
-     */
-    public static function fromInput(array $json): EventInputDto
-    {
-        $v = Validator::check($json, EventInputDto::RULES);
-        if (new DateTimeImmutable($v['end_at']) <= new DateTimeImmutable($v['start_at'])) {
-            throw ValidationException::field('end_at', 'Must be after start_at');
-        }
-        // chk_events_price : payant <=> prix > 0.
-        $isPaid = $v['is_paid'] ?? false;
-        $price  = $v['price_cents'] ?? 0;
-        if ($isPaid !== ($price > 0)) {
-            throw ValidationException::field('price_cents', $isPaid ? 'Must be greater than 0 for a paid event' : 'Must be 0 for a free event');
-        }
-
-        return new EventInputDto(
-            title: $v['title'],
-            slug: $v['slug'],
-            description: $v['description'],
-            startAt: $v['start_at'],
-            endAt: $v['end_at'],
-            coverImageUrl: $v['cover_image_url'] ?? null,
-            venueName: $v['venue_name'] ?? null,
-            addressLine: $v['address_line'] ?? null,
-            city: $v['city'] ?? null,
-            postalCode: $v['postal_code'] ?? null,
-            latitude: $v['latitude'] ?? null,
-            longitude: $v['longitude'] ?? null,
-            capacity: $v['capacity'] ?? null,
-            priceCents: $price,
-            currency: $v['currency'] ?? 'EUR',
-            isPaid: $isPaid,
-            externalTicketUrl: $v['external_ticket_url'] ?? null,
-            restrictedSchoolId: $v['restricted_school_id'] ?? null,
-        );
-    }
-
-    /**
-     * Colonnes de `events` pour Event::create() / updateById() ; creator_id et status vont dans `$server`.
+     * Colonnes de `events` pour Event::create() ; creator_id et status vont dans `$server`.
      *
      * @return array<string, mixed>
      */
-    public static function toRow(EventInputDto $dto): array
+    public static function toRow(EventCreateDto $dto): array
     {
         return [
             'title'                => $dto->title,
@@ -116,6 +76,36 @@ final class EventMapper
             'school_restricted'    => $dto->restrictedSchoolId !== null,
             'restricted_school_id' => $dto->restrictedSchoolId,
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function toUpdateRow(EventUpdateDto $dto): array
+    {
+        $columns = [
+            'title'                => $dto->title,
+            'slug'                 => $dto->slug,
+            'description'          => $dto->description,
+            'cover_image_url'      => $dto->coverImageUrl,
+            'start_at'             => $dto->startAt === null ? null : self::toDbDatetime($dto->startAt),
+            'end_at'               => $dto->endAt === null ? null : self::toDbDatetime($dto->endAt),
+            'venue_name'           => $dto->venueName,
+            'address_line'         => $dto->addressLine,
+            'city'                 => $dto->city,
+            'postal_code'          => $dto->postalCode,
+            'latitude'             => $dto->latitude,
+            'longitude'            => $dto->longitude,
+            'capacity'             => $dto->capacity,
+            'price_cents'          => $dto->priceCents,
+            'currency'             => $dto->currency,
+            'is_paid'              => $dto->isPaid,
+            'external_ticket_url'  => $dto->externalTicketUrl,
+            'restricted_school_id' => $dto->restrictedSchoolId,
+        ];
+        $row = array_intersect_key($columns, array_flip($dto->provided));
+        if ($dto->has('restricted_school_id')) {
+            $row['school_restricted'] = $dto->restrictedSchoolId !== null;
+        }
+        return $row;
     }
 
     private static function toDbDatetime(string $iso): string

@@ -4,11 +4,12 @@ declare(strict_types=1);
 namespace Tests\Unit\Model\Services;
 
 use App\Core\Orm\Connection;
-use App\Model\Dao\Category;
-use App\Model\Dao\Creator;
-use App\Model\Dao\Event;
-use App\Model\Dto\EventDetailDto;
-use App\Model\Dto\EventDto;
+use App\Model\Dao\Category\Category;
+use App\Model\Dao\Creator\Creator;
+use App\Model\Dao\Event\Event;
+use App\Model\Dao\Event\EventSearchParams;
+use App\Model\Dto\Event\EventDto;
+use App\Model\Dto\PageDto;
 use App\Model\Exceptions\ErrorKind;
 use App\Model\Exceptions\EventException;
 use App\Model\Query\EventFindQuery;
@@ -55,18 +56,24 @@ final class EventServiceTest extends TestCase
     }
 
     /**
-     * @param list<EventDto|EventDetailDto> $events
+     * @param list<EventDto> $events
      * @return list<int>
      */
     private static function ids(array $events): array
     {
-        return array_map(static fn (EventDto|EventDetailDto $e): int => $e instanceof EventDetailDto ? $e->event->id : $e->id, $events);
+        return array_map(static fn (EventDto $e): int => $e->id, $events);
     }
 
     /** @return list<EventDto> */
     private function upcoming(string $from): array
     {
-        return $this->service->listUpcoming(new DateTimeImmutable($from), 20, 0);
+        return $this->page($from, 20, 0)->items;
+    }
+
+    /** @return PageDto<EventDto> */
+    private function page(string $from, int $limit, int $offset): PageDto
+    {
+        return $this->service->findMany(new EventSearchParams(endingAfter: new DateTimeImmutable($from), limit: $limit, offset: $offset));
     }
 
     public function testListReturnsUpcomingPublishedEventsWithCategories(): void
@@ -86,10 +93,10 @@ final class EventServiceTest extends TestCase
 
     public function testPageUsesLimitOffsetAndReportsTheLastPage(): void
     {
-        $from = new DateTimeImmutable('2026-10-19T00:00:00Z');
-        $first = $this->service->listUpcomingPage($from, 1, 0);
-        $last = $this->service->listUpcomingPage($from, 1, 1);
-        $empty = $this->service->listUpcomingPage($from, 1, 2);
+        $from = '2026-10-19T00:00:00Z';
+        $first = $this->page($from, 1, 0);
+        $last = $this->page($from, 1, 1);
+        $empty = $this->page($from, 1, 2);
 
         $this->assertSame([2], self::ids($first->items));
         $this->assertSame(true, $first->hasMore);
@@ -97,7 +104,7 @@ final class EventServiceTest extends TestCase
         $this->assertSame(0, $first->offset);
         $this->assertSame([1], self::ids($last->items));
         $this->assertSame(false, $last->hasMore, 'exactly one item on the final page');
-        $this->assertSame('soiree', $last->items[0]->event->categories[0]->slug);
+        $this->assertSame('soiree', $last->items[0]->categories[0]->slug);
         $this->assertSame([], $empty->items);
         $this->assertSame(false, $empty->hasMore);
     }
@@ -107,11 +114,9 @@ final class EventServiceTest extends TestCase
         $this->pdo->exec("INSERT INTO events (id, creator_id, title, slug, description, start_at, end_at, status) VALUES
             (5, 1, 'Match bis', 'match-bis', 'd', '2026-11-05 18:00:00', '2026-11-05 20:00:00', 'published'),
             (6, 1, 'Archive', 'archive', 'd', '2026-11-05 18:00:00', '2026-11-05 20:00:00', 'archived')");
-        $from = new DateTimeImmutable('2026-10-19T00:00:00Z');
-
         $ids = [];
         for ($offset = 0; $offset < 3; $offset++) {
-            $page = $this->service->listUpcomingPage($from, 1, $offset);
+            $page = $this->page('2026-10-19T00:00:00Z', 1, $offset);
             $ids = array_merge($ids, self::ids($page->items));
             $this->assertSame($offset < 2, $page->hasMore);
         }
@@ -128,7 +133,7 @@ final class EventServiceTest extends TestCase
     private function search(array $query): array
     {
         $params = EventFindQuery::fromQuery(['from' => '2026-10-19T00:00:00Z'] + $query)->toParams();
-        return self::ids($this->service->searchPage($params)->items);
+        return self::ids($this->service->findMany($params)->items);
     }
 
     public function testSearchWithoutFilterMatchesUpcomingList(): void
@@ -159,7 +164,7 @@ final class EventServiceTest extends TestCase
 
     public function testEveryListItemCarriesItsPublicCreator(): void
     {
-        $page = $this->service->searchPage(EventFindQuery::fromQuery(['from' => '2026-10-19T00:00:00Z'])->toParams());
+        $page = $this->service->findMany(EventFindQuery::fromQuery(['from' => '2026-10-19T00:00:00Z'])->toParams());
 
         [$match, $soiree] = $page->items;
         $this->assertSame(2, $match->creator->id);
@@ -176,31 +181,32 @@ final class EventServiceTest extends TestCase
     public function testSearchPageReportsHasMore(): void
     {
         $params = EventFindQuery::fromQuery(['from' => '2026-10-19T00:00:00Z', 'limit' => '1'])->toParams();
-        $page = $this->service->searchPage($params);
+        $page = $this->service->findMany($params);
 
         $this->assertSame([2], self::ids($page->items));
         $this->assertSame(1, $page->limit);
         $this->assertSame(true, $page->hasMore);
         $this->assertSame(2, $page->total, 'total ignores limit/offset');
 
-        $last = $this->service->searchPage(EventFindQuery::fromQuery(['from' => '2026-10-19T00:00:00Z', 'limit' => '1', 'offset' => '1'])->toParams());
+        $last = $this->service->findMany(EventFindQuery::fromQuery(['from' => '2026-10-19T00:00:00Z', 'limit' => '1', 'offset' => '1'])->toParams());
         $this->assertSame([1], self::ids($last->items));
         $this->assertSame(false, $last->hasMore);
         $this->assertSame(2, $last->total);
     }
 
-    public function testGetPublishedReturnsDtoWithCategories(): void
+    public function testGetPublishedReturnsDtoWithCategoriesAndCreator(): void
     {
-        $event = $this->service->getPublished(1);
+        $event = $this->service->findOne(1);
 
         $this->assertSame(1, $event->id);
+        $this->assertSame('Garage ISEP', $event->creator->displayName);
         $this->assertSame('{"slug":"soiree","label":"Soiree"}', json_encode($event->categories[0]));
     }
 
     public function testDraftOrUnknownEventThrowsNotFound(): void
     {
         foreach ([3, 99] as $id) {
-            $e = $this->assertThrows(EventException::class, fn () => $this->service->getPublished($id), "event $id");
+            $e = $this->assertThrows(EventException::class, fn () => $this->service->findOne($id), "event $id");
             $this->assertSame(ErrorKind::NotFound, $e->kind);
             $this->assertSame('EVENT_NOT_FOUND', $e->errorCode);
             $this->assertSame(['id' => $id], $e->details);

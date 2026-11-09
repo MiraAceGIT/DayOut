@@ -1,12 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Model\Dao;
+namespace App\Model\Dao\Event;
 
 use App\Core\Orm\Query\QueryBuilder;
-use DateTimeInterface;
+use App\Model\Dao\Model;
 
-/** Seuls les events `published` sont exposes. */
 final class Event extends Model
 {
     protected const TABLE = 'events';
@@ -19,7 +18,6 @@ final class Event extends Model
         'status', 'published_at', 'created_at',
     ];
 
-    /** Saisie client uniquement : creator_id, status, published_at sont fixes par le serveur. */
     protected const FILLABLE = [
         'title', 'slug', 'description', 'cover_image_url',
         'start_at', 'end_at', 'venue_name', 'address_line', 'city', 'postal_code',
@@ -27,7 +25,6 @@ final class Event extends Model
         'external_ticket_url', 'school_restricted', 'restricted_school_id',
     ];
 
-    /** Tous les entiers exposes sont castes : ne pas dependre du comportement de mysqlnd. */
     protected const CASTS = [
         'id'                   => 'int',
         'creator_id'           => 'int',
@@ -35,7 +32,7 @@ final class Event extends Model
         'capacity'             => 'int',
         'registered_count'     => 'int',
         'price_cents'          => 'int',
-        'latitude'             => 'float', // DECIMAL : PDO renvoie une chaine
+        'latitude'             => 'float',
         'longitude'            => 'float',
         'is_paid'              => 'bool',
         'school_restricted'    => 'bool',
@@ -45,23 +42,6 @@ final class Event extends Model
         'created_at'           => 'datetime',
     ];
 
-    /**
-     * Events pas encore termines a `$from` (ceux en cours compris), du plus proche au plus lointain.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function listPublishedEndingAfter(DateTimeInterface $from, int $limit = 20, int $offset = 0): array
-    {
-        return $this->published()
-            ->where('end_at', '>', $from)
-            ->orderBy('start_at')
-            ->orderBy('id') // departage les egalites : pas de doublon/trou entre pages
-            ->limit($limit)
-            ->offset($offset)
-            ->get();
-    }
-
-    /** sort_by expose => colonne SQL (whitelist : jamais d'identifiant venu du client). */
     private const SORT_MAP = [
         'start_at'    => 'start_at',
         'created_at'  => 'created_at',
@@ -69,11 +49,7 @@ final class Event extends Model
         'price_cents' => 'price_cents',
     ];
 
-    /**
-     * Events publies filtres par `$params` + total sans pagination. Tri departage par id (pages stables).
-     *
-     * @return array{0: array<int, array<string, mixed>>, 1: int} [items, total]
-     */
+    /** @return array{0: array<int, array<string, mixed>>, 1: int} */
     public function findManyPublished(?EventSearchParams $params = null): array
     {
         $param = $params ?? new EventSearchParams();
@@ -89,8 +65,7 @@ final class Event extends Model
             $query->where('start_at', '<', $param->startTo);
         }
         if ($param->text !== null) {
-            // ESCAPE '!' : portable MariaDB/SQLite ; la collation *_ci rend la recherche insensible a la casse et aux accents.
-            $like = '%' . strtr($param->text, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+            $like = self::containsPattern($param->text);
             $query->whereRaw(
                 "title LIKE ? ESCAPE '!' OR venue_name LIKE ? ESCAPE '!' OR city LIKE ? ESCAPE '!'",
                 [$like, $like, $like],
@@ -120,7 +95,6 @@ final class Event extends Model
             $query->whereRaw('capacity IS NULL OR registered_count < capacity');
         }
 
-        // COUNT ignore ORDER BY / LIMIT / OFFSET (Compiler::count).
         $total = $query->count();
 
         $orderColumn = self::SORT_MAP[$param->sortBy] ?? self::SORT_MAP['start_at'];
@@ -139,6 +113,11 @@ final class Event extends Model
     public function findPublishedById(int $id): ?array
     {
         return $this->published()->where('id', $id)->first();
+    }
+
+    public function findForWriteById(int $id): ?array
+    {
+        return $this->query()->where('id', $id)->first();
     }
 
     private function published(): QueryBuilder

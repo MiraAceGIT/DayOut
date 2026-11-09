@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD } from "../src/model/domain/Event.js";
 import { toEvent } from "../src/model/mappers/eventMapper.js";
-import { toEventDetail } from "../src/model/mappers/eventDetailMapper.js";
 import { eventDto } from "./fixtures.js";
 
 describe("places restantes", () => {
@@ -33,7 +32,7 @@ describe("places restantes", () => {
     for (const [capacity, registeredCount, expected] of [[60, 57, 3], [60, 60, 0], [60, 65, 0], [null, 57, null]]) {
       const dto = eventDto({ capacity, registered_count: registeredCount });
       const item = toEvent(dto);
-      const detail = toEventDetail({ ...dto, creator: { id: 2, display_name: "Garage", description: null, avatar_url: null, school_name: null } });
+      const detail = toEvent({ ...dto, creator: { id: 2, display_name: "Garage", description: null, avatar_url: null, school_name: null } });
       assert.equal(item.remainingPlaces, expected);
       assert.equal(detail.remainingPlaces, expected);
       assert.equal(item.availability, detail.availability);

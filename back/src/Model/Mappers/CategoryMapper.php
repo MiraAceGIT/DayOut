@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Mappers;
 
-use App\Model\Dto\CategoryDto;
+use App\Model\Dto\Category\CategoryDto;
 
 final class CategoryMapper
 {

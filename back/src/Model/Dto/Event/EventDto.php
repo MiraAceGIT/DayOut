@@ -1,8 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Model\Dto;
+namespace App\Model\Dto\Event;
 
+use App\Model\Dto\Category\CategoryDto;
+use App\Model\Dto\Creator\CreatorDto;
 use JsonSerializable;
 
 final readonly class EventDto implements JsonSerializable
@@ -30,6 +32,7 @@ final readonly class EventDto implements JsonSerializable
         public ?string $externalTicketUrl,
         public bool $schoolRestricted,
         public array $categories,
+        public CreatorDto $creator,
     ) {
     }
 
@@ -58,6 +61,7 @@ final readonly class EventDto implements JsonSerializable
             'external_ticket_url' => $this->externalTicketUrl,
             'school_restricted'   => $this->schoolRestricted,
             'categories'          => $this->categories,
+            'creator'             => $this->creator,
         ];
     }
 }

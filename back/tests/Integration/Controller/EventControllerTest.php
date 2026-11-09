@@ -229,4 +229,13 @@ final class EventControllerTest extends HttpTestCase
             $this->assertTrue(is_string($category['slug']) && is_string($category['label']), $id);
         }
     }
+
+    public function testWritesAreRejectedWithoutAuthentication(): void
+    {
+        foreach ([['POST', '/events'], ['PATCH', '/events/1'], ['DELETE', '/events/1']] as [$method, $path]) {
+            $response = $this->request($method, $path, ['title' => 'x']);
+            $this->assertError(401, 'UNAUTHORIZED', $response);
+        }
+        $this->assertSame('Soiree de rentree ISEP 2026', $this->get('/events/1')->json()['data']['title'], 'nothing changed');
+    }
 }

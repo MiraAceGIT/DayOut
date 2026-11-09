@@ -1,4 +1,5 @@
 /** @typedef {import("./categoryDto.js").CategoryDto} CategoryDto */
+/** @typedef {import("./creatorDto.js").CreatorDto} CreatorDto */
 
 /**
  * @typedef {object} EventDto
@@ -23,16 +24,17 @@
  * @property {string|null} external_ticket_url
  * @property {boolean} school_restricted
  * @property {CategoryDto[]} categories
+ * @property {CreatorDto} creator
  */
 
 /**
  * Reponse de GET /events (EventController::index).
  * @typedef {object} EventPageDto
- * @property {import("./eventDetailDto.js").EventDetailDto[]} items evenements avec leur createur
+ * @property {EventDto[]} items
  * @property {number} limit
  * @property {number} offset
  * @property {boolean} has_more
- * @property {number|null} total nombre d'evenements correspondant aux filtres
+ * @property {number|null} total
  */
 
 export {};

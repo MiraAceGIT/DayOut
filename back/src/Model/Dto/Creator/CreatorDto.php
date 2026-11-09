@@ -1,11 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Model\Dto;
+namespace App\Model\Dto\Creator;
 
 use JsonSerializable;
 
-/** Profil public uniquement : aucun email, score, telephone ou renseignement de moderation. */
 final readonly class CreatorDto implements JsonSerializable
 {
     public function __construct(

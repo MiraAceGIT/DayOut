@@ -1,6 +1,10 @@
 // Donnees partagees par les tests : un EventDto tel que le renvoie l'API, et son evenement du front.
 import { toEvent } from "../src/model/mappers/eventMapper.js";
-import { toEventDetail } from "../src/model/mappers/eventDetailMapper.js";
+
+/** @returns {import("../src/model/dto/creatorDto.js").CreatorDto} */
+export const creatorDto = (overrides = {}) => ({
+  id: 2, display_name: "Garage ISEP", description: null, avatar_url: null, school_name: "ISEP", ...overrides,
+});
 
 /** EventDto complet (GET /events/1), surcharges par `overrides`. */
 export function eventDto(overrides = {}) {
@@ -26,19 +30,12 @@ export function eventDto(overrides = {}) {
     external_ticket_url: null,
     school_restricted: false,
     categories: [{ slug: "soiree", label: "Soirée" }],
+    creator: creatorDto(),
     ...overrides,
   };
 }
 
 export const event = (overrides = {}) => toEvent(eventDto(overrides));
-
-/** @returns {import("../src/model/dto/eventDetailDto.js").CreatorDto} */
-export const creatorDto = (overrides = {}) => ({
-  id: 2, display_name: "Garage ISEP", description: null, avatar_url: null, school_name: "ISEP", ...overrides,
-});
-
-/** Element de GET /events normalise : event + createur. */
-export const eventDetail = (overrides = {}) => toEventDetail({ ...eventDto(overrides), creator: creatorDto() });
 
 /** Espaces insecables (fr-FR : "15 €", "0,6 km") -> espace simple : assertions independantes d'ICU. */
 export const spaces = (text) => text.replace(/\s/g, " ");

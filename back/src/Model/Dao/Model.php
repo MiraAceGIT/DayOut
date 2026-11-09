@@ -75,6 +75,11 @@ abstract class Model
         return $this->table()->where(static::PRIMARY_KEY, $id)->delete();
     }
 
+    protected static function containsPattern(string $text): string
+    {
+        return '%' . strtr($text, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+    }
+
     protected function query(): QueryBuilder
     {
         return $this->table()

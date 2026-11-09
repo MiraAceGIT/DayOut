@@ -1,5 +1,6 @@
 import { availabilityOf, remainingPlaces } from "../domain/Event.js";
 import { toCategory, toCategoryDto } from "./categoryMapper.js";
+import { toCreator, toCreatorDto } from "./creatorMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventDto} EventDto */
 
@@ -40,6 +41,7 @@ export function toEvent(dto) {
     externalTicketUrl: dto.external_ticket_url ?? null,
     schoolRestricted: Boolean(dto.school_restricted),
     categories: Array.isArray(dto.categories) ? dto.categories.map(toCategory) : [],
+    creator: dto.creator ? toCreator(dto.creator) : null,
   };
 }
 
@@ -71,5 +73,6 @@ export function toEventDto(event) {
     external_ticket_url: event.externalTicketUrl,
     school_restricted: event.schoolRestricted,
     categories: event.categories.map(toCategoryDto),
+    creator: event.creator ? toCreatorDto(event.creator) : null,
   });
 }

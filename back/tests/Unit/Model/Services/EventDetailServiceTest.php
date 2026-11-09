@@ -4,12 +4,12 @@ declare(strict_types=1);
 namespace Tests\Unit\Model\Services;
 
 use App\Controller\EventController;
+use App\Core\Http\ExceptionRenderer;
 use App\Core\Orm\Connection;
 use App\Core\Request;
-use App\Core\Http\ExceptionRenderer;
-use App\Model\Dao\Category;
-use App\Model\Dao\Creator;
-use App\Model\Dao\Event;
+use App\Model\Dao\Category\Category;
+use App\Model\Dao\Creator\Creator;
+use App\Model\Dao\Event\Event;
 use App\Model\Exceptions\EventException;
 use App\Model\Services\EventService;
 use PDO;
@@ -69,11 +69,11 @@ final class EventDetailServiceTest extends TestCase
 
     public function testLoadsEventCategoriesAndCreatorLikeAListItem(): void
     {
-        $detail = $this->service->getPublishedDetail(1);
+        $detail = $this->service->findOne(1);
         $this->assertSame(3, $this->pdo->queries, 'event, categories, creator');
-        $this->assertSame(1, $detail->event->id);
-        $this->assertSame(['bde', 'tech'], array_map(static fn ($c): string => $c->slug, $detail->event->categories));
-        $this->assertSame(3, $detail->event->registeredCount, 'denormalized column (kept by triggers), not multiplied by categories');
+        $this->assertSame(1, $detail->id);
+        $this->assertSame(['bde', 'tech'], array_map(static fn ($c): string => $c->slug, $detail->categories));
+        $this->assertSame(3, $detail->registeredCount, 'denormalized column (kept by triggers), not multiplied by categories');
         $this->assertSame('Garage ISEP', $detail->creator->displayName);
         $this->assertSame('Des projets tech entre etudiants.', $detail->creator->description);
         $this->assertSame('ISEP', $detail->creator->schoolName);
@@ -82,22 +82,22 @@ final class EventDetailServiceTest extends TestCase
 
     public function testMissingProfileSchoolAndActiveCategoryDoNotHideTheEvent(): void
     {
-        $detail = $this->service->getPublishedDetail(2);
+        $detail = $this->service->findOne(2);
         $this->assertSame('Alex Durand', $detail->creator->displayName);
         $this->assertSame('Un autre organisateur', $detail->creator->description);
         $this->assertSame(null, $detail->creator->schoolName);
         $this->assertSame(null, $detail->creator->avatarUrl);
-        $this->assertSame([], $detail->event->categories);
-        $this->assertSame(0, $detail->event->registeredCount);
-        $this->assertSame(null, $detail->event->capacity);
+        $this->assertSame([], $detail->categories);
+        $this->assertSame(0, $detail->registeredCount);
+        $this->assertSame(null, $detail->capacity);
         $this->pdo->exec('DELETE FROM event_categories WHERE event_id = 2');
-        $this->assertSame([], $this->service->getPublishedDetail(2)->event->categories, 'no category link at all');
+        $this->assertSame([], $this->service->findOne(2)->categories, 'no category link at all');
     }
 
     public function testUnknownAndNonPublishedEventsAreNotReturned(): void
     {
         foreach ([3, 4, 5, 9999] as $id) {
-            $e = $this->assertThrows(EventException::class, fn () => $this->service->getPublishedDetail($id));
+            $e = $this->assertThrows(EventException::class, fn () => $this->service->findOne($id));
             $this->assertSame('EVENT_NOT_FOUND', $e->errorCode);
             $this->assertSame(404, ExceptionRenderer::render($e)->status);
         }
@@ -105,7 +105,7 @@ final class EventDetailServiceTest extends TestCase
 
     public function testControllerSerializesOnlyPublicData(): void
     {
-        $response = (new EventController($this->service))->show(new Request('GET', '/events/1', params: ['id' => '1']));
+        $response = (new EventController($this->service))->findOne(new Request('GET', '/events/1', params: ['id' => '1']));
         $this->assertSame(200, $response->status);
         $json = (string) json_encode($response->payload());
         $data = json_decode($json, true)['data'];

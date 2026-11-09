@@ -26,6 +26,11 @@ final class HttpException extends RuntimeException
         return new self(400, 'BAD_REQUEST', $message, $details, $previous);
     }
 
+    public static function unauthorized(string $message = 'Authentication required'): self
+    {
+        return new self(401, 'UNAUTHORIZED', $message, [], null, ['WWW-Authenticate' => 'Bearer']);
+    }
+
     public static function notFound(string $message, array $details = []): self
     {
         return new self(404, 'NOT_FOUND', $message, $details);
