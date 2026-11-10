@@ -1,12 +1,14 @@
 import { isApiError, messageFor } from "../core/errors.js";
 import { currentPosition } from "../core/geolocation.js";
 import { replaceSearchParam } from "../core/routes.js";
-import { MAX_EVENTS_LIMIT, fetchUpcomingEvents } from "../model/services/eventService.js";
+import { MAX_EVENTS_LIMIT, MAX_KEYWORD_LENGTH, fetchUpcomingEvents } from "../model/services/eventService.js";
 import { MapSearch } from "../model/state/MapSearch.js";
 import { COVERAGE_AREA, isInCoverageArea } from "../model/domain/coverageArea.js";
 import { HomeView } from "../view/home/HomeView.js";
 import { MapView } from "../view/home/map/MapView.js";
 import { SearchBox } from "../view/components/searchBox/searchBox.js";
+
+const cleanKeyword = (query) => String(query ?? "").trim().slice(0, MAX_KEYWORD_LENGTH);
 
 export class HomeController {
   constructor({
@@ -28,12 +30,18 @@ export class HomeController {
     this.limit = Math.min(limit, MAX_EVENTS_LIMIT);
     // Incremente a chaque choix de point (clic ou localisation) : une position arrivee en retard est ignoree.
     this.pickSeq = 0;
+    // Meme principe pour les chargements : seule la recherche la plus recente met la liste a jour.
+    this.loadSeq = 0;
+    this.loadAbort = null;
+    this.pageSignal = undefined;
+    this.keyword = "";
   }
 
   /** @param {{ query?: string, signal?: AbortSignal }} [options] `signal` : annule quand on quitte la carte. */
   async start({ query = "", signal } = {}) {
     if (!this.view.isReady) return;
-    this.state.setQuery(query);
+    this.pageSignal = signal;
+    this.keyword = cleanKeyword(query);
     const { origin, radiusKm } = this.state.criteria;
 
     this.view.bind({
@@ -43,7 +51,7 @@ export class HomeController {
       onSelect: (id) => this.select(id, { from: "list" }),
       onChangePoint: () => this.map.promptPick(),
     });
-    this.searchBox.bindLive((q) => this.search(q), { signal });
+    this.searchBox.bindSubmit((q) => this.search(q), { signal });
     this.map.init({
       origin,
       radiusKm,
@@ -54,31 +62,44 @@ export class HomeController {
         onLocate: () => this.locate(),
       },
     });
-    // On quitte la carte : Leaflet est detruit, une localisation en cours est ignoree (pickSeq).
+    // On quitte la carte : Leaflet est detruit, une localisation ou une recherche en cours est ignoree.
     signal?.addEventListener("abort", () => {
       this.pickSeq += 1;
+      this.loadAbort?.abort();
       this.map.destroy();
     });
-    this.searchBox.setQuery(query);
+    this.searchBox.setQuery(this.keyword);
     this.view.setOrigin(origin);
     this.view.setRadius(radiusKm);
 
+    await this.load();
+  }
+
+  /** Recherche par mot-cle cote API (vide = tous les evenements a venir) ; rayon et filtres s'appliquent ensuite en local. */
+  async load() {
+    const seq = ++this.loadSeq;
+    this.loadAbort?.abort(); // une recherche plus recente remplace celle en cours
+    const controller = new AbortController();
+    this.loadAbort = controller;
+    const keyword = this.keyword;
+
     this.view.showLoading();
     try {
-      const events = await this.loadEvents({ limit: this.limit });
-      if (signal?.aborted) return; // carte quittee pendant le chargement
-      this.state.load(events, { limit: this.limit });
+      const events = await this.loadEvents({ limit: this.limit, query: keyword, signal: controller.signal });
+      if (seq !== this.loadSeq || this.pageSignal?.aborted) return; // recherche remplacee ou carte quittee
+      this.state.load(events, { limit: this.limit, keyword });
       const { categories } = this.state;
       this.view.renderCategoryFilters(categories, this.state.criteria.categories);
       this.map.renderLegend(categories);
       this.render();
     } catch (err) {
+      if (seq !== this.loadSeq) return;
       // ApiError = echec attendu ; toute autre erreur est un bug.
       if (!isApiError(err)) console.error(err);
       this.state.fail();
       this.view.showError(messageFor(err));
     } finally {
-      this.view.endLoading();
+      if (seq === this.loadSeq) this.view.endLoading();
     }
   }
 
@@ -92,9 +113,9 @@ export class HomeController {
   }
 
   search(query) {
-    this.state.setQuery(query);
-    this.render();
-    replaceSearchParam("q", query);
+    this.keyword = cleanKeyword(query);
+    replaceSearchParam("q", this.keyword);
+    return this.load();
   }
 
   setRadius(km) {

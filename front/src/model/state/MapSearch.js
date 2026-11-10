@@ -19,6 +19,7 @@ export class MapSearch {
   constructor({ origin = DEFAULT_ORIGIN, radiusKm = DEFAULT_RADIUS_KM, query = "" } = {}) {
     this.status = "loading"; // "loading" | "ready" | "error" : pas de rendu de liste hors "ready"
     this.events = [];
+    this.keyword = "";
     this.truncated = false;
     this.selectedId = null;
     this.criteria = {
@@ -36,11 +37,16 @@ export class MapSearch {
     return this.status === "ready";
   }
 
-  /** `limit` demande a l'API : l'atteindre signifie que des evenements a venir peuvent manquer (pas de filtre de date). */
-  load(events, { limit }) {
+  /** `limit` demande a l'API : l'atteindre signifie que des evenements a venir peuvent manquer (pas de filtre de date).
+   * `keyword` : recherche deja appliquee par l'API ; `events` est donc deja le resultat, a ne pas refiltrer par texte. */
+  load(events, { limit, keyword = "" }) {
     this.events = events;
+    this.keyword = keyword;
     this.truncated = events.length >= limit;
     this.status = "ready";
+    // Une categorie absente des nouveaux resultats n'a plus de pastille : son filtre ne doit pas rester actif en cache.
+    const present = new Set(categoriesIn(events).map((c) => c.slug));
+    this.criteria.categories = new Set([...this.criteria.categories].filter((slug) => present.has(slug)));
   }
 
   fail() {
@@ -83,7 +89,7 @@ export class MapSearch {
   results({ now = new Date() } = {}) {
     const result = searchEvents(this.events, { ...this.criteria, now });
     if (!result.items.some((item) => item.event.id === this.selectedId)) this.selectedId = null;
-    return { ...result, loadedCap: this.truncated ? this.events.length : 0 };
+    return { ...result, loadedCap: this.truncated ? this.events.length : 0, keyword: this.keyword, total: this.events.length };
   }
 
   suggestions({ now = new Date() } = {}) {
