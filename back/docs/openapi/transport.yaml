@@ -1,0 +1,102 @@
+tags:
+  - name: transport
+    description: Informations transport pour se rendre a un evenement (CdC D8)
+
+paths:
+  /events/{id}/transport:
+    get:
+      tags: [transport]
+      summary: Depart suggere et arrets de TC proches d'un evenement
+      description: >-
+        Infos necessaires au bouton "Itineraire" et a l'affichage des arrets proches sur la page detail.
+
+        - `origin` : point de depart pre-rempli. Renseigne uniquement si l'appel est authentifie et que
+          l'utilisateur a une ecole avec coordonnees ; sinon `null`, le front utilisera la position du navigateur.
+        - `stops` : jusqu'a 3 arrets (metro/RER/tram/bus) dans un rayon de 800 m autour de l'evenement,
+          tries par distance a vol d'oiseau croissante.
+        - `stops_available` : `false` quand la source externe (Overpass/OSM) est indisponible. La page
+          reste utilisable : le front affiche un message neutre plutot qu'une erreur.
+      operationId: getEventTransport
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifiant decimal positif de l'evenement. Toute valeur invalide donne 404.
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Infos transport (eventuellement degradees si `stops_available` = false).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Transport" }
+        "404":
+          description: Evenement inexistant ou non publie (`EVENT_NOT_FOUND`), ou `id` non numerique (`NOT_FOUND`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Evenement sans coordonnees (`EVENT_NO_COORDINATES`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  schemas:
+    TransportOrigin:
+      type: object
+      description: Depart pre-rempli pour un itineraire.
+      required: [type, name, latitude, longitude]
+      properties:
+        type:
+          type: string
+          enum: [school]
+          description: Source de l'origine (une seule valeur pour l'instant, extensible).
+        name: { type: string, example: ISEP }
+        latitude:  { type: number, format: double, example: 48.843993 }
+        longitude: { type: number, format: double, example: 2.328964 }
+
+    TransportStop:
+      type: object
+      description: Arret de TC proche de l'evenement (OpenStreetMap via Overpass).
+      required: [name, type, latitude, longitude, distance_m, lines]
+      properties:
+        name: { type: string, example: Opera }
+        type:
+          type: string
+          enum: [subway, tram, rail, bus, other]
+          description: Categorisation deduite des tags OSM.
+        latitude:  { type: number, format: double, example: 48.8705 }
+        longitude: { type: number, format: double, example: 2.3324 }
+        distance_m:
+          type: integer
+          minimum: 0
+          description: Distance a vol d'oiseau entre l'arret et l'evenement (metres).
+          example: 180
+        lines:
+          type: array
+          description: Numeros/lettres de lignes desservant l'arret (depuis `route_ref` / `ref` OSM) ; peut etre vide.
+          items: { type: string, example: "3" }
+
+    Transport:
+      type: object
+      description: Reponse de `GET /events/{id}/transport`.
+      required: [origin, stops, stops_available]
+      properties:
+        origin:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/TransportOrigin" }]
+        stops:
+          type: array
+          description: 0 a 3 arrets, tries par distance croissante.
+          items: { $ref: "#/components/schemas/TransportStop" }
+        stops_available:
+          type: boolean
+          description: "`false` si Overpass n'a pas repondu : la page reste utilisable, afficher un message neutre."

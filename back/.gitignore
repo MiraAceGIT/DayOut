@@ -3,3 +3,4 @@
 vendor/
 tools/.cache/
 tools/composer.phar
+storage/cache/
