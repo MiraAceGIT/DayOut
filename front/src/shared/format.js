@@ -1,4 +1,5 @@
 const LOCALE = "fr-FR";
+export const EVENT_TIME_ZONE = "Europe/Paris";
 
 function toDate(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -16,30 +17,52 @@ export function formatDate(value, {
   options = { dateStyle: "medium", timeStyle: "short" },
 } = {}) {
   const date = toDate(value);
-  return date ? date.toLocaleString(locale, options) : fallback;
+  return date ? date.toLocaleString(locale, { timeZone: EVENT_TIME_ZONE, ...options }) : fallback;
 }
 
-export function formatDay(value, { locale = LOCALE } = {}) {
+export function formatDay(value, { locale = LOCALE, timeZone = EVENT_TIME_ZONE, withYear = false } = {}) {
   const date = toDate(value);
   if (!date) return "";
-  const text = date.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
+  const text = date.toLocaleDateString(locale, {
+    weekday: "short", day: "numeric", month: "short", timeZone,
+    ...(withYear ? { year: "numeric" } : {}),
+  });
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export function formatHour(value) {
+export function formatHour(value, { timeZone = EVENT_TIME_ZONE } = {}) {
   const date = toDate(value);
   if (!date) return "";
-  const minutes = date.getMinutes();
-  return minutes ? `${date.getHours()} h ${String(minutes).padStart(2, "0")}` : `${date.getHours()} h`;
+  const parts = new Intl.DateTimeFormat(LOCALE, {
+    hour: "numeric", minute: "2-digit", hourCycle: "h23", timeZone,
+  }).formatToParts(date);
+  const hour = Number(parts.find(part => part.type === "hour").value);
+  const minute = parts.find(part => part.type === "minute").value;
+  return minute === "00" ? `${hour} h` : `${hour} h ${minute}`;
 }
 
-export function formatEventWhen(startAt, endAt, { withEnd = false } = {}) {
+export function formatEventWhen(startAt, endAt, { withEnd = false, withYear = false, timeZone = EVENT_TIME_ZONE } = {}) {
   const start = toDate(startAt);
   if (!start) return "";
-  let text = `${formatDay(start)} · ${formatHour(start)}`;
   const end = withEnd ? toDate(endAt) : null;
-  if (end && end.toDateString() === start.toDateString()) text += ` – ${formatHour(end)}`;
+  const year = new Intl.DateTimeFormat(LOCALE, { year: "numeric", timeZone });
+  const showYear = withYear || Boolean(end && year.format(start) !== year.format(end));
+  let text = `${formatDay(start, { timeZone, withYear: showYear })} · ${formatHour(start, { timeZone })}`;
+  if (end && end >= start) {
+    const day = new Intl.DateTimeFormat(LOCALE, { year: "numeric", month: "numeric", day: "numeric", timeZone });
+    const endDate = day.format(start) === day.format(end) ? "" : `${formatDay(end, { timeZone, withYear: showYear })} · `;
+    text += ` – ${endDate}${formatHour(end, { timeZone })}`;
+  }
   return text;
+}
+
+/** Libelle partage par les cartes et le detail ; le calcul reste dans model/domain/Event.js.
+ * @param {number|null} remaining
+ */
+export function formatRemainingPlaces(remaining) {
+  if (remaining === null) return "Places illimitées";
+  if (remaining === 0) return "Complet";
+  return `${pluralize(remaining, "place")} restante${remaining > 1 ? "s" : ""}`;
 }
 
 export function formatDistance(km, { locale = LOCALE } = {}) {

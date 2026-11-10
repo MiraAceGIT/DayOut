@@ -27,6 +27,7 @@ final class EventControllerTest extends HttpTestCase
         $data = $response->json()['data'];
         $this->assertSame(20, $data['limit']);
         $this->assertSame(0, $data['offset']);
+        $this->assertSame(false, $data['has_more']);
 
         $ids = array_column($data['items'], 'id');
         sort($ids);
@@ -47,6 +48,8 @@ final class EventControllerTest extends HttpTestCase
         $this->assertSame(3, $second['offset']);
         $this->assertCount(3, $first['items']);
         $this->assertCount(3, $second['items']);
+        $this->assertSame(true, $first['has_more']);
+        $this->assertSame(true, $second['has_more']);
         $this->assertSame([], array_intersect(array_column($first['items'], 'id'), array_column($second['items'], 'id')));
     }
 
@@ -68,7 +71,16 @@ final class EventControllerTest extends HttpTestCase
 
     public function testOffsetPastTheEndGivesAnEmptyPage(): void
     {
-        $this->assertSame([], $this->list('offset=10000')['items'], 'never page 1 again (infinite scroll)');
+        $page = $this->list('offset=10000');
+        $this->assertSame([], $page['items'], 'never page 1 again (infinite scroll)');
+        $this->assertSame(false, $page['has_more']);
+    }
+
+    public function testLastFullPageDoesNotClaimAnotherPageExists(): void
+    {
+        $page = $this->list('limit=1&offset=6');
+        $this->assertCount(1, $page['items']);
+        $this->assertSame(false, $page['has_more']);
     }
 
     public function testDefaultListHidesEventsThatAlreadyEnded(): void
@@ -107,6 +119,10 @@ final class EventControllerTest extends HttpTestCase
         $this->assertSame(false, $event['is_paid']);
         $this->assertSame(true, $event['school_restricted']);
         $this->assertSame('2026-11-07T20:00:00+00:00', $event['start_at']);
+        $this->assertArrayHasKey('creator', $event);
+        $this->assertSame(['id', 'display_name', 'description', 'avatar_url', 'school_name'], array_keys($event['creator']));
+        $this->assertTrue(is_int($event['creator']['id']));
+        $this->assertTrue(is_string($event['creator']['display_name']));
     }
 
     public function testInternalColumnsAreNotExposed(): void
@@ -114,9 +130,16 @@ final class EventControllerTest extends HttpTestCase
         $events = [$this->get('/events/1')->json()['data'], ...$this->list()['items']];
 
         foreach ($events as $event) {
-            foreach (['creator_id', 'restricted_school_id', 'status', 'published_at', 'created_at', 'updated_at'] as $key) {
+            foreach (['creator_id', 'restricted_school_id', 'published_at', 'created_at', 'updated_at'] as $key) {
                 $this->assertFalse(array_key_exists($key, $event), "event {$event['id']} exposes $key");
             }
+        }
+    }
+
+    public function testListItemsCarryTheSameCreatorAsTheDetail(): void
+    {
+        foreach ($this->list()['items'] as $event) {
+            $this->assertSame($this->get('/events/' . $event['id'])->json()['data']['creator'], $event['creator'], "event {$event['id']}");
         }
     }
 
@@ -125,6 +148,13 @@ final class EventControllerTest extends HttpTestCase
         $error = $this->assertError(404, 'EVENT_NOT_FOUND', $this->get('/events/99999'));
         $this->assertSame('Event not found', $error['message']);
         $this->assertSame(['id' => 99999], $error['details']);
+    }
+
+    public function testInvalidIdentifiersReturn404(): void
+    {
+        foreach (['abc', '0', '-1', '1.5', '1e2', '01', '9223372036854775808'] as $id) {
+            $this->assertError(404, 'NOT_FOUND', $this->get('/events/' . $id));
+        }
     }
 
     public function testDraftAndArchivedEventsAreNotExposed(): void
@@ -198,5 +228,14 @@ final class EventControllerTest extends HttpTestCase
             $this->assertSame(['slug', 'label'], array_keys($category), $id);
             $this->assertTrue(is_string($category['slug']) && is_string($category['label']), $id);
         }
+    }
+
+    public function testWritesAreRejectedWithoutAuthentication(): void
+    {
+        foreach ([['POST', '/events'], ['PATCH', '/events/1'], ['DELETE', '/events/1']] as [$method, $path]) {
+            $response = $this->request($method, $path, ['title' => 'x']);
+            $this->assertError(401, 'UNAUTHORIZED', $response);
+        }
+        $this->assertSame('Soiree de rentree ISEP 2026', $this->get('/events/1')->json()['data']['title'], 'nothing changed');
     }
 }

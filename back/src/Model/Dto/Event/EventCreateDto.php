@@ -1,21 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Model\Dto;
+namespace App\Model\Dto\Event;
 
-/**
- * Event tel qu'un client peut l'ecrire (creation). Distinct d'EventDto (lecture) : ni id, ni registered_count,
- * ni school_restricted (deduit de restrictedSchoolId), ni champs serveur (creator_id, status).
- */
-final readonly class EventInputDto
+use App\Core\ValidationException;
+use App\Core\Validator;
+use DateTimeImmutable;
+
+final readonly class EventCreateDto
 {
-    /** Plafond des colonnes INT UNSIGNED : au-dela, MariaDB refuserait la valeur (1264). */
-    private const INT_UNSIGNED_MAX = '4294967295';
+    public const INT_UNSIGNED_MAX = '4294967295';
 
-    /**
-     * Noms du JSON recu (snake_case, comme EventDto) => regles du Validator ; bornes = colonnes SQL.
-     * `description` : TEXT = 65 535 octets, soit 16 000 caracteres de 4 octets au pire (utf8mb4).
-     */
     public const RULES = [
         'title'                => 'required|string|max:180',
         'slug'                 => 'required|string|slug|max:200',
@@ -37,7 +32,6 @@ final readonly class EventInputDto
         'restricted_school_id' => 'nullable|int|min:1|max:' . self::INT_UNSIGNED_MAX,
     ];
 
-    /** Valeurs par defaut = DEFAULT des colonnes NOT NULL (price_cents, currency, is_paid). */
     public function __construct(
         public string $title,
         public string $slug,
@@ -58,5 +52,47 @@ final readonly class EventInputDto
         public ?string $externalTicketUrl = null,
         public ?int $restrictedSchoolId = null,
     ) {
+    }
+
+    public static function fromArray(array $json): self
+    {
+        $v = Validator::check($json, self::RULES);
+        self::checkDates($v['start_at'], $v['end_at']);
+        self::checkPrice($v['is_paid'] ?? false, $v['price_cents'] ?? 0);
+
+        return new self(
+            title: $v['title'],
+            slug: $v['slug'],
+            description: $v['description'],
+            startAt: $v['start_at'],
+            endAt: $v['end_at'],
+            coverImageUrl: $v['cover_image_url'] ?? null,
+            venueName: $v['venue_name'] ?? null,
+            addressLine: $v['address_line'] ?? null,
+            city: $v['city'] ?? null,
+            postalCode: $v['postal_code'] ?? null,
+            latitude: $v['latitude'] ?? null,
+            longitude: $v['longitude'] ?? null,
+            capacity: $v['capacity'] ?? null,
+            priceCents: $v['price_cents'] ?? 0,
+            currency: $v['currency'] ?? 'EUR',
+            isPaid: $v['is_paid'] ?? false,
+            externalTicketUrl: $v['external_ticket_url'] ?? null,
+            restrictedSchoolId: $v['restricted_school_id'] ?? null,
+        );
+    }
+
+    public static function checkDates(string $startAt, string $endAt): void
+    {
+        if ((new DateTimeImmutable($endAt))->getTimestamp() <= (new DateTimeImmutable($startAt))->getTimestamp()) {
+            throw ValidationException::field('end_at', 'Must be after start_at');
+        }
+    }
+
+    public static function checkPrice(bool $isPaid, int $priceCents): void
+    {
+        if ($isPaid !== ($priceCents > 0)) {
+            throw ValidationException::field('price_cents', $isPaid ? 'Must be greater than 0 for a paid event' : 'Must be 0 for a free event');
+        }
     }
 }

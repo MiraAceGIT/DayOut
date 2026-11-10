@@ -1,6 +1,11 @@
 // Donnees partagees par les tests : un EventDto tel que le renvoie l'API, et son evenement du front.
 import { toEvent } from "../src/model/mappers/eventMapper.js";
 
+/** @returns {import("../src/model/dto/creatorDto.js").CreatorDto} */
+export const creatorDto = (overrides = {}) => ({
+  id: 2, display_name: "Garage ISEP", description: null, avatar_url: null, school_name: "ISEP", ...overrides,
+});
+
 /** EventDto complet (GET /events/1), surcharges par `overrides`. */
 export function eventDto(overrides = {}) {
   return {
@@ -24,7 +29,9 @@ export function eventDto(overrides = {}) {
     is_paid: true,
     external_ticket_url: null,
     school_restricted: false,
+    status: "published",
     categories: [{ slug: "soiree", label: "Soirée" }],
+    creator: creatorDto(),
     ...overrides,
   };
 }

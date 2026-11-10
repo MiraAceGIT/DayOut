@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <title>Hackathon IA inter-écoles</title>
+  <desc>Des ordinateurs et leurs lignes de code entourent un réseau de neurones sur un fond violet.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#cfc7dc" stroke-opacity=".1"/>
+    </pattern>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#241238"/><stop offset="1" stop-color="#42305c"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#background)" d="M0 0h640v480H0z"/>
+  <path fill="url(#grid)" d="M0 0h640v480H0z"/>
+  <circle cx="320" cy="235" r="146" fill="none" stroke="#cfc7dc" stroke-opacity=".15"/>
+  <circle cx="320" cy="235" r="107" fill="#0e8597" fill-opacity=".25"/>
+  <g fill="none" stroke="#62d4d4" stroke-width="3" stroke-linecap="round">
+    <path d="m266 184 54 31 55-31m-109 0v100l54-69 55 69V184m-109 50 54 29 55-29m-109 50 54-21 55 21"/>
+    <path d="m245 211-62-43m215 42 63-42M297 308l-57 50m105-50 57 50" stroke-dasharray="6 9"/>
+  </g>
+  <g fill="#f7f5fa" stroke="#62d4d4" stroke-width="4">
+    <circle cx="266" cy="184" r="9"/><circle cx="266" cy="234" r="9"/><circle cx="266" cy="284" r="9"/>
+    <circle cx="320" cy="215" r="11"/><circle cx="320" cy="263" r="11"/>
+    <circle cx="375" cy="184" r="9"/><circle cx="375" cy="234" r="9"/><circle cx="375" cy="284" r="9"/>
+  </g>
+  <g stroke="#cfc7dc" stroke-width="3" stroke-linejoin="round">
+    <rect x="58" y="91" width="142" height="96" rx="8" fill="#241238"/>
+    <path d="M47 188h164l-16 14H63z" fill="#cfc7dc"/>
+    <rect x="441" y="91" width="142" height="96" rx="8" fill="#241238"/>
+    <path d="M430 188h164l-16 14H446z" fill="#cfc7dc"/>
+    <rect x="245" y="341" width="150" height="91" rx="8" fill="#241238"/>
+    <path d="M234 433h172l-16 14H250z" fill="#cfc7dc"/>
+  </g>
+  <g fill="none" stroke-width="5" stroke-linecap="round">
+    <path stroke="#ff771c" d="m83 121 10 9-10 9m23 0h24m335-19h35m-35 18h19m-214 227h28"/>
+    <path stroke="#62d4d4" d="M83 156h55m13 0h19m295 0h75m-270 228h60m-60 17h35m14 0h35"/>
+  </g>
+  <g fill="#ff771c"><circle cx="320" cy="82" r="6"/><circle cx="92" cy="318" r="5"/><circle cx="550" cy="322" r="7"/></g>
+  <g fill="none" stroke="#cfc7dc" stroke-width="2" opacity=".5"><path d="M112 267v16m-8-8h16m384-29v16m-8-8h16"/></g>
+</svg>

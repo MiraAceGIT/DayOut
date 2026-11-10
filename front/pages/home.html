@@ -62,9 +62,12 @@
 
       <div id="home-panel-foryou" class="map-panel__tabpanel" role="tabpanel" aria-labelledby="home-tab-foryou" hidden>
         <p class="foryou">
-          Connecte-toi pour voir les événements choisis pour toi.
+          Découvre quelques événements à venir. Les recommandations personnalisées seront disponibles après connexion.
           <a id="home-login-link" href="pages/login.html">Se connecter</a>
         </p>
+        <p id="home-suggestions-status" class="results-head__count" role="status"></p>
+        <p id="home-suggestions-error" class="alert alert--error" role="alert"></p>
+        <ul id="home-suggestions" class="event-list" aria-label="Suggestions d’événements" aria-busy="false"></ul>
       </div>
     </section>
 

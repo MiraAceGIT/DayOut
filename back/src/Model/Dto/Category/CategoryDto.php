@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Model\Dto;
+namespace App\Model\Dto\Category;
 
 use JsonSerializable;
 

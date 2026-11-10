@@ -1,4 +1,5 @@
 .event-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -6,12 +7,14 @@
   border: 1px solid var(--color-border-light);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow);
+  min-width: 0;
 }
 
 /* Bandeau a la couleur de la categorie ; neutre (surface 2) si l'evenement n'en a pas de la charte. */
 .event-card::before {
   content: "";
   height: 8px;
+  flex-shrink: 0;
   background: var(--cat-color, var(--color-surface-2));
 }
 
@@ -20,7 +23,20 @@
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-5) var(--space-5);
+  min-width: 0;
+  flex: 1;
 }
+
+.event-card__image { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: var(--color-surface-2); }
+.event-card__link { color: inherit; text-decoration: none; }
+.event-card__link:hover { text-decoration: underline; }
+/* Le lien du titre couvre aussi l'image et le corps de la carte. */
+.event-card__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-card); }
+.event-card__link:focus-visible { outline: none; box-shadow: none; }
+.event-card:has(.event-card__link:focus-visible) { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+/* L'action d'inscription de la bulle reste accessible au-dessus du lien etendu. */
+.event-card--popup .button { position: relative; z-index: 1; }
+.event-card__details { color: var(--color-link); font-size: var(--font-size-detail); font-weight: 600; min-height: var(--tap-target); display: inline-flex; align-items: center; align-self: start; }
 
 .event-card__title {
   font-size: var(--font-size-h3);
@@ -42,3 +58,21 @@
 }
 
 .event-card__status { margin-top: auto; padding-top: var(--space-2); }
+
+/* Meme base visuelle, disposition compacte pour les resultats de la carte. */
+.event-card--compact { flex-direction: row; align-items: start; gap: var(--space-3); padding: var(--space-4); border-width: 2px; overflow: visible; }
+.event-card--compact::before { display: none; }
+.event-card--compact .event-card__image { flex: none; width: 3.5rem; height: 3.5rem; aspect-ratio: 1; border-radius: var(--radius-field); }
+.event-card--compact .event-card__body { padding: 0; gap: var(--space-1); }
+.event-card--compact .event-card__title { font-family: var(--font-body); font-size: var(--font-size-body); font-weight: 700; line-height: var(--line-height); }
+.event-card__select { padding: 0; min-height: var(--tap-target); border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.event-card__select:hover { text-decoration: underline; }
+.event-card--compact:hover { border-color: var(--color-border); }
+.event-card--compact:has([aria-current="true"]) { border-color: var(--color-text); box-shadow: 0 0 0 3px var(--color-action); }
+.event-card--popup { min-width: 15rem; font-family: var(--font-body); color: var(--color-text); }
+.event-card--popup .event-card__body { padding: var(--space-3); }
+.event-card--popup .event-card__image { max-height: 9rem; }
+@media (max-width: 360px) {
+  .event-card--compact { padding: var(--space-3); gap: var(--space-2); }
+  .event-card--compact .event-card__image { width: 2.5rem; height: 2.5rem; }
+}

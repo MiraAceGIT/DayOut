@@ -8,7 +8,10 @@ paths:
       tags: [events]
       summary: Liste des evenements publies a venir
       description: >-
-        Evenements publies pas encore termines a `from` (ceux en cours compris), tries par `start_at` puis `id`.
+        Evenements publies pas encore termines a `from` (ceux en cours compris), filtres par les parametres
+        ci-dessous (combines en ET), tries par `sort_by` (defaut `start_at`) puis `id`.
+        `total` compte les evenements correspondant aux filtres ; `has_more` indique si d'autres existent apres cette page.
+        Conserver le meme `from` entre les pages pour fixer le filtre temporel.
         Un parametre invalide ou hors bornes donne 422 `VALIDATION_ERROR`.
       operationId: listEvents
       parameters:
@@ -26,6 +29,49 @@ paths:
             Instant de reference, ISO 8601 avec fuseau (defaut : maintenant). Ecrire `Z` ou encoder le `+` (`%2B`),
             sinon la query string le lit comme un espace.
           schema: { type: string, format: date-time, example: "2026-11-01T00:00:00Z" }
+        - name: start_from
+          in: query
+          description: Debut au plus tot (inclus), ISO 8601 avec fuseau.
+          schema: { type: string, format: date-time, example: "2026-11-07T00:00:00Z" }
+        - name: start_to
+          in: query
+          description: Debut strictement avant cet instant, ISO 8601 avec fuseau.
+          schema: { type: string, format: date-time, example: "2026-11-09T00:00:00Z" }
+        - name: q
+          in: query
+          description: Texte recherche dans le titre, le lieu ou la ville (insensible a la casse ; `%` et `_` litteraux).
+          schema: { type: string, maxLength: 100, example: jazz }
+        - name: city
+          in: query
+          description: Ville exacte.
+          schema: { type: string, maxLength: 80, example: Paris }
+        - name: categories
+          in: query
+          description: Slugs de categories actives separes par des virgules (au moins une correspond), 50 au plus.
+          schema: { type: string, example: "soiree,sport" }
+        - name: ids
+          in: query
+          description: Identifiants separes par des virgules, 50 au plus.
+          schema: { type: string, example: "1,4,7" }
+        - name: creator_id
+          in: query
+          description: Evenements d'un createur.
+          schema: { type: integer, minimum: 1 }
+        - name: is_free
+          in: query
+          description: "`true` : gratuits uniquement ; `false` : payants uniquement ; absent : tous."
+          schema: { type: boolean }
+        - name: available
+          in: query
+          description: "`true` : uniquement les evenements sans limite de places ou non complets."
+          schema: { type: boolean, default: false }
+        - name: sort_by
+          in: query
+          description: Tri principal, toujours departage par `id` dans le meme sens.
+          schema: { type: string, enum: [start_at, created_at, title, price_cents], default: start_at }
+        - name: sort_dir
+          in: query
+          schema: { type: string, enum: [asc, desc], default: asc }
       responses:
         "200":
           description: Une page d'evenements
@@ -38,17 +84,59 @@ paths:
                   data: { $ref: "#/components/schemas/EventPage" }
         "422": { $ref: "#/components/responses/ValidationError" }
         "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [events]
+      summary: Creer un evenement (brouillon)
+      description: >-
+        Reserve aux createurs approuves et aux admins non bannis. L'evenement est cree en `draft` :
+        il n'apparait pas dans `GET /events` tant qu'il n'est pas publie. `creator_id`, `status` et
+        `registered_count` sont fixes par le serveur ; s'ils sont envoyes, ils sont ignores.
+      operationId: createEvent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventCreate" }
+      responses:
+        "201":
+          description: L'evenement cree
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Event" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: L'utilisateur n'est pas un createur approuve et non banni, ni un admin (`CREATOR_REQUIRED`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Slug deja utilise (`CONFLICT`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /events/{id}:
     get:
       tags: [events]
       summary: Detail d'un evenement publie
+      description: >-
+        Meme representation qu'un element de `GET /events` : categories actives et profil public du createur.
+        registered_count est le compteur d'inscriptions actives tenu a jour par la base.
       operationId: getEvent
       parameters:
         - name: id
           in: path
           required: true
-          description: Identifiant numerique (un `id` non numerique donne aussi 404).
+          description: Identifiant decimal positif sans zero initial, representable par un entier PHP. Toute valeur invalide donne 404.
           schema: { type: integer, minimum: 1 }
       responses:
         "200":
@@ -66,9 +154,179 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [events]
+      summary: Modifier un evenement
+      description: >-
+        Modification partielle par son createur, en `draft` ou `published` uniquement. Seuls les champs envoyes
+        changent ; `null` vide un champ facultatif. `{"status": "published"}` publie un brouillon (refuse s'il est
+        deja termine) et `{"status": "cancelled"}` annule un event publie ; `status` doit etre envoye seul. Les regles croisees (fin apres debut, prix et `is_paid`) sont
+        verifiees avec les valeurs actuelles pour les champs non envoyes. Une fois publie, `restricted_school_id`
+        est fige ; avec des inscriptions, `start_at`, `end_at`, `is_paid`, `price_cents` et `currency` aussi.
+        `capacity` ne peut pas descendre sous le nombre d'inscrits.
+      operationId: updateEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifiant de l'evenement. Toute valeur invalide donne 404.
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventUpdate" }
+      responses:
+        "200":
+          description: L'evenement modifie
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Event" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Createur non actif (`CREATOR_REQUIRED`) ou event publie d'un autre createur (`EVENT_FORBIDDEN`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Evenement inexistant, ou brouillon d'un autre createur (`EVENT_NOT_FOUND`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: >-
+            Slug deja utilise (`CONFLICT`), statut incompatible (`EVENT_INVALID_STATUS` : modification d'un event
+            annule ou archive, publication d'un event non brouillon, annulation d'un event non publie)
+            ou champ fige (`EVENT_FIELDS_LOCKED`, `details.fields`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [events]
+      summary: Supprimer un evenement
+      description: >-
+        Suppression definitive par son createur, reservee aux brouillons. Un event publie a un historique
+        (inscriptions, clics, signalements) : l'annuler avec `PATCH {"status": "cancelled"}`.
+      operationId: deleteEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifiant de l'evenement. Toute valeur invalide donne 404.
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "204":
+          description: Evenement supprime
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Createur non actif (`CREATOR_REQUIRED`) ou event publie d'un autre createur (`EVENT_FORBIDDEN`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Evenement inexistant, ou brouillon d'un autre createur (`EVENT_NOT_FOUND`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: L'evenement n'est pas un brouillon (`EVENT_INVALID_STATUS`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
 components:
+  responses:
+    UnsupportedMediaType:
+      description: Corps non JSON (`UNSUPPORTED_MEDIA_TYPE`) ; envoyer `Content-Type application/json`
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+    Unauthorized:
+      description: Authentification requise (`UNAUTHORIZED`)
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, example: Bearer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
   schemas:
+    EventCreate:
+      type: object
+      description: EventCreateDto. Les valeurs par defaut sont celles de la base (price_cents 0, currency EUR, is_paid false).
+      required: [title, slug, description, start_at, end_at]
+      properties:
+        title: { type: string, maxLength: 180, example: Soiree de rentree }
+        slug: { type: string, maxLength: 200, pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", example: soiree-de-rentree }
+        description: { type: string, maxLength: 16000 }
+        cover_image_url: { type: string, format: uri, pattern: "^https://", maxLength: 255, nullable: true, description: URL https publique }
+        start_at: { type: string, format: date-time, example: "2026-11-07T20:00:00Z" }
+        end_at: { type: string, format: date-time, description: Strictement apres start_at, example: "2026-11-08T02:00:00Z" }
+        venue_name: { type: string, maxLength: 160, nullable: true }
+        address_line: { type: string, maxLength: 200, nullable: true }
+        city: { type: string, maxLength: 80, nullable: true }
+        postal_code: { type: string, maxLength: 20, nullable: true }
+        latitude: { type: number, minimum: -90, maximum: 90, nullable: true }
+        longitude: { type: number, minimum: -180, maximum: 180, nullable: true }
+        capacity: { type: integer, minimum: 1, maximum: 4294967295, nullable: true, description: null = illimitee }
+        price_cents: { type: integer, minimum: 0, maximum: 4294967295, description: "> 0 si et seulement si is_paid" }
+        currency: { type: string, enum: [EUR] }
+        is_paid: { type: boolean }
+        external_ticket_url: { type: string, format: uri, pattern: "^https://", maxLength: 255, nullable: true, description: URL https publique }
+        restricted_school_id: { type: integer, minimum: 1, nullable: true, description: Reserve aux etudiants de cette ecole }
+
+    EventUpdate:
+      type: object
+      description: EventUpdateDto. Tout est optionnel mais au moins un champ est requis ; title, slug et description ne peuvent etre ni null ni vides.
+      minProperties: 1
+      properties:
+        title: { type: string, maxLength: 180, example: Soiree de rentree }
+        slug: { type: string, maxLength: 200, pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", example: soiree-de-rentree }
+        description: { type: string, maxLength: 16000 }
+        cover_image_url: { type: string, format: uri, pattern: "^https://", maxLength: 255, nullable: true, description: URL https publique }
+        start_at: { type: string, format: date-time, example: "2026-11-07T20:00:00Z" }
+        end_at: { type: string, format: date-time, description: Strictement apres start_at, example: "2026-11-08T02:00:00Z" }
+        venue_name: { type: string, maxLength: 160, nullable: true }
+        address_line: { type: string, maxLength: 200, nullable: true }
+        city: { type: string, maxLength: 80, nullable: true }
+        postal_code: { type: string, maxLength: 20, nullable: true }
+        latitude: { type: number, minimum: -90, maximum: 90, nullable: true }
+        longitude: { type: number, minimum: -180, maximum: 180, nullable: true }
+        capacity: { type: integer, minimum: 1, maximum: 4294967295, nullable: true, description: null = illimitee }
+        price_cents: { type: integer, minimum: 0, maximum: 4294967295, description: "> 0 si et seulement si is_paid" }
+        currency: { type: string, enum: [EUR] }
+        is_paid: { type: boolean }
+        external_ticket_url: { type: string, format: uri, pattern: "^https://", maxLength: 255, nullable: true, description: URL https publique }
+        restricted_school_id: { type: integer, minimum: 1, nullable: true, description: Reserve aux etudiants de cette ecole }
+        status:
+          type: string
+          enum: [published, cancelled]
+          description: Transition de statut ; doit etre envoye seul.
+
+    Creator:
+      type: object
+      description: Profil public du createur. Nom et description du profil, ou nom et bio de l'utilisateur en secours.
+      required: [id, display_name, description, avatar_url, school_name]
+      properties:
+        id: { type: integer, example: 2 }
+        display_name: { type: string, example: Garage ISEP }
+        description: { type: string, nullable: true }
+        avatar_url: { type: string, format: uri, nullable: true }
+        school_name: { type: string, nullable: true, example: ISEP }
+
     Category:
       type: object
       description: CategoryDto. Seules les categories actives sont exposees.
@@ -79,7 +337,7 @@ components:
 
     Event:
       type: object
-      description: EventDto. Seuls les evenements `published` sont exposes.
+      description: EventDto, identique en liste et en detail. Seuls les evenements `published` sont exposes.
       required:
         - id
         - title
@@ -101,7 +359,9 @@ components:
         - is_paid
         - external_ticket_url
         - school_restricted
+        - status
         - categories
+        - creator
       properties:
         id: { type: integer, example: 1 }
         title: { type: string, example: Soiree de rentree ISEP 2026 }
@@ -132,17 +392,24 @@ components:
         is_paid: { type: boolean }
         external_ticket_url: { type: string, format: uri, nullable: true }
         school_restricted: { type: boolean, description: Reserve aux etudiants d'une ecole }
+        status:
+          type: string
+          enum: [draft, published, cancelled, archived]
+          description: Toujours `published` en lecture publique ; les ecritures renvoient l'etat reel.
         categories:
           type: array
           description: Triees par `label` puis `id` ; [] si aucune.
           items: { $ref: "#/components/schemas/Category" }
+        creator: { $ref: "#/components/schemas/Creator" }
 
     EventPage:
       type: object
-      required: [items, limit, offset]
+      required: [items, limit, offset, has_more, total]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/Event" }
         limit: { type: integer, example: 20 }
         offset: { type: integer, example: 0 }
+        has_more: { type: boolean, description: D'autres evenements existent apres cette page. }
+        total: { type: integer, example: 42, description: Nombre total d'evenements correspondant aux filtres. }

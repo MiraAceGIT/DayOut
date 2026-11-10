@@ -4,6 +4,7 @@ import { bindTabs } from "../components/tabs/tabs.js";
 import { FilterChips } from "./filters/FilterChips.js";
 import { PointCard } from "./pointCard/PointCard.js";
 import { ResultsList } from "./resultsList/ResultsList.js";
+import { SuggestionsList } from "./suggestions/SuggestionsList.js";
 import { resultsMessage } from "./resultsMessage.js";
 
 // Le compte est annonce par role=status : on attend la fin de la frappe / du glissement pour ne pas saturer.
@@ -29,13 +30,18 @@ export class HomeView {
       categoriesEl: root.querySelector("#home-categories"),
     });
     this.results = new ResultsList(this.listEl);
+    this.suggestions = new SuggestionsList({
+      listEl: root.querySelector("#home-suggestions"),
+      statusEl: root.querySelector("#home-suggestions-status"),
+      errorEl: root.querySelector("#home-suggestions-error"),
+    });
     this.status = new LiveStatus(this.statusEl);
     this.onSelect = () => {};
   }
 
   get isReady() {
     return Boolean(this.tabs.length && this.point.isReady && this.filters.isReady
-      && this.statusEl && this.errorEl && this.listEl);
+      && this.statusEl && this.errorEl && this.listEl && this.suggestions.isReady);
   }
 
   bind({ onRadius, onFilter, onCategory, onSelect, onChangePoint }) {
@@ -62,10 +68,12 @@ export class HomeView {
     this.errorEl.textContent = "";
     this.results.setBusy(true);
     this.status.set("Chargement des événements…");
+    this.suggestions.showLoading();
   }
 
   endLoading() {
     this.results.setBusy(false);
+    this.suggestions.setBusy(false);
   }
 
   showResults(result, selectedId = null) {
@@ -78,10 +86,15 @@ export class HomeView {
     this.results.markSelected(id, options);
   }
 
+  showSuggestions(events) {
+    this.suggestions.render(events);
+  }
+
   showError(message) {
     this.results.clear();
     this.status.set("");
     if (this.countEl) this.countEl.textContent = "0";
     this.errorEl.textContent = message;
+    this.suggestions.showError(message);
   }
 }

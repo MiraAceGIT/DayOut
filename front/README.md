@@ -16,10 +16,11 @@ pas de build, pas de npm : modules ES natifs servis tels quels.
 
 ### Statut actuel
 
-**V1 publique en lecture seule** — Deux pages implementees :
+**V1 publique en lecture seule** — Trois pages implementees :
 
 - `index.html` : carte interactive "Que faire autour de toi ?" (plein ecran)
 - `pages/events.html` : liste des evenements (cartes + footer)
+- `pages/event.html?id=1` : detail dynamique et ecran 404 pour un evenement inaccessible
 
 L'auth (login, pages protegees), les inscriptions et l'admin sont en cours
 (infrastructure deja en place : `boot()` installe un handler `401`, `loginUrl()` genere l'URL de connexion).
@@ -147,6 +148,7 @@ Ouvrir `index.html` directement par `file://` **ne marchera pas**.
 
 - **`/`** (`index.html`) : carte "Que faire autour de toi ?" (accueil plein ecran)
 - **`/pages/events.html`** : liste des evenements (cartes + footer)
+- **`/pages/event.html?id=1`** : detail dynamique via `GET /events/1`, d'apres l'ecran 02 des maquettes. Le header et le footer utilisent le gabarit partage ; les blocs meteo/transports/mini-carte/discussion restent reserves et les actions desactivees.
 
 ---
 
@@ -248,12 +250,15 @@ shared/          -> rien (utilitaires purs)
 - Statut `role="status"` mis a jour 400 ms apres la derniere frappe / le dernier cran du curseur (la liste, elle, est immediate) ; la recherche est recopiee dans `?q=` (`history.replaceState`).
 - **Geolocalisation** demandee **uniquement** au clic sur "Me localiser" ; refus ou erreur -> message dans `#home-map-status`.
 - Recherche du header : formulaire GET vers `index.html?q=` ; sur la carte, elle filtre en direct sans rechargement.
+- Onglet "Pour toi" : trois suggestions publiques d'evenements a venir avec des places, triees par date parmi les donnees deja chargees. Le texte distingue cette selection des futures recommandations personnalisees. Le chargement et les erreurs sont affiches dans les deux onglets, sans requete API supplementaire pour les suggestions.
 - **Leaflet 1.9.4** en `<script>` classique UMD + `<link>` CSS depuis unpkg, versions epinglees avec `integrity` (SRI). `LeafletMap` lit `window.L` ; s'il manque (hors ligne, bloque), un message s'affiche et la liste reste utilisable.
 - **Categories** : `view/components/category/category.js` rattache les slugs charte (`soiree`, `sport`, `conference`, `culture`, `tech`, `forum-entreprises`) a leur couleur ; les autres slugs (`concert`, `gaming`, `bde`, `exterieur`, `gastronomie`) sont gris et regroupes sous "Autres" dans la legende. Couleur d'un evenement = sa premiere categorie de la charte, sinon sa premiere categorie.
 
 ### Page liste (`pages/events.html`)
 
 - Cartes complete par evenement (image, titre, date formatee, lieu, prix, places, categories)
+- Chargement dynamique par pages de 20 via `GET /events?limit=20&offset=...&from=...` ; bouton "Voir plus" masque quand `has_more` vaut `false`.
+- L'instant `from` reste fixe pendant la consultation ; une erreur conserve les cartes deja affichees et propose "Reessayer" au meme offset. Les requetes simultanees sont bloquees ; le plafond d'offset de l'API est respecte.
 - Pas de filtres ni de carte
 - Footer visible
 
@@ -266,11 +271,62 @@ shared/          -> rien (utilitaires purs)
 | `icon`        | `icon(name)`, `pinIcon()` : SVG Lucide via `createElementNS`         |
 | `pill`        | `renderCategoryPill`, `renderPricePill`, `renderPlacesPill` (+ `.pill`) |
 | `eventMeta`   | `joinMeta`, `placeOf`, `distanceText` (lignes de details)            |
-| `eventCard`   | carte complete (page evenements)                                     |
-| `eventRow`    | carte compacte de la liste de la carte (selection synchronisee)      |
-| `eventPopup`  | bulle du marqueur selectionne                                        |
+| `eventCard`   | rendu commun `.event-card` : variantes `grid`, `compact`, `popup` ; image avec remplacement, titre, categories, date, lieu, prix, places et lien detail |
+| `eventRow`    | adaptateur `<li>` vers `eventCard` compact (selection synchronisee)   |
+| `eventPopup`  | adaptateur vers `eventCard` popup avec action d'inscription           |
 | `tabs`        | `bindTabs(tabs)` : onglets ARIA sur markup existant (+ `.tabs`)      |
 | `liveStatus`  | `LiveStatus` : region `role=status`, texte immediat ou differe       |
+
+Pour afficher des cartes sur une autre page (recherche ou suggestions), reutiliser
+`renderEventCard(event)` avec un evenement normalise par le mapper. Ne pas recopier
+le HTML ou creer une autre classe de carte. Les trois variantes conservent `.event-card` :
+
+Le partial `carte_evenement.php` mentionne dans le ticket correspond ici a
+`src/view/components/eventCard/eventCard.js` : le front HTML/JS consomme l'API PHP
+et partage `renderEventCard()` pour tous les contextes.
+
+| Contexte | Chemin de rendu vers le composant commun |
+| --- | --- |
+| Accueil | `HomeView` -> `ResultsList` -> `renderEventRow` -> `renderEventCard` compact |
+| Liste | `EventsView` -> `renderEventCard` grille |
+| Recherche | `HomeController.search()` -> memes resultats de l'accueil, meme carte compacte |
+| Suggestions | `HomeView` -> `SuggestionsList` -> `renderEventCard` grille |
+
+La selection des suggestions est une fonction pure `suggestEvents()` dans le modele.
+`SuggestionsList` ne gere que le rendu, avec un etat vide et une erreur distincts.
+
+```js
+import { renderEventCard } from "./components/eventCard/eventCard.js";
+
+// Vue de page : la grille utilise le rendu complet par defaut.
+listEl.replaceChildren(...events.map((event) => renderEventCard(event)));
+```
+
+L'image absente, invalide ou inaccessible est remplacee par un visuel local neutre.
+Les titres pointent vers `pages/event.html?id=...`, qui charge l'evenement correspondant depuis l'API.
+
+Le service `fetchEvent(id)` et le mapper `toEventDetail()` assurent ce branchement :
+ils lisent `GET /events/{id}` et ajoutent le profil public `creator` normalise
+(`id`, `displayName`, `description`, `avatarUrl`, `schoolName`). Le contrat du feed
+reste distinct et conserve uniquement les champs d'`EventDto`.
+
+### Detail et etats d'erreur
+
+`EventDetailController` valide l'identifiant avant l'appel API. Une valeur absente,
+dupliquee, non decimale, nulle, negative, avec zero initial ou superieure a l'entier
+PHP 64 bits affiche l'ecran 404 sans requete. L'identifiant reste une chaine pour
+eviter la perte de precision JavaScript. Une reponse API 404 affiche exactement le
+meme ecran pour un evenement inexistant, brouillon, annule ou archive.
+
+`EventDetailView` cache les informations pendant le chargement et lors d'une erreur.
+L'ecran 404 comporte un retour vers la liste, un titre de document explicite et un
+focus sur son titre. Une panne reseau ou serveur affiche une erreur distincte avec
+"Reessayer". Les donnees sont inserees avec `textContent` et les utilitaires DOM.
+
+Exemples : `pages/event.html?id=abc` et `pages/event.html?id=9999`. Le second cas
+necessite une API joignable pour confirmer que l'evenement n'existe pas.
+Le front est servi comme fichiers statiques : le document HTML conserve le statut
+HTTP 200 et affiche l'ecran 404 en JavaScript ; l'API renvoie bien le statut HTTP 404.
 
 ---
 
@@ -284,6 +340,7 @@ shared/          -> rien (utilitaires purs)
 - **`ileDeFranceOutline.js`** : contour de la region (genere, resolution ~300 m)
 - **`eventFilters.js`** : un predicat par critere (gratuit, places, categories, week-end, texte), `USER_FILTERS`, `matchesCriteria`, `weekendRange`
 - **`eventSearch.js`** : `searchEvents` — a venir + criteres + distance/rayon + tri + comptes
+- **`eventSuggestions.js`** : `suggestEvents` — selection publique de trois evenements a venir non complets, issue du meme chargement que l'accueil
 
 ### Regle d'or
 
@@ -300,23 +357,41 @@ Un fichier de `domain/` ne contient :
 
 ```js
 // model/domain/Event.js
-export const LAST_PLACES_THRESHOLD = 10;
+export const LAST_PLACES_THRESHOLD = 5;
 
-export function remainingPlaces(event) {
-    if (!event.capacity) return null;
-    return Math.max(0, event.capacity - event.registeredCount);
+export function remainingPlaces(capacity, registeredCount) {
+    if (capacity === null || capacity === undefined) return null;
+    return Math.max(0, Number(capacity) - Number(registeredCount || 0));
 }
 
-export function availabilityOf(event) {
-    const left = remainingPlaces(event);
-    if (left === null) return "unknown";
+export function availabilityOf(left) {
+    if (left === null) return null;
     if (left === 0) return "full";
     if (left <= LAST_PLACES_THRESHOLD) return "last";
-    return "available";
+    return "open";
 }
 ```
 
 Les views lisent `event.availability` pour choisir leur rendu (`"Complet"`, `"Dernieres places"`...).
+
+Le mapper calcule les places a partir de `capacity` et du `registered_count` fourni
+par l'API (recalcule depuis les inscriptions actives pour le detail). Un depassement
+donne zero place restante ; une capacite `null` donne des places illimitees.
+`formatRemainingPlaces()` partage les libelles entre cartes et detail : "Complet",
+"1 place restante", "3 places restantes", "Places illimitees". La jauge est masquee
+en capacite illimitee et le bouton affiche "Complet" lorsqu'il ne reste aucune place.
+
+### Dates affichees en francais
+
+Les dates restent en ISO 8601 UTC dans les donnees. `shared/format.js` utilise
+`fr-FR` et le fuseau `Europe/Paris`, quel que soit le fuseau du navigateur, avec les
+changements d'heure d'ete/hiver geres par `Intl.DateTimeFormat`.
+`formatEventWhen()` affiche la fin quand `withEnd` vaut `true`, avec les deux dates
+si l'evenement traverse minuit a Paris. Le detail affiche aussi l'annee et "Heure de Paris" ;
+les cartes ajoutent automatiquement les annees si la plage change d'annee.
+
+Exemples : "Dim. 15 nov. 2026 · 9 h – 21 h" sur le detail,
+"Sam. 7 nov. · 21 h – Dim. 8 nov. · 3 h" pour une soiree sur deux jours.
 
 ---
 

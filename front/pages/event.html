@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Événement — DayOut</title>
+</head>
+<body>
+  <!-- Contenu de la page seulement : src/app/router.js le copie dans le #app-root de index.html, entre header et footer. -->
+  <main id="app-root" class="event-page">
+    <section id="event-state" class="container event-state" aria-labelledby="event-state-title">
+      <p id="event-state-code" class="event-state__code" hidden>404</p>
+      <h1 id="event-state-title" tabindex="-1">Détail de l’événement</h1>
+      <p id="event-status" class="status-message" role="status">Chargement de l’événement…</p>
+      <p id="event-error" class="alert alert--error" role="alert"></p>
+      <noscript><p>Active JavaScript pour consulter les informations de cet événement.</p></noscript>
+      <div class="event-state__actions">
+        <a class="button button--secondary" href="my-events">Retour aux événements</a>
+        <button id="event-retry" class="button button--primary" type="button" hidden>Réessayer</button>
+      </div>
+    </section>
+    <!-- Aucun contenu d'evenement n'est visible avant une reponse valide de l'API. -->
+    <div id="event-detail" hidden>
+    <header class="event-hero" aria-labelledby="event-title">
+      <div class="container event-hero__inner">
+        <a class="event-back" href="my-events">← Retour aux événements</a>
+        <div class="event-hero__grid">
+          <div class="event-hero__content">
+            <div id="event-tags" class="event-tags"></div>
+            <h1 id="event-title"></h1>
+            <p id="event-venue"></p>
+            <dl class="event-hero__facts">
+              <div><dt>Date et horaires</dt><dd id="event-date"></dd></div>
+              <div><dt>Adresse</dt><dd id="event-address"></dd></div>
+            </dl>
+          </div>
+          <img id="event-cover" class="event-hero__image" src="assets/img/event-cover-placeholder.svg" alt="" width="640" height="480" fetchpriority="high">
+        </div>
+      </div>
+    </header>
+    <div class="container event-layout">
+      <div class="event-content">
+        <section class="event-panel" aria-labelledby="practical-title">
+          <h2 id="practical-title" class="visually-hidden">Infos pratiques</h2>
+          <dl class="event-facts">
+            <div><dt>Organisation</dt><dd data-event-creator-name></dd></div>
+            <div><dt>Accès</dt><dd id="event-practical-summary"></dd></div>
+          </dl>
+        </section>
+        <section class="event-panel" aria-labelledby="about-title">
+          <h2 id="about-title">À propos</h2>
+          <p id="event-description" class="event-description"></p>
+        </section>
+        <section id="event-weather" class="event-panel" aria-labelledby="weather-title">
+          <div class="event-section-heading"><h2 id="weather-title">Météo prévue</h2><span class="event-placeholder-badge">À venir</span></div>
+          <p class="event-note">Les prévisions pour le lieu et la date de l’événement seront disponibles prochainement.</p>
+        </section>
+        <section id="event-transports" class="event-panel" aria-labelledby="transport-title">
+          <div class="event-section-heading"><h2 id="transport-title">Y aller</h2><a href="#event-map">Voir la mini-carte</a></div>
+          <p class="event-note">Les itinéraires en transports et à vélo ainsi que les arrêts proches seront disponibles prochainement.</p>
+        </section>
+        <section id="event-map" class="event-panel event-map" aria-labelledby="map-title">
+          <div class="event-section-heading"><h2 id="map-title">Le lieu sur la carte</h2><span class="event-placeholder-badge">Aperçu</span></div>
+          <figure class="event-map__figure">
+            <div class="event-map__placeholder">
+              <img class="event-map__illustration" src="assets/img/event-map-placeholder.svg" alt="" width="640" height="300" loading="lazy">
+              <div class="event-map__location"><span class="event-map__pin" aria-hidden="true"></span><strong id="event-map-name"></strong><span id="event-map-city"></span></div>
+            </div>
+            <figcaption>Schéma décoratif, sans position géographique réelle. La carte interactive sera disponible prochainement.</figcaption>
+          </figure>
+          <p id="event-map-address" class="event-map__address"></p>
+        </section>
+        <section id="event-discussion" class="event-panel" aria-labelledby="discussion-title">
+          <div class="event-section-heading"><h2 id="discussion-title">Discussion de l’événement</h2><span class="event-placeholder-badge">Réservée aux inscrits</span></div>
+          <p class="event-note">Visible uniquement par les inscrits et l’organisateur.</p>
+          <div class="event-discussion"><strong>Retrouve ton équipe avant le jour J</strong><p>Inscris-toi pour accéder aux messages et échanger avec les participants.</p></div>
+          <div class="event-composer">
+            <label for="event-message">Ton message</label>
+            <textarea id="event-message" rows="3" placeholder="Écris un message aux participants…" disabled aria-describedby="discussion-help"></textarea>
+            <button class="button button--secondary" type="button" disabled aria-describedby="discussion-help">Envoyer le message</button>
+            <p id="discussion-help" class="event-note">La discussion sera disponible prochainement. Aucun message ne peut être envoyé dans cet aperçu.</p>
+          </div>
+        </section>
+        <section id="event-report" class="event-panel event-report" aria-labelledby="report-title">
+          <h2 id="report-title">Un problème avec cet événement ?</h2>
+          <p>Une information incorrecte ou un contenu inapproprié ? Tu pourras le signaler à l’équipe de modération.</p>
+          <button class="button button--secondary" type="button" disabled aria-describedby="report-help">Signaler cet événement</button>
+          <p id="report-help" class="event-note">Le signalement sera disponible prochainement. Aucun signalement n’est envoyé dans cet aperçu.</p>
+        </section>
+      </div>
+      <aside class="event-sidebar" aria-label="Inscription et organisateur">
+        <section class="event-panel event-registration" aria-labelledby="registration-title">
+          <div class="event-section-heading"><h2 id="registration-title"></h2><span id="event-places" class="event-places"></span></div>
+          <label class="visually-hidden" for="event-capacity">Places occupées</label>
+          <progress id="event-capacity" value="0" max="1"></progress>
+          <p id="event-registration-count" class="event-note"></p>
+          <button id="event-register" class="button button--primary" type="button" disabled aria-describedby="registration-help">Je m’inscris</button>
+          <p id="registration-help" class="event-note">L’inscription sera disponible prochainement.</p>
+          <div id="event-free-entry" class="event-callout"><strong>Ton entrée, simplement</strong><p>Ton QR code de présence sera disponible dans « Mes événements » après inscription.</p></div>
+          <div id="event-free-reliability" class="event-callout"><strong>Ta fiabilité compte</strong><p>Le nombre d’inscriptions gratuites autorisées dépendra de ton niveau de fiabilité.</p></div>
+          <p class="event-note">Préviens l’organisateur si tu ne peux plus venir.</p>
+        </section>
+        <section id="event-planning" class="event-panel event-planning" aria-labelledby="planning-title">
+          <h2 id="planning-title">Ta journée, organisée</h2>
+          <p class="event-note">Retrouve cette sortie dans ton planning pour préparer ta journée et tes trajets.</p>
+          <button class="button button--secondary" type="button" disabled aria-describedby="planning-help">Ajouter à mon planning</button>
+          <p id="planning-help" class="event-note">Le planning sera disponible prochainement. Cet aperçu n’enregistre aucun ajout.</p>
+        </section>
+        <section class="event-panel" aria-labelledby="organizer-title">
+          <h2 id="organizer-title">L’organisateur</h2>
+          <div class="event-organizer"><span id="event-creator-avatar" class="event-avatar" aria-hidden="true"></span><div><h3 data-event-creator-name></h3><p id="event-creator-school" class="event-note"></p></div></div>
+          <p id="event-creator-description" class="event-note event-organizer__description"></p>
+        </section>
+        <p class="event-note event-ticket-note">Pour les événements payants, la billetterie sera celle de l’organisateur. DayOut ne gère aucun paiement.</p>
+      </aside>
+    </div>
+    </div>
+  </main>
+</body>
+</html>

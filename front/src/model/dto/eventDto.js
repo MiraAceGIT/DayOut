@@ -1,4 +1,5 @@
 /** @typedef {import("./categoryDto.js").CategoryDto} CategoryDto */
+/** @typedef {import("./creatorDto.js").CreatorDto} CreatorDto */
 
 /**
  * @typedef {object} EventDto
@@ -22,7 +23,9 @@
  * @property {boolean} is_paid
  * @property {string|null} external_ticket_url
  * @property {boolean} school_restricted
+ * @property {"draft"|"published"|"cancelled"|"archived"} status
  * @property {CategoryDto[]} categories
+ * @property {CreatorDto} creator
  */
 
 /**
@@ -31,6 +34,8 @@
  * @property {EventDto[]} items
  * @property {number} limit
  * @property {number} offset
+ * @property {boolean} has_more
+ * @property {number|null} total
  */
 
 export {};

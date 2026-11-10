@@ -131,11 +131,27 @@ final class ValidatorTest extends TestCase
         $this->assertSame(['a' => 'Must be a valid email address'], $this->errors(['a' => 'yovanne@'], ['a' => 'email']));
     }
 
-    public function testUrlOnlyAcceptsHttp(): void
+    public function testUrlOnlyAcceptsPublicHttps(): void
     {
-        $this->assertSame([], $this->errors(['a' => 'https://dayout.fr/e/1'], ['a' => 'url']));
-        foreach (['javascript:alert(1)', 'ftp://x.fr', 'not a url'] as $value) {
-            $this->assertSame(['a' => 'Must be a valid http(s) URL'], $this->errors(['a' => $value], ['a' => 'url']), $value);
+        foreach (['https://dayout.fr/e/1', 'https://cdn.dayout.fr/img/a%20b.jpg?w=640&h=360#top', 'https://8.8.8.8/x'] as $value) {
+            $this->assertSame([], $this->errors(['a' => $value], ['a' => 'url']), $value);
+        }
+        foreach ([
+            'javascript:alert(1)', 'ftp://x.fr', 'not a url', 'http://dayout.fr', 'https://a.com/x"onload=1',
+            'https://a.com/<svg>', 'https://a.com/a b', 'https://evil.com@good.com/', 'https://user:pw@good.com/',
+            'https://localhost/admin', 'https://127.0.0.1:8080/', 'https://10.0.0.5/', 'https://192.168.1.1/',
+            'https://[::1]/', 'https://intranet/',
+        ] as $value) {
+            $this->assertSame(['a' => 'Must be a public https URL'], $this->errors(['a' => $value], ['a' => 'url']), $value);
+        }
+    }
+
+    public function testFilledRefusesBlankButAllowsAbsence(): void
+    {
+        $this->assertSame([], $this->errors([], ['a' => 'filled|string']));
+        $this->assertSame([], $this->errors(['a' => 'x'], ['a' => 'filled|string']));
+        foreach (['', '   ', []] as $value) {
+            $this->assertSame(['a' => 'This field cannot be empty'], $this->errors(['a' => $value], ['a' => 'filled']), var_export($value, true));
         }
     }
 

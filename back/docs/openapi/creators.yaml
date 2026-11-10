@@ -1,0 +1,77 @@
+tags:
+  - name: creators
+    description: Createurs publics (approuves, non bannis)
+
+paths:
+  /creators:
+    get:
+      tags: [creators]
+      summary: Liste filtree des createurs publics
+      description: >-
+        Createurs approuves et non bannis, filtres par les parametres ci-dessous (combines en ET),
+        tries par `sort_by` (defaut `display_name`) puis `id`. `total` compte les createurs correspondant
+        aux filtres ; `has_more` indique si d'autres existent apres cette page.
+        Un parametre invalide ou hors bornes donne 422 `VALIDATION_ERROR`.
+      operationId: listCreators
+      parameters:
+        - name: q
+          in: query
+          description: Texte recherche dans le nom affiche, le prenom ou le nom (insensible a la casse ; `%` et `_` litteraux).
+          schema: { type: string, maxLength: 100, example: isep }
+        - name: school_id
+          in: query
+          description: Createurs d'une ecole.
+          schema: { type: integer, minimum: 1 }
+        - name: ids
+          in: query
+          description: Identifiants separes par des virgules, 50 au plus.
+          schema: { type: string, example: "2,3" }
+        - name: has_upcoming_events
+          in: query
+          description: "`true` : uniquement les createurs ayant un evenement publie pas encore termine a `from`."
+          schema: { type: boolean, default: false }
+        - name: from
+          in: query
+          description: Instant de reference de `has_upcoming_events`, ISO 8601 avec fuseau (defaut : maintenant).
+          schema: { type: string, format: date-time, example: "2026-11-01T00:00:00Z" }
+        - name: sort_by
+          in: query
+          description: Tri principal, toujours departage par `id` dans le meme sens.
+          schema: { type: string, enum: [display_name, created_at], default: display_name }
+        - name: sort_dir
+          in: query
+          schema: { type: string, enum: [asc, desc], default: asc }
+        - name: limit
+          in: query
+          description: Taille de page (1 a 100).
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          description: Nombre de createurs a sauter (0 a 10000).
+          schema: { type: integer, minimum: 0, maximum: 10000, default: 0 }
+      responses:
+        "200":
+          description: Une page de createurs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/CreatorPage" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  schemas:
+    CreatorPage:
+      type: object
+      required: [items, limit, offset, has_more, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Creator" }
+        limit: { type: integer, example: 20 }
+        offset: { type: integer, example: 0 }
+        has_more: { type: boolean, description: D'autres createurs existent apres cette page. }
+        total: { type: integer, example: 3, description: Nombre total de createurs correspondant aux filtres. }

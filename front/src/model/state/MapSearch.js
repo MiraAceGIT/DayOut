@@ -1,5 +1,6 @@
 import { categoriesIn } from "../domain/category.js";
 import { searchEvents } from "../domain/eventSearch.js";
+import { suggestEvents } from "../domain/eventSuggestions.js";
 
 /** @typedef {{ lat: number, lng: number, label?: string, source: string }} Origin `source` : default | map | device */
 
@@ -83,5 +84,9 @@ export class MapSearch {
     const result = searchEvents(this.events, { ...this.criteria, now });
     if (!result.items.some((item) => item.event.id === this.selectedId)) this.selectedId = null;
     return { ...result, loadedCap: this.truncated ? this.events.length : 0 };
+  }
+
+  suggestions({ now = new Date() } = {}) {
+    return suggestEvents(this.events, { now });
   }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Model\Mappers;
 
 use App\Core\ValidationException;
+use App\Model\Dto\Event\EventCreateDto;
+use App\Model\Dto\Event\EventUpdateDto;
 use App\Model\Mappers\EventMapper;
 use Tests\TestCase;
 
@@ -20,6 +22,9 @@ final class EventMapperTest extends TestCase
             'price_cents' => 1500, 'currency' => 'EUR', 'is_paid' => true, 'external_ticket_url' => null,
             'school_restricted' => true, 'restricted_school_id' => 1, 'status' => 'published',
             'published_at' => '2026-10-01T09:00:00+00:00', 'created_at' => '2026-10-01T09:00:00+00:00',
+            'detail_creator_id' => 2, 'detail_first_name' => 'BDE', 'detail_last_name' => 'ISEP', 'detail_avatar_url' => null,
+            'detail_bio' => null, 'detail_display_name' => 'BDE ISEP', 'detail_creator_description' => null,
+            'detail_school_name' => 'Institut superieur', 'detail_school_short_name' => 'ISEP',
         ];
     }
 
@@ -30,8 +35,9 @@ final class EventMapperTest extends TestCase
         $this->assertSame([
             'id', 'title', 'slug', 'description', 'cover_image_url', 'start_at', 'end_at', 'venue_name',
             'address_line', 'city', 'postal_code', 'latitude', 'longitude', 'capacity', 'registered_count',
-            'price_cents', 'currency', 'is_paid', 'external_ticket_url', 'school_restricted', 'categories',
+            'price_cents', 'currency', 'is_paid', 'external_ticket_url', 'school_restricted', 'status', 'categories', 'creator',
         ], array_keys($json));
+        $this->assertSame('BDE ISEP', $json['creator']->displayName);
         $this->assertSame(12, $json['registered_count']);
         $this->assertSame(48.8689, $json['latitude']);
         $this->assertSame('{"slug":"bde","label":"BDE / Assoc"}', json_encode($json['categories'][0], JSON_UNESCAPED_SLASHES));
@@ -67,9 +73,9 @@ final class EventMapperTest extends TestCase
         ];
     }
 
-    public function testFromInputAppliesColumnDefaultsAndIgnoresServerFields(): void
+    public function testCreateDtoAppliesColumnDefaultsAndIgnoresServerFields(): void
     {
-        $dto = EventMapper::fromInput(self::input([
+        $dto = EventCreateDto::fromArray(self::input([
             'latitude' => '48.8689', 'id' => 99, 'creator_id' => 1, 'status' => 'published', 'registered_count' => 500,
         ]));
 
@@ -80,7 +86,7 @@ final class EventMapperTest extends TestCase
         $this->assertSame(null, $dto->restrictedSchoolId);
     }
 
-    public function testFromInputRejectsInvalidBodiesWith422PerField(): void
+    public function testCreateDtoRejectsInvalidBodiesWith422PerField(): void
     {
         $cases = [
             'title'        => [self::input(['title' => '']), 'This field is required'],
@@ -91,10 +97,10 @@ final class EventMapperTest extends TestCase
             'description'  => [self::input(['description' => str_repeat('a', 16001)]), 'Must be at most 16000 characters'],
             'restricted_school_id' => [self::input(['restricted_school_id' => 4294967296]), 'Must be at most 4294967295'],
             'capacity'     => [self::input(['capacity' => 0]), 'Must be at least 1'],
-            'cover_image_url' => [self::input(['cover_image_url' => 'javascript:alert(1)']), 'Must be a valid http(s) URL'],
+            'cover_image_url' => [self::input(['cover_image_url' => 'javascript:alert(1)']), 'Must be a public https URL'],
         ];
         foreach ($cases as $field => [$body, $message]) {
-            $e = $this->assertThrows(ValidationException::class, fn () => EventMapper::fromInput($body), $field);
+            $e = $this->assertThrows(ValidationException::class, fn () => EventCreateDto::fromArray($body), $field);
             $this->assertSame($message, $e->errors[$field] ?? null, $field);
         }
     }
@@ -107,18 +113,18 @@ final class EventMapperTest extends TestCase
             'Must be 0 for a free event'              => ['price_cents' => 500],
         ];
         foreach ($cases as $message => $overrides) {
-            $e = $this->assertThrows(ValidationException::class, fn () => EventMapper::fromInput(self::input($overrides)), $message);
+            $e = $this->assertThrows(ValidationException::class, fn () => EventCreateDto::fromArray(self::input($overrides)), $message);
             $this->assertSame(['price_cents' => $message], $e->errors);
         }
 
-        $paid = EventMapper::fromInput(self::input(['is_paid' => true, 'price_cents' => 1500]));
+        $paid = EventCreateDto::fromArray(self::input(['is_paid' => true, 'price_cents' => 1500]));
         $this->assertSame(true, $paid->isPaid);
         $this->assertSame(1500, $paid->priceCents);
     }
 
     public function testToRowWritesDbDatetimesAndDerivesSchoolRestriction(): void
     {
-        $row = EventMapper::toRow(EventMapper::fromInput(self::input()));
+        $row = EventMapper::toRow(EventCreateDto::fromArray(self::input()));
 
         $this->assertSame('2026-11-07 20:00:00', $row['start_at'], 'converted to UTC');
         $this->assertSame('2026-11-08 02:00:00', $row['end_at'], 'Z suffix');
@@ -128,8 +134,44 @@ final class EventMapperTest extends TestCase
             $this->assertFalse(array_key_exists($key, $row), "toRow writes $key");
         }
 
-        $restricted = EventMapper::toRow(EventMapper::fromInput(self::input(['restricted_school_id' => 3])));
+        $restricted = EventMapper::toRow(EventCreateDto::fromArray(self::input(['restricted_school_id' => 3])));
         $this->assertSame(true, $restricted['school_restricted']);
         $this->assertSame(3, $restricted['restricted_school_id']);
+    }
+
+    public function testUpdateDtoKeepsOnlySentFieldsAndDistinguishesNullFromAbsent(): void
+    {
+        $dto = EventUpdateDto::fromArray(['title' => 'Nouveau titre', 'cover_image_url' => null, 'id' => 99, 'creator_id' => 1]);
+
+        $this->assertSame(['title', 'cover_image_url'], $dto->provided, 'server fields ignored');
+        $this->assertSame('Nouveau titre', $dto->title);
+        $this->assertTrue($dto->has('cover_image_url'));
+        $this->assertFalse($dto->has('city'));
+        $this->assertSame(['title' => 'Nouveau titre', 'cover_image_url' => null], EventMapper::toUpdateRow($dto));
+    }
+
+    public function testUpdateDtoRejectsInvalidOrEmptyBodies(): void
+    {
+        $cases = [
+            'body'        => [[], 'No writable field'],
+            'title'       => [['title' => null], 'This field cannot be null'],
+            'latitude'    => [['latitude' => 91], 'Must be at most 90'],
+            'end_at'      => [['start_at' => '2026-11-07T21:00:00Z', 'end_at' => '2026-11-07T20:00:00Z'], 'Must be after start_at'],
+            'price_cents' => [['is_paid' => true, 'price_cents' => 0], 'Must be greater than 0 for a paid event'],
+        ];
+        foreach ($cases as $field => [$body, $message]) {
+            $e = $this->assertThrows(ValidationException::class, fn () => EventUpdateDto::fromArray($body), $field);
+            $this->assertStringContains($message, $e->errors[$field] ?? '', $field);
+        }
+        $this->assertSame(['end_at'], EventUpdateDto::fromArray(['end_at' => '2026-11-07T20:00:00Z'])->provided);
+    }
+
+    public function testUpdateRowConvertsDatesAndKeepsSchoolRestrictionConsistent(): void
+    {
+        $row = EventMapper::toUpdateRow(EventUpdateDto::fromArray(['start_at' => '2026-11-07T21:00:00+01:00', 'restricted_school_id' => 3]));
+        $this->assertSame(['start_at' => '2026-11-07 20:00:00', 'restricted_school_id' => 3, 'school_restricted' => true], $row);
+
+        $open = EventMapper::toUpdateRow(EventUpdateDto::fromArray(['restricted_school_id' => null]));
+        $this->assertSame(['restricted_school_id' => null, 'school_restricted' => false], $open);
     }
 }

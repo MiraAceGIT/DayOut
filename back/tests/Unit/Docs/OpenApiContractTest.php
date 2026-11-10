@@ -5,7 +5,11 @@ namespace Tests\Unit\Docs;
 
 use App\Core\Router;
 use App\Docs\OpenApiSpec;
-use App\Model\Dto\CategoryDto;
+use App\Model\Dto\Category\CategoryDto;
+use App\Model\Dto\Creator\CreatorDto;
+use App\Model\Dto\Event\EventCreateDto;
+use App\Model\Dto\Event\EventUpdateDto;
+use App\Model\Dto\PageDto;
 use App\Model\Mappers\EventMapper;
 use ReflectionProperty;
 use Tests\Support\AppRouter;
@@ -87,6 +91,47 @@ final class OpenApiContractTest extends TestCase
         $schema = $this->spec()['components']['schemas']['Category'];
 
         $this->assertSame(array_keys((new CategoryDto('s', 'l'))->jsonSerialize()), array_keys($schema['properties']));
+    }
+
+    public function testPageSchemasMatchPageDto(): void
+    {
+        $keys = array_keys(PageDto::of([], 20, 0, 0)->jsonSerialize());
+        foreach (['EventPage' => 'Event', 'CreatorPage' => 'Creator'] as $page => $item) {
+            $schema = $this->spec()['components']['schemas'][$page];
+            $this->assertSame($keys, array_keys($schema['properties']), $page);
+            $this->assertSame($keys, $schema['required'], $page);
+            $this->assertSame("#/components/schemas/$item", $schema['properties']['items']['items']['$ref'], $page);
+        }
+    }
+
+    public function testCreatorSchemaMatchesPublicDto(): void
+    {
+        $schemas = $this->spec()['components']['schemas'];
+        $keys = array_keys((new CreatorDto(1, 'Garage', null, null, null))->jsonSerialize());
+        $this->assertSame($keys, array_keys($schemas['Creator']['properties']));
+        $this->assertSame($keys, $schemas['Creator']['required']);
+        $this->assertSame('#/components/schemas/Creator', $schemas['Event']['properties']['creator']['$ref']);
+        $this->assertArrayNotHasKey('EventDetail', $schemas, 'merged into Event');
+    }
+
+    public function testWriteBodiesMatchTheirDtoRules(): void
+    {
+        $schemas = $this->spec()['components']['schemas'];
+
+        $this->assertSame(array_keys(EventCreateDto::RULES), array_keys($schemas['EventCreate']['properties']));
+        $required = array_keys(array_filter(EventCreateDto::RULES, static fn (string $r): bool => str_starts_with($r, 'required')));
+        $this->assertSame($required, $schemas['EventCreate']['required']);
+        $this->assertSame(array_keys(EventUpdateDto::RULES), array_keys($schemas['EventUpdate']['properties']));
+        $this->assertArrayNotHasKey('required', $schemas['EventUpdate']);
+    }
+
+    public function testWriteOperationsRequireTheBearerToken(): void
+    {
+        $paths = $this->spec()['paths'];
+        foreach ([['/events', 'post'], ['/events/{id}', 'patch'], ['/events/{id}', 'delete']] as [$path, $method]) {
+            $this->assertSame([['bearerAuth' => []]], $paths[$path][$method]['security'], "$method $path");
+            $this->assertArrayHasKey('401', $paths[$path][$method]['responses'], "$method $path");
+        }
     }
 
     public function testBearerTokenIsOfferedButOptional(): void

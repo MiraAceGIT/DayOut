@@ -5,3 +5,6 @@
   margin-top: var(--space-4);
 }
 .card-grid[aria-busy="true"] { opacity: .5; }
+
+.events-pagination { display: flex; justify-content: center; margin-top: var(--space-5); }
+.events-pagination .button:disabled { cursor: wait; }
