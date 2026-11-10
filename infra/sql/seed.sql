@@ -8,22 +8,22 @@ SET time_zone = '+00:00';
 START TRANSACTION;
 
 -- Schools
-INSERT INTO schools (id, name, short_name, email_domain, city, active) VALUES
-  (1,  'ISEP - Institut Superieur d''Electronique de Paris', 'ISEP',          'isep.fr',             'Issy-les-Moulineaux', 1),
-  (2,  'EPITA',                                              'EPITA',         'epita.fr',            'Le Kremlin-Bicetre',  1),
-  (3,  'EPITECH',                                            'EPITECH',       'epitech.eu',          'Paris',               1),
-  (4,  'CentraleSupelec',                                    'CentraleSupelec','student-cs.fr',      'Gif-sur-Yvette',      1),
-  (5,  'Ecole Polytechnique',                                'X',             'polytechnique.edu',   'Palaiseau',           1),
-  (6,  'Telecom Paris',                                      'Telecom Paris', 'telecom-paris.fr',    'Palaiseau',           1),
-  (7,  'Telecom SudParis',                                   'TSP',           'telecom-sudparis.eu', 'Evry',                1),
-  (8,  'ENSTA Paris',                                        'ENSTA',         'ensta-paris.fr',      'Palaiseau',           1),
-  (9,  'Mines Paris',                                        'Mines',         'minesparis.psl.eu',   'Paris',               1),
-  (10, 'Ecole des Ponts ParisTech',                          'Ponts',         'enpc.fr',             'Marne-la-Vallee',     1),
-  (11, 'ESIEE Paris',                                        'ESIEE',         'esiee.fr',            'Noisy-le-Grand',      1),
-  (12, 'ESILV',                                              'ESILV',         'devinci.fr',          'Courbevoie',          1),
-  (13, 'EFREI Paris',                                        'EFREI',         'efrei.net',           'Villejuif',           1),
-  (14, 'UTC - Compiegne',                                    'UTC',           'etu.utc.fr',          'Compiegne',           1),
-  (15, 'INSA Lyon',                                          'INSA Lyon',     'insa-lyon.fr',        'Villeurbanne',        1);
+INSERT INTO schools (id, name, short_name, email_domain, city, latitude, longitude, active) VALUES
+  (1,  'ISEP - Institut Superieur d''Electronique de Paris', 'ISEP',          'isep.fr',             'Issy-les-Moulineaux', 48.843993, 2.328964, 1),
+  (2,  'EPITA',                                              'EPITA',         'epita.fr',            'Le Kremlin-Bicetre',  48.815572, 2.362913, 1),
+  (3,  'EPITECH',                                            'EPITECH',       'epitech.eu',          'Paris',               48.859894, 2.391390, 1),
+  (4,  'CentraleSupelec',                                    'CentraleSupelec','student-cs.fr',      'Gif-sur-Yvette',      48.709310, 2.167990, 1),
+  (5,  'Ecole Polytechnique',                                'X',             'polytechnique.edu',   'Palaiseau',           48.714650, 2.211700, 1),
+  (6,  'Telecom Paris',                                      'Telecom Paris', 'telecom-paris.fr',    'Palaiseau',           48.712840, 2.199050, 1),
+  (7,  'Telecom SudParis',                                   'TSP',           'telecom-sudparis.eu', 'Evry',                48.625960, 2.441140, 1),
+  (8,  'ENSTA Paris',                                        'ENSTA',         'ensta-paris.fr',      'Palaiseau',           48.711820, 2.219670, 1),
+  (9,  'Mines Paris',                                        'Mines',         'minesparis.psl.eu',   'Paris',               48.845600, 2.340000, 1),
+  (10, 'Ecole des Ponts ParisTech',                          'Ponts',         'enpc.fr',             'Marne-la-Vallee',     48.841060, 2.586710, 1),
+  (11, 'ESIEE Paris',                                        'ESIEE',         'esiee.fr',            'Noisy-le-Grand',      48.839800, 2.585910, 1),
+  (12, 'ESILV',                                              'ESILV',         'devinci.fr',          'Courbevoie',          48.891090, 2.236820, 1),
+  (13, 'EFREI Paris',                                        'EFREI',         'efrei.net',           'Villejuif',           48.787650, 2.362540, 1),
+  (14, 'UTC - Compiegne',                                    'UTC',           'etu.utc.fr',          'Compiegne',           49.400510, 2.799510, 1),
+  (15, 'INSA Lyon',                                          'INSA Lyon',     'insa-lyon.fr',        'Villeurbanne',        45.782400, 4.877500, 1);
 
 -- Categories
 INSERT INTO categories (id, slug, label, icon, active) VALUES
