@@ -21,7 +21,7 @@ final class TestServer
     public static function start(string $docRoot, array $env, string $outputFile): self
     {
         $port = self::freePort();
-        $cmd  = [PHP_BINARY, '-S', "127.0.0.1:$port", '-t', $docRoot];
+        $cmd  = [PHP_BINARY, '-S', "127.0.0.1:$port", '-t', $docRoot, __DIR__ . '/Support/router.php'];
         $out  = ['file', $outputFile, 'a'];
 
         // Commande en tableau : pas de shell, proc_terminate() arrete bien php.exe sous Windows.
