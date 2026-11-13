@@ -190,14 +190,6 @@ final class EventServiceTest extends TestCase
         $this->assertSame([2, 1], $this->search([]), 'events table is intact');
     }
 
-    public function testDaoSearchReturnsUpcomingPublishedRows(): void
-    {
-        $events = new Event(new Connection($this->pdo));
-        $rows = $events->search('SOIREE', new DateTimeImmutable('2026-10-19T00:00:00Z'));
-
-        $this->assertSame([1], array_column($rows, 'id'));
-    }
-
     public function testEveryListItemCarriesItsPublicCreator(): void
     {
         $page = $this->service->findMany(EventFindQuery::fromQuery(['from' => '2026-10-19T00:00:00Z'])->toParams());

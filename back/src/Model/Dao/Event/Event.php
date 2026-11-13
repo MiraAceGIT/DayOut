@@ -5,7 +5,6 @@ namespace App\Model\Dao\Event;
 
 use App\Core\Orm\Query\QueryBuilder;
 use App\Model\Dao\Model;
-use DateTimeImmutable;
 
 final class Event extends Model
 {
@@ -112,21 +111,6 @@ final class Event extends Model
             ->get();
 
         return [$items, $total];
-    }
-
-    /**
-     * Recherche par mot-cle (titre, description, lieu, categorie) : evenements publies et pas encore termines, par date.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function search(string $keyword, ?DateTimeImmutable $now = null, int $limit = 100): array
-    {
-        [$items] = $this->findManyPublished(new EventSearchParams(
-            endingAfter: $now ?? new DateTimeImmutable(),
-            text: $keyword,
-            limit: $limit,
-        ));
-        return $items;
     }
 
     public function findPublishedById(int $id): ?array
