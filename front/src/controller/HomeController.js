@@ -30,7 +30,6 @@ export class HomeController {
     this.limit = Math.min(limit, MAX_EVENTS_LIMIT);
     // Incremente a chaque choix de point (clic ou localisation) : une position arrivee en retard est ignoree.
     this.pickSeq = 0;
-    // Meme principe pour les chargements : seule la recherche la plus recente met la liste a jour.
     this.loadSeq = 0;
     this.loadAbort = null;
     this.pageSignal = undefined;
@@ -78,7 +77,7 @@ export class HomeController {
   /** Recherche par mot-cle cote API (vide = tous les evenements a venir) ; rayon et filtres s'appliquent ensuite en local. */
   async load() {
     const seq = ++this.loadSeq;
-    this.loadAbort?.abort(); // une recherche plus recente remplace celle en cours
+    this.loadAbort?.abort();
     const controller = new AbortController();
     this.loadAbort = controller;
     const keyword = this.keyword;
@@ -86,14 +85,15 @@ export class HomeController {
     this.view.showLoading();
     try {
       const events = await this.loadEvents({ limit: this.limit, query: keyword, signal: controller.signal });
-      if (seq !== this.loadSeq || this.pageSignal?.aborted) return; // recherche remplacee ou carte quittee
+      if (seq !== this.loadSeq || this.pageSignal?.aborted) return;
       this.state.load(events, { limit: this.limit, keyword });
       const { categories } = this.state;
       this.view.renderCategoryFilters(categories, this.state.criteria.categories);
       this.map.renderLegend(categories);
       this.render();
     } catch (err) {
-      if (seq !== this.loadSeq) return;
+      // Recherche remplacee, ou carte quittee (requete annulee) : la vue n'est plus a mettre a jour.
+      if (seq !== this.loadSeq || this.pageSignal?.aborted) return;
       // ApiError = echec attendu ; toute autre erreur est un bug.
       if (!isApiError(err)) console.error(err);
       this.state.fail();
@@ -113,8 +113,10 @@ export class HomeController {
   }
 
   search(query) {
-    this.keyword = cleanKeyword(query);
-    replaceSearchParam("q", this.keyword);
+    const keyword = cleanKeyword(query);
+    if (keyword === this.keyword && this.state.isReady) return Promise.resolve();
+    this.keyword = keyword;
+    replaceSearchParam("q", keyword);
     return this.load();
   }
 

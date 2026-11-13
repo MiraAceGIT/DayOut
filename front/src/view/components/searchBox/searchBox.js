@@ -3,7 +3,7 @@ import { routeUrl } from "../../../core/routes.js";
 import { MAX_KEYWORD_LENGTH } from "../../../model/services/eventService.js";
 import { icon } from "../icon/icon.js";
 
-// Id du champ du header ; l'accueil en a un second (`id` de renderSearchBox) : les autres views passent par SearchBox.
+// Champ du header ; celui de l'accueil a un autre id (renderSearchBox({ id })).
 const INPUT_ID = "site-search";
 const INPUT_CLASS = "site-search__input";
 
@@ -39,14 +39,19 @@ export class SearchBox {
     for (const input of this.inputs) input.value = query;
   }
 
-  /** Recherche a l'envoi (Entree) : un appel API par recherche, pas un par frappe.
-   * Le header reste affiche : `signal` retire ces ecouteurs quand on quitte la carte. */
+  /** Recherche a l'envoi (Entree), ou des que le champ est vide (croix du champ search) : pas un appel par frappe.
+   * `signal` retire ces ecouteurs quand on quitte la carte (le header reste affiche). */
   bindSubmit(onQuery, { signal } = {}) {
     for (const input of this.inputs) {
       input.form?.addEventListener("submit", (e) => {
         e.preventDefault();
         this.setQuery(input.value);
         onQuery(input.value);
+      }, { signal });
+      input.addEventListener("input", () => {
+        if (input.value !== "") return;
+        this.setQuery("");
+        onQuery("");
       }, { signal });
     }
   }
