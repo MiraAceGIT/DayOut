@@ -1,12 +1,13 @@
 import { h } from "../../../shared/dom.js";
 import { formatPrice, formatRemainingPlaces } from "../../../shared/format.js";
+import { highlight } from "../../../shared/highlight.js";
 import { categoryClass, renderCategoryDot } from "../category/category.js";
 
-export function renderCategoryPill(category) {
+export function renderCategoryPill(category, { keyword = "" } = {}) {
   if (!category) return null;
   return h("span", { class: ["pill", categoryClass(category)] },
     renderCategoryDot(),
-    category.label,
+    highlight(category.label, keyword),
   );
 }
 

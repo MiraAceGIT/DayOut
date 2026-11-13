@@ -2,7 +2,7 @@ import { h, isSafeUrl } from "../../../shared/dom.js";
 import { frontUrl } from "../../../core/config.js";
 import { routeUrl } from "../../../core/routes.js";
 import { formatEventWhen } from "../../../shared/format.js";
-import { highlight } from "../../../shared/highlight.js";
+import { excerptAround, highlight } from "../../../shared/highlight.js";
 import { categoryClass, colorCategoryOf } from "../category/category.js";
 import { distanceText, joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/pill.js";
@@ -24,12 +24,14 @@ export function renderEventCard(event, { variant = "grid", distanceKm = null, se
     alt: "", width: 640, height: 360, loading: "lazy", decoding: "async",
   });
   image.addEventListener("error", () => { image.src = fallback; }, { once: true });
+  // La liste compacte n'affiche pas la description : on la montre si c'est elle qui explique le resultat.
+  const descriptionExcerpt = compact && event.description ? excerptAround(event.description, keyword) : null;
 
   return h("article", { class: ["event-card", `event-card--${variant}`, categoryClass(colorCategoryOf(event))] },
     image,
     h("div", { class: "event-card__body" },
       event.categories.length
-        ? h("div", { class: "pill-row" }, event.categories.map(renderCategoryPill))
+        ? h("div", { class: "pill-row" }, event.categories.map((category) => renderCategoryPill(category, { keyword })))
         : null,
       h(popup ? "h3" : "h2", { class: "event-card__title" },
         compact
@@ -46,6 +48,7 @@ export function renderEventCard(event, { variant = "grid", distanceKm = null, se
       compact || distanceKm !== null
         ? h("p", { class: "event-card__meta" }, distanceText(distanceKm, { unknown: "Position inconnue" })) : null,
       !compact && !popup && event.description ? h("p", { class: "event-card__desc" }, highlight(event.description, keyword)) : null,
+      compact && descriptionExcerpt ? h("p", { class: "event-card__desc" }, highlight(descriptionExcerpt, keyword)) : null,
       h("div", { class: "pill-row event-card__status" },
         renderPricePill(event),
         renderPlacesPill(event, { showPlenty: true }),

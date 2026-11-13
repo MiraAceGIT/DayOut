@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { MapSearch } from "../src/model/state/MapSearch.js";
-import { splitMatches } from "../src/shared/highlight.js";
+import { excerptAround, splitMatches } from "../src/shared/highlight.js";
 import { resultsMessage } from "../src/view/home/resultsMessage.js";
 import { event } from "./fixtures.js";
 
@@ -33,6 +33,22 @@ describe("splitMatches", () => {
   });
 });
 
+describe("excerptAround", () => {
+  it("centre l'extrait sur la premiere occurrence et marque les coupures", () => {
+    const text = `${"a".repeat(100)} jazz ${"b".repeat(100)}`;
+    const excerpt = excerptAround(text, "JAZZ", { before: 10, length: 30 });
+    assert.ok(excerpt.startsWith("…") && excerpt.endsWith("…"));
+    assert.ok(excerpt.includes("jazz"));
+    assert.ok(excerpt.length <= 32);
+  });
+
+  it("garde le texte entier s'il est court et renvoie null sans occurrence", () => {
+    assert.equal(excerptAround("Du jazz", "jazz"), "Du jazz");
+    assert.equal(excerptAround("Du rock", "jazz"), null);
+    assert.equal(excerptAround("Du jazz", ""), null);
+  });
+});
+
 describe("resultsMessage avec mot-cle", () => {
   const base = { items: [], inCircle: 0, withoutPosition: 0, loadedCap: 0 };
 
@@ -40,6 +56,11 @@ describe("resultsMessage avec mot-cle", () => {
     const items = [{}, {}];
     assert.equal(resultsMessage({ ...base, items, inCircle: 2, keyword: "jazz", total: 2 }), "2 résultats pour « jazz » dans ce cercle");
     assert.equal(resultsMessage({ ...base, items: [{}], inCircle: 1, keyword: "jazz", total: 4 }), "1 résultat pour « jazz » dans ce cercle · 4 au total");
+    assert.doesNotMatch(
+      resultsMessage({ ...base, items: [{}], inCircle: 1, keyword: "jazz", total: 100, loadedCap: 100 }),
+      /au total/,
+      "le total plafonne par la limite de chargement n'est pas un vrai total",
+    );
   });
 
   it("propose d'elargir la recherche quand l'API ne renvoie rien", () => {

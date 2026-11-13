@@ -47,3 +47,16 @@ export function splitMatches(text, keyword) {
 export function highlight(text, keyword) {
   return splitMatches(text, keyword).map((s) => (s.match ? h("mark", { class: "highlight" }, s.text) : s.text));
 }
+
+/** Extrait de `text` centre sur la premiere occurrence de `keyword` ; null si le texte ne la contient pas. */
+export function excerptAround(text, keyword, { before = 40, length = 140 } = {}) {
+  const segments = splitMatches(text, keyword);
+  const first = segments.findIndex((s) => s.match);
+  if (first === -1) return null;
+
+  const chars = [...String(text)];
+  const matchAt = segments.slice(0, first).reduce((n, s) => n + [...s.text].length, 0);
+  const start = Math.max(0, matchAt - before);
+  const end = Math.min(chars.length, start + length);
+  return `${start > 0 ? "…" : ""}${chars.slice(start, end).join("")}${end < chars.length ? "…" : ""}`;
+}

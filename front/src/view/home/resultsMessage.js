@@ -10,7 +10,7 @@ export function resultsMessage({ items, inCircle, withoutPosition, loadedCap = 0
     message = inCircle === 0
       ? `Aucun résultat pour « ${keyword} » dans ce cercle`
       : `${pluralize(inCircle, "résultat")} pour « ${keyword} » dans ce cercle`;
-    if (total > items.length) message += ` · ${total} au total`;
+    if (loadedCap === 0 && total > items.length) message += ` · ${total} au total`;
   } else {
     message = inCircle === 0
       ? "Aucun événement dans ce cercle"
