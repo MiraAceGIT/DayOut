@@ -77,7 +77,7 @@ export class HomeView {
   }
 
   showResults(result, selectedId = null) {
-    this.results.render(result.items, { selectedId, onSelect: (id) => this.onSelect(id) });
+    this.results.render(result.items, { selectedId, keyword: result.keyword, onSelect: (id) => this.onSelect(id) });
     if (this.countEl) this.countEl.textContent = String(result.inCircle);
     this.status.set(resultsMessage(result), { delay: STATUS_DELAY_MS });
   }

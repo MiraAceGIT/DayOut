@@ -30,6 +30,7 @@
   --color-error:        #bf2b3b;
   --color-error-bg:     #fcf0f1;
   --color-info:         #2f62d0;
+  --color-highlight:    #ffe2c7;        /* mot-cle surligne (recherche), texte --color-text par-dessus */
 
   /* Categories d'evenement : carte et pastilles uniquement */
   --color-cat-soiree:     #8b3fd9;

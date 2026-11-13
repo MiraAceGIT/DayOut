@@ -19,6 +19,9 @@
 
 .map-panel__title { font-size: var(--font-size-h2); line-height: var(--line-height-h2); }
 
+/* Le champ du header est fait pour un fond sombre : sur le panneau clair, bordure de champ standard. */
+.map-panel__search .site-search__input { border-color: var(--color-border); }
+
 .map-panel__tabpanel {
   display: flex;
   flex-direction: column;

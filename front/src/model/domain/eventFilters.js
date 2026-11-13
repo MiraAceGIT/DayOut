@@ -24,18 +24,12 @@ export const startsWithin = ({ start, end }) => (event) => {
   return date >= start && date < end;
 };
 
-export const matchesText = (query) => {
-  const needle = normalize(query);
-  return (event) => [event.title, event.venueName, event.city].some((v) => normalize(v).includes(needle));
-};
-
 /** Chaque entree renvoie un predicat, ou null si le critere est inactif. */
 export const USER_FILTERS = [
   ({ free }) => (free ? isFree : null),
   ({ available }) => (available ? hasPlacesLeft : null),
   ({ categories }) => (categories?.size > 0 ? inCategories(categories) : null),
   ({ weekend, now = new Date() }) => (weekend ? startsWithin(weekendRange(now)) : null),
-  ({ query }) => (normalize(query) ? matchesText(query) : null),
 ];
 
 export function matchesCriteria(criteria, filters = USER_FILTERS) {

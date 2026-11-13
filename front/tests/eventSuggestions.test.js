@@ -27,7 +27,7 @@ describe("suggestions publiques", () => {
     const state = new MapSearch();
     const events = [future(1, "09"), future(2, "10")];
     state.load(events, { limit: 100 });
-    state.setQuery("aucun resultat");
+    state.setFlag("free", true);
     assert.deepEqual(state.results({ now: NOW }).items, []);
     const suggestions = state.suggestions({ now: NOW });
     assert.equal(suggestions[0], events[0]);

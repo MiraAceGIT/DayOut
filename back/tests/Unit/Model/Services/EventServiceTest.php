@@ -162,6 +162,34 @@ final class EventServiceTest extends TestCase
         $this->assertSame([2, 1], $this->search(['sort_by' => 'title']));
     }
 
+    public function testKeywordSearchCoversTitleDescriptionAndCategoryIgnoringCase(): void
+    {
+        $this->pdo->exec("UPDATE events SET title = 'Soiree JAZZ' WHERE id = 1");
+        $this->pdo->exec("UPDATE events SET description = 'Un tournoi de jazz sportif' WHERE id = 2");
+        $this->pdo->exec("INSERT INTO events (id, creator_id, title, slug, description, start_at, end_at, status) VALUES
+            (7, 1, 'Atelier', 'atelier', 'rien', '2026-11-06 10:00:00', '2026-11-06 12:00:00', 'published')");
+        $this->pdo->exec("INSERT INTO categories (id, slug, label) VALUES (3, 'jazz-club', 'Jazz Club')");
+        $this->pdo->exec('INSERT INTO event_categories (event_id, category_id) VALUES (7, 3)');
+        $this->pdo->exec("INSERT INTO events (id, creator_id, title, slug, description, start_at, end_at, status) VALUES
+            (8, 1, 'Jazz brouillon', 'jazz-brouillon', 'd', '2026-11-06 10:00:00', '2026-11-06 12:00:00', 'draft'),
+            (9, 1, 'Jazz passe', 'jazz-passe', 'd', '2026-10-01 10:00:00', '2026-10-01 12:00:00', 'published')");
+
+        $this->assertSame([2, 7, 1], $this->search(['q' => 'jazz']), 'description, category, title: sorted by date');
+        $this->assertSame([2, 7, 1], $this->search(['q' => 'JAZZ']));
+        $this->assertSame([], $this->search(['q' => 'jazzzz']));
+    }
+
+    public function testKeywordSearchIsSafeWithSpecialCharacters(): void
+    {
+        $this->pdo->exec("UPDATE events SET title = 'L''Atelier <script>' WHERE id = 1");
+
+        $this->assertSame([1], $this->search(['q' => "l'atelier"]));
+        $this->assertSame([1], $this->search(['q' => '<script>']));
+        $this->assertSame([], $this->search(['q' => '%']), '% is literal');
+        $this->assertSame([], $this->search(['q' => "'; DROP TABLE events; --"]));
+        $this->assertSame([2, 1], $this->search([]), 'events table is intact');
+    }
+
     public function testEveryListItemCarriesItsPublicCreator(): void
     {
         $page = $this->service->findMany(EventFindQuery::fromQuery(['from' => '2026-10-19T00:00:00Z'])->toParams());

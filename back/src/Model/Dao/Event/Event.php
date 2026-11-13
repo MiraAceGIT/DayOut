@@ -66,9 +66,12 @@ final class Event extends Model
         }
         if ($param->text !== null) {
             $like = self::containsPattern($param->text);
+            // Casse et accents : collation utf8mb4_unicode_ci des colonnes. Le motif reste un parametre lie.
             $query->whereRaw(
-                "title LIKE ? ESCAPE '!' OR venue_name LIKE ? ESCAPE '!' OR city LIKE ? ESCAPE '!'",
-                [$like, $like, $like],
+                "title LIKE ? ESCAPE '!' OR description LIKE ? ESCAPE '!' OR venue_name LIKE ? ESCAPE '!' OR city LIKE ? ESCAPE '!'"
+                . ' OR EXISTS (SELECT 1 FROM event_categories AS kc JOIN categories AS kcat ON kcat.id = kc.category_id'
+                . " WHERE kc.event_id = events.id AND kcat.active = 1 AND kcat.label LIKE ? ESCAPE '!')",
+                [$like, $like, $like, $like, $like],
             );
         }
         if ($param->city !== null) {
