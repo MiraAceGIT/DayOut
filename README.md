@@ -1,6 +1,6 @@
 # DayOut
 
-Plateforme etudiante d'evenements inter-ecoles. Projet web A1 (IUT Montreuil).
+Plateforme etudiante d'evenements inter-ecoles. Projet web A1.
 
 ## 1) Vue d'ensemble
 
