@@ -1,37 +1,54 @@
-import { api } from "../../core/api.js";
-import { toEvent, toEvents } from "../mappers/eventMapper.js";
+import { api, ApiError } from "../../core/api.js";
+import { toEventPath, toEventQuery } from "../mappers/eventQueryMapper.js";
+import { EventResponseError, readEventResponse, toEventPage } from "../mappers/eventResponseMapper.js";
 
-/** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */
+export { MAX_EVENTS_LIMIT, MAX_EVENTS_OFFSET } from "../mappers/eventQueryMapper.js";
 
-export const MAX_EVENTS_LIMIT = 100;
-export const MAX_EVENTS_OFFSET = 10000;
+/** @typedef {import("../mappers/eventQueryMapper.js").EventQuery & { signal?: AbortSignal }} EventRequest */
 
-/** @param {{ limit?: number, offset?: number, from?: string, signal?: AbortSignal }} [options] */
-export async function fetchUpcomingEventPage({ limit = 20, offset = 0, from, signal } = {}) {
-  const query = new URLSearchParams({
-    limit: String(Math.min(limit, MAX_EVENTS_LIMIT)),
-    offset: String(offset),
-  });
-  if (from) query.set("from", from);
-  /** @type {EventPageDto} */
-  const page = await api.get(`/events?${query}`, { signal });
-  return {
-    items: toEvents(page.items), limit: page.limit, offset: page.offset, hasMore: page.has_more, total: page.total ?? null,
-  };
-}
-
-/** Compatibilite avec l'accueil : il ne consomme que les evenements de la premiere page.
- * @param {{ limit?: number, signal?: AbortSignal }} [options]
+/** Convertit uniquement les erreurs de contrat ; les erreurs HTTP gardent code, details et requestId.
+ * @template T
+ * @param {(dto: any) => T} mapper
+ * @param {any} dto
+ * @returns {T}
  */
-export async function fetchUpcomingEvents(options = {}) {
-  return (await fetchUpcomingEventPage(options)).items;
+function decode(mapper, dto) {
+  try { return mapper(dto); }
+  catch (cause) {
+    if (!(cause instanceof EventResponseError)) throw cause;
+    throw new ApiError("Reponse evenement invalide", { type: "parse", cause });
+  }
 }
 
-/** @param {number|string} id
- * @param {{ signal?: AbortSignal }} [options]
+/** Port de lecture injectable : le service ne depend que de get(), sans DOM ni etat global de page.
+ * @param {Pick<typeof api, "get">} [client]
  */
-export async function fetchEvent(id, { signal } = {}) {
-  /** @type {import("../dto/eventDto.js").EventDto} */
-  const dto = await api.get(`/events/${encodeURIComponent(id)}`, { signal });
-  return toEvent(dto);
+export function createEventService(client = api) {
+  /** @param {EventRequest} [options] */
+  async function fetchUpcomingEventPage({ signal, ...options } = {}) {
+    const query = toEventQuery(options);
+    const dto = await client.get(`/events?${query}`, { signal });
+    return decode(toEventPage, dto);
+  }
+
+  /** L'accueil existant consomme uniquement les elements de la premiere page.
+   * @param {EventRequest} [options]
+   */
+  async function fetchUpcomingEvents(options = {}) {
+    return (await fetchUpcomingEventPage(options)).items;
+  }
+
+  /** @param {number|string} id
+   * @param {{ signal?: AbortSignal }} [options]
+   */
+  async function fetchEvent(id, { signal } = {}) {
+    const path = toEventPath(id);
+    if (path === null) throw new ApiError("Event not found", { status: 404, code: "NOT_FOUND" });
+    const dto = await client.get(path, { signal });
+    return decode(value => readEventResponse(value, String(id)), dto);
+  }
+
+  return { fetchUpcomingEventPage, fetchUpcomingEvents, fetchEvent };
 }
+
+export const { fetchUpcomingEventPage, fetchUpcomingEvents, fetchEvent } = createEventService();
