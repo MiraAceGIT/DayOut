@@ -332,21 +332,36 @@ INSERT INTO report_actions (report_id, admin_id, action, comment, created_at) VA
 
 -- FAQ
 INSERT INTO faq_entries (question, answer, sort_order, active) VALUES
-  ('Comment creer un compte ?',
-   'Utilise ton email etudiant (@isep.fr, @epita.fr, ...). Un lien de verification te sera envoye.',
+  ('Comment créer un compte ?',
+   'Utilise ton adresse e-mail étudiante (@isep.fr, @epita.fr…). Un lien de vérification te sera envoyé.',
    1, 1),
-  ('Pourquoi mon ecole n''est pas acceptee ?',
-   'La liste des ecoles est en whitelist. Contacte-nous pour qu''elle soit ajoutee.',
+  ('Pourquoi mon école n''est-elle pas acceptée ?',
+   'Seules les écoles figurant sur la liste des établissements autorisés sont acceptées. Contacte-nous pour que ton école soit ajoutée.',
    2, 1),
-  ('Qu''est-ce que le score de fiabilite ?',
-   'Un indicateur base sur ta participation reelle aux evenements. En dessous de 40, tu ne peux plus t''inscrire.',
+  ('Qu''est-ce que le score de fiabilité ?',
+   'C''est un indicateur basé sur ta participation réelle aux événements. En dessous de 40, tu ne peux plus t''inscrire.',
    3, 1),
-  ('Comment devenir createur d''evenements ?',
-   'Depose une demande depuis ton profil. Un admin la validera sous 48h.',
+  ('Comment devenir créateur d''événements ?',
+   'Dépose une demande depuis ton profil. Un administrateur la validera sous 48 h.',
    4, 1),
-  ('Les evenements payants comptent-ils dans ma fiabilite ?',
+  ('Les événements payants comptent-ils dans mon score de fiabilité ?',
    'Oui : un clic vers la billetterie compte pour 0,5 participation.',
-   5, 1);
+   5, 1),
+  ('Qui peut s''inscrire à DayOut ?',
+   'DayOut s''adresse aux étudiants des écoles partenaires. Utilise une adresse e-mail de ton école pour créer ton compte. La FAQ reste accessible sans compte.',
+   6, 1),
+  ('Comment me désinscrire d''un événement ?',
+   'Ouvre l''événement depuis tes inscriptions et utilise l''action de désinscription lorsqu''elle est disponible. Pense à prévenir suffisamment tôt pour libérer ta place.',
+   7, 1),
+  ('À quoi sert mon QR code ?',
+   'Le QR code de ton inscription permet à l''organisateur de vérifier ta présence à l''entrée. Présente-le sur ton téléphone et ne le partage pas avec d''autres personnes.',
+   8, 1),
+  ('Où acheter un billet pour un événement payant ?',
+   'Le lien de billetterie sur la fiche de l''événement renvoie vers le prestataire de l''organisateur. Consulte ses conditions de paiement et de remboursement avant d''acheter.',
+   9, 1),
+  ('Comment signaler un événement ou un comportement ?',
+   'Utilise la fonction de signalement associée au contenu concerné et précise le motif pour aider l''équipe de modération à examiner la situation.',
+   10, 1);
 
 -- Legal pages
 INSERT INTO legal_pages (slug, title, body_md) VALUES

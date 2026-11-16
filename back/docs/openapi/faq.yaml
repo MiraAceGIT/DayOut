@@ -1,0 +1,34 @@
+tags:
+  - name: faq
+    description: Questions frequentes publiques
+
+paths:
+  /faq:
+    get:
+      tags: [faq]
+      summary: Questions visibles triees par ordre puis identifiant
+      operationId: listFaq
+      security: []
+      responses:
+        "200":
+          description: Liste des questions (vide si aucune n'est visible)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Faq" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  schemas:
+    Faq:
+      type: object
+      required: [id, question, answer]
+      properties:
+        id: { type: integer, minimum: 1 }
+        question: { type: string }
+        answer: { type: string }
