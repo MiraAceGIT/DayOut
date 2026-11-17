@@ -1,34 +1,209 @@
 tags:
   - name: faq
-    description: Questions frequentes publiques
+    description: Questions frequentes publiques, gerees par les administrateurs
 
 paths:
   /faq:
     get:
       tags: [faq]
-      summary: Questions visibles triees par ordre puis identifiant
+      summary: Rechercher les questions visibles
+      description: >-
+        Les filtres sont combines en ET. Seules les entrees actives sont publiques.
+        Le tri est departage par id dans le meme sens. total compte les resultats avant pagination.
       operationId: listFaq
       security: []
+      parameters:
+        - name: q
+          in: query
+          description: Texte dans la question ou la reponse, insensible a la casse et aux accents. Les caracteres %, _ et ! sont litteraux.
+          schema: { type: string, maxLength: 100 }
+        - name: ids
+          in: query
+          description: Identifiants positifs separes par des virgules, 50 au plus.
+          schema: { type: string, example: "1,3,5" }
+        - name: sort_by
+          in: query
+          schema: { type: string, enum: [sort_order, question, created_at], default: sort_order }
+        - name: sort_dir
+          in: query
+          schema: { type: string, enum: [asc, desc], default: asc }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 10000, default: 0 }
       responses:
         "200":
-          description: Liste des questions (vide si aucune n'est visible)
+          description: Une page de questions visibles
           content:
             application/json:
               schema:
                 type: object
                 required: [data]
                 properties:
-                  data:
-                    type: array
-                    items: { $ref: "#/components/schemas/Faq" }
+                  data: { $ref: "#/components/schemas/FaqPage" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [faq]
+      summary: Creer une question
+      description: Reserve aux administrateurs non bannis. Les champs inconnus, dont id et les dates, sont ignores.
+      operationId: createFaq
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FaqCreate" }
+      responses:
+        "201":
+          description: Question creee, y compris si active vaut false
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Faq" }
+        "400": { $ref: "#/components/responses/FaqBadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/FaqForbidden" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /faq/{id}:
+    get:
+      tags: [faq]
+      summary: Lire une question visible
+      operationId: getFaq
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/FaqId"
+      responses:
+        "200":
+          description: Question visible
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Faq" }
+        "404": { $ref: "#/components/responses/FaqNotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [faq]
+      summary: Modifier une question
+      description: >-
+        Reserve aux administrateurs non bannis, y compris pour une question inactive.
+        Seuls les champs fournis changent. active permet de masquer ou republier la question.
+        Au moins un champ modifiable est requis. null est refuse pour tous les champs.
+      operationId: updateFaq
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FaqId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FaqUpdate" }
+      responses:
+        "200":
+          description: Question modifiee
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Faq" }
+        "400": { $ref: "#/components/responses/FaqBadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/FaqForbidden" }
+        "404": { $ref: "#/components/responses/FaqNotFound" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [faq]
+      summary: Supprimer une question
+      description: Suppression definitive par un administrateur non banni. Une question deja supprimee donne 404.
+      operationId: deleteFaq
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FaqId"
+      responses:
+        "204":
+          description: Question supprimee, sans corps de reponse
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/FaqForbidden" }
+        "404": { $ref: "#/components/responses/FaqNotFound" }
         "500": { $ref: "#/components/responses/InternalError" }
 
 components:
+  parameters:
+    FaqId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant decimal positif sans zero initial, representable par un entier PHP. Valeur invalide = 404.
+      schema: { type: integer, minimum: 1 }
   schemas:
     Faq:
       type: object
-      required: [id, question, answer]
+      required: [id, question, answer, sort_order, active]
       properties:
         id: { type: integer, minimum: 1 }
         question: { type: string }
         answer: { type: string }
+        sort_order: { type: integer, minimum: 0 }
+        active: { type: boolean }
+    FaqPage:
+      type: object
+      required: [items, limit, offset, has_more, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Faq" }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0, maximum: 10000 }
+        has_more: { type: boolean }
+        total: { type: integer, minimum: 0 }
+    FaqCreate:
+      type: object
+      required: [question, answer]
+      properties:
+        question: { type: string, minLength: 1, maxLength: 255 }
+        answer: { type: string, minLength: 1, maxLength: 16000 }
+        sort_order: { type: integer, minimum: 0, maximum: 4294967295, default: 0 }
+        active: { type: boolean, default: true }
+    FaqUpdate:
+      type: object
+      description: Au moins un champ modifiable, texte non vide, null refuse.
+      minProperties: 1
+      properties:
+        question: { type: string, minLength: 1, maxLength: 255 }
+        answer: { type: string, minLength: 1, maxLength: 16000 }
+        sort_order: { type: integer, minimum: 0, maximum: 4294967295 }
+        active: { type: boolean }
+  responses:
+    FaqBadRequest:
+      description: JSON invalide (`BAD_REQUEST`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    FaqNotFound:
+      description: Question inexistante ou inactive en lecture publique (`FAQ_NOT_FOUND`), identifiant invalide (`NOT_FOUND`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    FaqForbidden:
+      description: Administrateur non banni requis (`FAQ_ADMIN_REQUIRED`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

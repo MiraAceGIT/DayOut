@@ -9,6 +9,9 @@ use App\Model\Dto\Category\CategoryDto;
 use App\Model\Dto\Creator\CreatorDto;
 use App\Model\Dto\Event\EventCreateDto;
 use App\Model\Dto\Event\EventUpdateDto;
+use App\Model\Dto\Faq\FaqCreateDto;
+use App\Model\Dto\Faq\FaqDto;
+use App\Model\Dto\Faq\FaqUpdateDto;
 use App\Model\Dto\PageDto;
 use App\Model\Mappers\EventMapper;
 use ReflectionProperty;
@@ -96,7 +99,7 @@ final class OpenApiContractTest extends TestCase
     public function testPageSchemasMatchPageDto(): void
     {
         $keys = array_keys(PageDto::of([], 20, 0, 0)->jsonSerialize());
-        foreach (['EventPage' => 'Event', 'CreatorPage' => 'Creator'] as $page => $item) {
+        foreach (['EventPage' => 'Event', 'CreatorPage' => 'Creator', 'FaqPage' => 'Faq'] as $page => $item) {
             $schema = $this->spec()['components']['schemas'][$page];
             $this->assertSame($keys, array_keys($schema['properties']), $page);
             $this->assertSame($keys, $schema['required'], $page);
@@ -125,10 +128,23 @@ final class OpenApiContractTest extends TestCase
         $this->assertArrayNotHasKey('required', $schemas['EventUpdate']);
     }
 
+    public function testFaqSchemasMatchTheirDtos(): void
+    {
+        $schemas = $this->spec()['components']['schemas'];
+        $keys = array_keys((new FaqDto(1, 'Q', 'R', 0, true))->jsonSerialize());
+        $this->assertSame($keys, array_keys($schemas['Faq']['properties']));
+        $this->assertSame($keys, $schemas['Faq']['required']);
+        $this->assertSame(array_keys(FaqCreateDto::RULES), array_keys($schemas['FaqCreate']['properties']));
+        $this->assertSame(['question', 'answer'], $schemas['FaqCreate']['required']);
+        $this->assertSame(array_keys(FaqUpdateDto::RULES), array_keys($schemas['FaqUpdate']['properties']));
+        $this->assertArrayNotHasKey('required', $schemas['FaqUpdate']);
+    }
+
     public function testWriteOperationsRequireTheBearerToken(): void
     {
         $paths = $this->spec()['paths'];
-        foreach ([['/events', 'post'], ['/events/{id}', 'patch'], ['/events/{id}', 'delete']] as [$path, $method]) {
+        foreach ([['/events', 'post'], ['/events/{id}', 'patch'], ['/events/{id}', 'delete'],
+            ['/faq', 'post'], ['/faq/{id}', 'patch'], ['/faq/{id}', 'delete']] as [$path, $method]) {
             $this->assertSame([['bearerAuth' => []]], $paths[$path][$method]['security'], "$method $path");
             $this->assertArrayHasKey('401', $paths[$path][$method]['responses'], "$method $path");
         }

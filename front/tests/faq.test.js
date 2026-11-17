@@ -8,6 +8,10 @@ delete globalThis.window;
 
 const entries = [{ id: 3, question: "Qui peut s'inscrire ?", answer: "Les étudiants." }];
 
+function page(items, { offset = 0, has_more = false, total = items.length } = {}) {
+  return { items, limit: 100, offset, has_more, total };
+}
+
 function viewStub() {
   return {
     isReady: true, state: "idle", entries: null, busy: false, error: "",
@@ -25,19 +29,37 @@ describe("FAQ : API", () => {
     const data = [...entries, { id: 1, question: "<img src=x onerror=alert(1)>", answer: "<b>Texte</b> & réponse" }];
     t.mock.method(globalThis, "fetch", async (url, options) => {
       assert.equal(new URL(url).pathname, "/faq");
+      assert.equal(new URL(url).searchParams.get("limit"), "100");
       assert.equal(options.method, "GET");
-      return Response.json({ data });
+      return Response.json({ data: page(data) });
     });
     assert.deepEqual(await fetchFaq(), data);
   });
 
   it("accepte une liste vide mais refuse un contrat invalide", async t => {
-    for (const data of [[], null, {}, [null], [{ id: "1", question: "Q", answer: "R" }], [{ id: 1, question: "Q" }]]) {
+    for (const data of [page([]), null, {}, [], page([null]), page([{ id: "1", question: "Q", answer: "R" }]),
+      page([{ id: 1, question: "Q" }]), page([], { has_more: true }), page(entries, { offset: 100 }),
+      { ...page(entries), limit: 0 }, { ...page(entries), total: -1 }, { ...page(entries), has_more: "false" }]) {
       const mock = t.mock.method(globalThis, "fetch", async () => Response.json({ data }));
-      if (Array.isArray(data) && !data.length) assert.deepEqual(await fetchFaq(), []);
+      if (data?.items?.length === 0 && data.has_more === false) assert.deepEqual(await fetchFaq(), []);
       else await assert.rejects(fetchFaq(), TypeError);
       mock.mock.restore();
     }
+  });
+
+  it("charge toutes les pages dans l'ordre", async t => {
+    const first = Array.from({ length: 100 }, (_, i) => ({ id: i + 1, question: "Q", answer: "R" }));
+    const last = [{ id: 101, question: "Derniere", answer: "R" }];
+    const offsets = [];
+    t.mock.method(globalThis, "fetch", async url => {
+      const offset = Number(new URL(url).searchParams.get("offset"));
+      offsets.push(offset);
+      return Response.json({ data: offset === 0
+        ? page(first, { has_more: true, total: 101 })
+        : page(last, { offset: 100, total: 101 }) });
+    });
+    assert.deepEqual(await fetchFaq(), [...first, ...last]);
+    assert.deepEqual(offsets, [0, 100]);
   });
 
   it("propage une erreur HTTP sans la confondre avec une liste vide", async t => {
