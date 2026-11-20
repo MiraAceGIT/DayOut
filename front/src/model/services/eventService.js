@@ -1,54 +1,36 @@
 import { api, ApiError } from "../../core/api.js";
+import { toEvent, toEvents } from "../mappers/eventMapper.js";
 import { toEventPath, toEventQuery } from "../mappers/eventQueryMapper.js";
-import { EventResponseError, readEventResponse, toEventPage } from "../mappers/eventResponseMapper.js";
+
+/** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */
 
 export { MAX_EVENTS_LIMIT, MAX_EVENTS_OFFSET } from "../mappers/eventQueryMapper.js";
 
-/** @typedef {import("../mappers/eventQueryMapper.js").EventQuery & { signal?: AbortSignal }} EventRequest */
-
-/** Convertit uniquement les erreurs de contrat ; les erreurs HTTP gardent code, details et requestId.
- * @template T
- * @param {(dto: any) => T} mapper
- * @param {any} dto
- * @returns {T}
- */
-function decode(mapper, dto) {
-  try { return mapper(dto); }
-  catch (cause) {
-    if (!(cause instanceof EventResponseError)) throw cause;
-    throw new ApiError("Reponse evenement invalide", { type: "parse", cause });
-  }
+/** @param {{ limit?: number, offset?: number, from?: string, signal?: AbortSignal }} [options] */
+export async function fetchUpcomingEventPage({ limit = 20, offset = 0, from, signal } = {}) {
+  const query = toEventQuery({ limit, offset, from });
+  /** @type {EventPageDto} */
+  const page = await api.get(`/events?${query}`, { signal });
+  return {
+    items: toEvents(page.items), limit: page.limit, offset: page.offset, hasMore: page.has_more, total: page.total ?? null,
+  };
 }
 
-/** Port de lecture injectable : le service ne depend que de get(), sans DOM ni etat global de page.
- * @param {Pick<typeof api, "get">} [client]
+/** Compatibilite avec l'accueil : il ne consomme que les evenements de la premiere page.
+ * @param {{ limit?: number, signal?: AbortSignal }} [options]
  */
-export function createEventService(client = api) {
-  /** @param {EventRequest} [options] */
-  async function fetchUpcomingEventPage({ signal, ...options } = {}) {
-    const query = toEventQuery(options);
-    const dto = await client.get(`/events?${query}`, { signal });
-    return decode(toEventPage, dto);
-  }
-
-  /** L'accueil existant consomme uniquement les elements de la premiere page.
-   * @param {EventRequest} [options]
-   */
-  async function fetchUpcomingEvents(options = {}) {
-    return (await fetchUpcomingEventPage(options)).items;
-  }
-
-  /** @param {number|string} id
-   * @param {{ signal?: AbortSignal }} [options]
-   */
-  async function fetchEvent(id, { signal } = {}) {
-    const path = toEventPath(id);
-    if (path === null) throw new ApiError("Event not found", { status: 404, code: "NOT_FOUND" });
-    const dto = await client.get(path, { signal });
-    return decode(value => readEventResponse(value, String(id)), dto);
-  }
-
-  return { fetchUpcomingEventPage, fetchUpcomingEvents, fetchEvent };
+export async function fetchUpcomingEvents(options = {}) {
+  return (await fetchUpcomingEventPage(options)).items;
 }
 
-export const { fetchUpcomingEventPage, fetchUpcomingEvents, fetchEvent } = createEventService();
+/** Un identifiant invalide ne part pas sur le reseau : meme 404 que l'API.
+ * @param {number|string} id
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export async function fetchEvent(id, { signal } = {}) {
+  const path = toEventPath(id);
+  if (path === null) throw new ApiError("Event not found", { status: 404, code: "NOT_FOUND" });
+  /** @type {import("../dto/eventDto.js").EventDto} */
+  const dto = await api.get(path, { signal });
+  return toEvent(dto);
+}
