@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { isUpcoming } from "../src/model/domain/Event.js";
-import { matchesCriteria, normalize, weekendRange } from "../src/model/domain/eventFilters.js";
+import { matchesCriteria, weekendRange } from "../src/model/domain/eventFilters.js";
+import { normalize } from "../src/shared/text.js";
 import { searchEvents } from "../src/model/domain/eventSearch.js";
 import { event } from "./fixtures.js";
 

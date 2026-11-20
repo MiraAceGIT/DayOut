@@ -1,7 +1,3 @@
-export function normalize(text) {
-  return String(text ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-}
-
 /** [samedi 0 h, lundi 0 h) du week-end en cours, ou du prochain en semaine. */
 export function weekendRange(now = new Date()) {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());

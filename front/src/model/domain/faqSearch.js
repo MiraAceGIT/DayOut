@@ -1,7 +1,4 @@
-import { normalize } from "./eventFilters.js";
-
-/** Meme plafond que la regle `q` de l'API (back : FaqFindQuery::RULES). */
-export const MAX_FAQ_QUERY_LENGTH = 100;
+import { normalize } from "../../shared/text.js";
 
 /**
  * Questions dont la question ou la reponse contient `query`, sans tenir compte

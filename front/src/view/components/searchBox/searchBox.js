@@ -1,6 +1,6 @@
 import { h } from "../../../shared/dom.js";
 import { routeUrl } from "../../../core/routes.js";
-import { MAX_KEYWORD_LENGTH } from "../../../model/services/eventService.js";
+import { MAX_KEYWORD_LENGTH } from "../../../core/apiLimits.js";
 import { icon } from "../icon/icon.js";
 
 // Champ du header ; celui de l'accueil a un autre id (renderSearchBox({ id })).

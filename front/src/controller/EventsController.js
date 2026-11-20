@@ -1,5 +1,6 @@
 import { isApiError, messageFor } from "../core/errors.js";
-import { fetchUpcomingEventPage, MAX_EVENTS_LIMIT, MAX_EVENTS_OFFSET } from "../model/services/eventService.js";
+import { MAX_PAGE_LIMIT, MAX_PAGE_OFFSET } from "../core/apiLimits.js";
+import { fetchUpcomingEventPage } from "../model/services/eventService.js";
 import { EventsView } from "../view/EventsView.js";
 
 export class EventsController {
@@ -8,7 +9,7 @@ export class EventsController {
   constructor({ view = new EventsView(), loadEvents = fetchUpcomingEventPage, limit = 20 } = {}) {
     this.view = view;
     this.loadEvents = loadEvents;
-    this.limit = Math.min(Math.max(1, limit), MAX_EVENTS_LIMIT);
+    this.limit = Math.min(Math.max(1, limit), MAX_PAGE_LIMIT);
     this.offset = 0;
     this.hasMore = true;
     this.busy = false;
@@ -34,7 +35,7 @@ export class EventsController {
       const page = await this.loadEvents({ limit: this.limit, offset: this.offset, from: this.from });
       this.view.appendEvents(page.items);
       this.offset = page.offset + page.items.length;
-      const limitReached = page.hasMore && this.offset > MAX_EVENTS_OFFSET;
+      const limitReached = page.hasMore && this.offset > MAX_PAGE_OFFSET;
       this.hasMore = page.hasMore && !limitReached;
       this.view.showPagination({ hasMore: this.hasMore, limitReached });
     } catch (err) {

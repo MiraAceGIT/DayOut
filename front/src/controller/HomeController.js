@@ -1,7 +1,8 @@
 import { isApiError, messageFor } from "../core/errors.js";
 import { currentPosition } from "../core/geolocation.js";
 import { replaceSearchParam } from "../core/routes.js";
-import { MAX_EVENTS_LIMIT, MAX_KEYWORD_LENGTH, fetchUpcomingEvents } from "../model/services/eventService.js";
+import { MAX_KEYWORD_LENGTH, MAX_PAGE_LIMIT } from "../core/apiLimits.js";
+import { fetchUpcomingEvents } from "../model/services/eventService.js";
 import { MapSearch } from "../model/state/MapSearch.js";
 import { COVERAGE_AREA, isInCoverageArea } from "../model/domain/coverageArea.js";
 import { HomeView } from "../view/home/HomeView.js";
@@ -18,7 +19,7 @@ export class HomeController {
     state = new MapSearch(),
     loadEvents = fetchUpcomingEvents,
     getPosition = currentPosition,
-    limit = MAX_EVENTS_LIMIT,
+    limit = MAX_PAGE_LIMIT,
   } = {}) {
     this.view = view;
     this.map = map;
@@ -27,7 +28,7 @@ export class HomeController {
     this.loadEvents = loadEvents;
     this.getPosition = getPosition;
     // L'API plafonne `limit` : le seuil de troncature doit etre la limite effective, pas celle demandee.
-    this.limit = Math.min(limit, MAX_EVENTS_LIMIT);
+    this.limit = Math.min(limit, MAX_PAGE_LIMIT);
     // Incremente a chaque choix de point (clic ou localisation) : une position arrivee en retard est ignoree.
     this.pickSeq = 0;
     this.loadSeq = 0;

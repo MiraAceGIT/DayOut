@@ -1,12 +1,10 @@
 import { api, ApiError } from "../../core/api.js";
+import { MAX_KEYWORD_LENGTH } from "../../core/apiLimits.js";
 import { toEvent, toEvents } from "../mappers/eventMapper.js";
 import { toEventPath, toEventQuery } from "../mappers/eventQueryMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */
 
-export { MAX_EVENTS_LIMIT, MAX_EVENTS_OFFSET } from "../mappers/eventQueryMapper.js";
-/** Meme plafond que la regle `q` de l'API (back : EventFindQuery::RULES). */
-export const MAX_KEYWORD_LENGTH = 100;
 
 /** @param {{ limit?: number, offset?: number, from?: string, query?: string, signal?: AbortSignal }} [options] */
 export async function fetchUpcomingEventPage({ limit = 20, offset = 0, from, query: keyword = "", signal } = {}) {
