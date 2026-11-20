@@ -1,16 +1,22 @@
+import { MAX_KEYWORD_LENGTH, MAX_PAGE_LIMIT } from "../core/apiLimits.js";
 import { isApiError, messageFor } from "../core/errors.js";
 import { currentPosition } from "../core/geolocation.js";
 import { replaceSearchParam } from "../core/routes.js";
-import { MAX_KEYWORD_LENGTH, MAX_PAGE_LIMIT } from "../core/apiLimits.js";
+import { COVERAGE_AREA } from "../model/domain/coverageArea.js";
 import { fetchUpcomingEvents } from "../model/services/eventService.js";
 import { MapSearch } from "../model/state/MapSearch.js";
-import { COVERAGE_AREA, isInCoverageArea } from "../model/domain/coverageArea.js";
+import { SearchBox } from "../view/components/searchBox/searchBox.js";
 import { HomeView } from "../view/home/HomeView.js";
 import { MapView } from "../view/home/map/MapView.js";
-import { SearchBox } from "../view/components/searchBox/searchBox.js";
+import { LatestTask } from "./LatestTask.js";
+import { OriginPicker } from "./OriginPicker.js";
 
 const cleanKeyword = (query) => String(query ?? "").trim().slice(0, MAX_KEYWORD_LENGTH);
 
+/**
+ * Carte : recherche par mot-cle cote API (seule la plus recente compte), puis rayon, filtres et selection
+ * en local (MapSearch) ; le choix du point de depart est delegue a OriginPicker.
+ */
 export class HomeController {
   constructor({
     view = new HomeView(),
@@ -26,21 +32,16 @@ export class HomeController {
     this.searchBox = searchBox;
     this.state = state;
     this.loadEvents = loadEvents;
-    this.getPosition = getPosition;
     // L'API plafonne `limit` : le seuil de troncature doit etre la limite effective, pas celle demandee.
     this.limit = Math.min(limit, MAX_PAGE_LIMIT);
-    // Incremente a chaque choix de point (clic ou localisation) : une position arrivee en retard est ignoree.
-    this.pickSeq = 0;
-    this.loadSeq = 0;
-    this.loadAbort = null;
-    this.pageSignal = undefined;
+    this.searches = new LatestTask();
+    this.origin = new OriginPicker({ map, getPosition, onOrigin: (point) => this.applyOrigin(point) });
     this.keyword = "";
   }
 
   /** @param {{ query?: string, signal?: AbortSignal }} [options] `signal` : annule quand on quitte la carte. */
   async start({ query = "", signal } = {}) {
-    if (!this.view.isReady) return;
-    this.pageSignal = signal;
+    if (!this.view.isReady || signal?.aborted) return;
     this.keyword = cleanKeyword(query);
     const { origin, radiusKm } = this.state.criteria;
 
@@ -57,15 +58,15 @@ export class HomeController {
       radiusKm,
       area: COVERAGE_AREA,
       handlers: {
-        onPick: (point) => this.pick(point),
+        onPick: (point) => this.origin.pick(point),
         onSelect: (id) => this.select(id, { from: "map" }),
-        onLocate: () => this.locate(),
+        onLocate: () => this.origin.locate(),
       },
     });
     // On quitte la carte : Leaflet est detruit, une localisation ou une recherche en cours est ignoree.
     signal?.addEventListener("abort", () => {
-      this.pickSeq += 1;
-      this.loadAbort?.abort();
+      this.origin.cancel();
+      this.searches.cancel();
       this.map.destroy();
     });
     this.searchBox.setQuery(this.keyword);
@@ -77,16 +78,13 @@ export class HomeController {
 
   /** Recherche par mot-cle cote API (vide = tous les evenements a venir) ; rayon et filtres s'appliquent ensuite en local. */
   async load() {
-    const seq = ++this.loadSeq;
-    this.loadAbort?.abort();
-    const controller = new AbortController();
-    this.loadAbort = controller;
+    const search = this.searches.start();
     const keyword = this.keyword;
 
     this.view.showLoading();
     try {
-      const events = await this.loadEvents({ limit: this.limit, query: keyword, signal: controller.signal });
-      if (seq !== this.loadSeq || this.pageSignal?.aborted) return;
+      const events = await this.loadEvents({ limit: this.limit, query: keyword, signal: search.signal });
+      if (!search.isCurrent()) return;
       this.state.load(events, { limit: this.limit, keyword });
       const { categories } = this.state;
       this.view.renderCategoryFilters(categories, this.state.criteria.categories);
@@ -94,13 +92,13 @@ export class HomeController {
       this.render();
     } catch (err) {
       // Recherche remplacee, ou carte quittee (requete annulee) : la vue n'est plus a mettre a jour.
-      if (seq !== this.loadSeq || this.pageSignal?.aborted) return;
+      if (!search.isCurrent()) return;
       // ApiError = echec attendu ; toute autre erreur est un bug.
       if (!isApiError(err)) console.error(err);
       this.state.fail();
       this.view.showError(messageFor(err));
     } finally {
-      if (seq === this.loadSeq) this.view.endLoading();
+      if (search.isCurrent()) this.view.endLoading();
     }
   }
 
@@ -144,40 +142,11 @@ export class HomeController {
     this.map.select(id, { openPopup: true });
   }
 
-  /** Choix manuel (clic, Entree) : invalide toute localisation en cours. */
-  pick(point) {
-    this.pickSeq += 1;
-    // La carte laisse voir une marge autour de la zone : un clic dans cette marge garde l'ancien point.
-    if (!isInCoverageArea(point)) {
-      this.map.showOutOfArea(COVERAGE_AREA.name, "map");
-      return;
-    }
-    this.map.clearMessage();
-    this.applyOrigin(point);
-  }
-
+  /** Point accepte par OriginPicker (dans la zone couverte). */
   applyOrigin(point) {
     const origin = this.state.setOrigin(point);
     this.view.setOrigin(origin);
     this.map.setOrigin(origin, this.state.criteria.radiusKm);
     this.render();
-  }
-
-  async locate() {
-    const seq = ++this.pickSeq;
-    this.map.showLocating();
-    try {
-      const position = await this.getPosition();
-      if (seq !== this.pickSeq) return;
-      if (!isInCoverageArea(position)) {
-        this.map.showOutOfArea(COVERAGE_AREA.name, "device");
-        return;
-      }
-      this.applyOrigin({ ...position, source: "device" });
-      this.map.showLocated();
-    } catch (err) {
-      if (seq !== this.pickSeq) return;
-      this.map.showLocateError(err?.code);
-    }
   }
 }
