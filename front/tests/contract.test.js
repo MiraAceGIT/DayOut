@@ -17,7 +17,7 @@ function loadSpec() {
   const php = [process.env.PHP, "php", "C:/xampp/php/php.exe"].filter(Boolean)
     .find((bin) => bin === "php" || existsSync(bin));
   // L'assembleur est autonome : le front n'a pas besoin d'installer les dependances Composer du back.
-  const code = 'require "src/Core/Yaml.php"; require "src/Docs/OpenApiSpec.php"; echo json_encode(App\\Docs\\OpenApiSpec::load("docs/openapi"));';
+  const code = 'require "src/Shared/Yaml.php"; require "src/Docs/OpenApiSpec.php"; echo json_encode(App\\Docs\\OpenApiSpec::load("docs/openapi"));';
   try {
     return JSON.parse(execFileSync(php, ["-r", code], { cwd: BACK, encoding: "utf8" }));
   } catch (error) {
