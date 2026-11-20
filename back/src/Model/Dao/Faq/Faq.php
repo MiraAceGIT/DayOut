@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace App\Model\Dao\Faq;
 
 use App\Core\Orm\Query\QueryBuilder;
-use App\Model\Dao\Model;
+use App\Model\Dao\Dao;
 
-final class Faq extends Model
+final class Faq extends Dao
 {
     protected const TABLE = 'faq_entries';
     protected const COLUMNS = ['id', 'question', 'answer', 'sort_order', 'active'];

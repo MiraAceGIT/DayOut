@@ -134,7 +134,7 @@ manquante, un entier invalide, un booleen malforme (`true`/`false`, `1`/`0`,
 ### Commentaires dans le `.env`
 
 `# ...` en fin de ligne est un commentaire, **sauf dans une valeur entre
-guillemets** (`VAL="a#b"`).
+guillemets** (`VAL="a#b"`). Lecture par `App\Core\Env` (teste par `EnvTest`).
 
 ---
 
@@ -199,7 +199,7 @@ back/
 │   ├── index.php       ← front controller unique
 │   └── .htaccess       ← rewrite + blocage des fichiers sensibles
 ├── src/
-│   ├── Core/           ← infrastructure : Config, Container, Router, Request, Response, Controller,
+│   ├── Core/           ← infrastructure : Config, Env, Container, Router, RouteCompiler, Request, Response, Controller,
 │   │                     Database, Validator, HttpException, BusinessException, ErrorKind
 │   │   ├── Http/       ← Kernel, Middleware, ExceptionRenderer, DbErrorMapper,
 │   │   │                 Cors, SecurityHeaders
@@ -208,7 +208,7 @@ back/
 │   ├── Shared/         ← petits utilitaires purs, sans dependance a Core ni Model :
 │   │                     Password, Yaml (lecteur YAML minimal)
 │   ├── Model/          ← M
-│   │   ├── Dao/        ← Model.php (base), PageRequest + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php,
+│   │   ├── Dao/        ← Dao.php (base), PageRequest + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php,
 │   │   │                 Event/EventRecord.php (ligne typee pour les regles) ;
 │   │   │                 User/User.php (droits des comptes : isAdmin, canPublish)
 │   │   ├── Enums/      ← valeurs des ENUM MariaDB : EventStatus (cycle de vie), Role, CreatorStatus
@@ -219,11 +219,11 @@ back/
 │   │   ├── Assemblers/ ← lignes -> DTO complets avec leurs relations en une requete chacune (EventAssembler)
 │   │   ├── Exceptions/ ← une classe par ressource (EventException, FaqException), heritant de Core\BusinessException
 │   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
-│   │   └── Mappers/    ← ligne du Model <-> DTO (toDto / toDtos / toRow / toUpdateRow)
+│   │   └── Mappers/    ← ligne du DAO <-> DTO (toDto / toDtos / toRow / toUpdateRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
 │   └── Controller/     ← C : logique HTTP, une classe par ressource
 ├── config/
-│   ├── config.php      ← charge le .env, construit la Config
+│   ├── config.php      ← charge le .env (Core\Env), construit la Config
 │   └── container.php   ← racine de composition (Container : Config, Connection)
 ├── routes/             ← un fichier par ressource (charges par api.php)
 ├── docs/openapi/       ← spec OpenAPI 3 en YAML, un fichier par controller
@@ -238,20 +238,22 @@ back/
 #### Controller (couche presentation HTTP)
 
 - Logique HTTP uniquement (parametres, statut, helpers `ok()`, `noContent()`)
-- Instancie son service dans le constructeur (`$users ?? new UserService()`)
+- Recoit son service par le constructeur (`public function __construct(private readonly UserService $users)`), construit par le `Container`
 - **Aucune regle metier**
 - Valide les inputs via `$this->validate()` (body) ou `$this->validateQuery()` (query string)
 - Retourne une `Response` (DTO serialise sous `{ data: ... }`)
 
 #### Service (regles metier)
 
-- Appelle les DAO, applique les regles, leve des **exceptions metier** (`EventException::notFound($id)`)
-- Renvoie des **DTO**, jamais une ligne brute du Model
+- Orchestre : droits (`Policies/`), regles pures (`Rules/`), DAO, puis DTO (`Mappers/` ou `Assemblers/`) ; leve des **exceptions metier** (`EventException::notFound($id)`)
+- Recoit ses dependances par le constructeur, jamais de `new` d'un DAO ou d'un service
+- Renvoie des **DTO**, jamais une ligne brute du DAO
 - Ne connait ni HTTP ni requete
 
 #### DAO (acces donnees, dans `Model/Dao/`)
 
-- Herite de `App\Model\Dao\Model`
+- Herite de `App\Model\Dao\Dao` et recoit la `Connection` par son constructeur (Container)
+- Liste paginee : filtres propres, puis `return $this->paginate($query, $params->page, self::SORT_MAP);`
 - Expose des **methodes nommees** (`findPublishedById`, `listAdmins`...) qui appliquent les regles de visibilite
 - `find()`, `all()`, `findMany()` sont `protected` (jamais exposes : un `find()` public renverrait un event `draft`)
 - Travaille via `$this->query()` (QueryBuilder avec `COLUMNS`, `CASTS`, `FILLABLE`) ou `$this->table()` (builder brut)
@@ -269,7 +271,7 @@ back/
 
 #### Mapper
 
-- Conversion **ligne du Model <-> DTO**
+- Conversion **ligne du DAO <-> DTO**
 - `toDto(array $row)`, `toDtos(array $rows)`, `toRow(CreateDto)`, `toUpdateRow(UpdateDto)` : aucune validation (faite par les DTO)
 - Seuls a connaitre les noms du JSON (renommer un champ cote API ne touche qu'ici)
 
@@ -289,7 +291,7 @@ HTTP -> public/.htaccess -> public/index.php
      -> Kernel::handle(Request::fromGlobals())
           -> Router::dispatch : match {param}, middlewares, Controller::action -> Response
              (controllers et middlewares obtenus du Container, dependances injectees)
-             -> Service (Policy, Rules) -> Model (methode nommee) -> QueryBuilder -> Compiler (SQL)
+             -> Service (Policy, Rules) -> DAO (methode nommee) -> QueryBuilder -> Compiler (SQL)
                 -> Connection (bindings) -> PDO -> MariaDB -> Caster -> Assembler / Mapper -> DTO
           -> toute exception -> ExceptionRenderer -> Response d'erreur
           -> SecurityHeaders + Cors + X-Request-Id sur toutes les reponses
@@ -338,11 +340,11 @@ Les ecrans d'administration FAQ restent dans SCRUM-79, la gestion des utilisateu
 dans SCRUM-44 et l'authentification commune dans SCRUM-42. `User::isAdmin()` se limite
 a la verification du droit d'ecriture FAQ ; aucun compte utilisateur n'est modifie.
 
-### Declarer un model
+### Declarer un DAO
 
 ```php
-// src/Model/Dao/User/User.php (namespace App\Model\Dao\User)
-final class User extends Model
+// Exemple : un DAO users plus complet que src/Model/Dao/User/User.php
+final class User extends Dao
 {
     protected const TABLE    = 'users';
     protected const COLUMNS  = ['id', 'email', 'first_name', 'last_name', 'role', 'banned', 'created_at'];  // jamais password_hash
@@ -532,7 +534,7 @@ Le moteur est dans [`src/Core/Orm/`](src/Core/Orm/), les models dans [`src/Model
 
 | Classe                  | Role                                                                    |
 | ----------------------- | ----------------------------------------------------------------------- |
-| `Dao\Model`             | base des DAO : `find`, `findMany`, `create`, `updateById`, `deleteById` |
+| `Dao\Dao` (Model/)      | base des DAO : `find`, `findMany`, `create`, `updateById`, `deleteById`, `paginate` |
 | `Query\QueryBuilder`    | requetes fluentes (`where`, `join`, `orderBy`, `get`, `count`...)       |
 | `Query\Compiler`        | assemble le SQL ; `Query\Grammar` valide et quote les identifiants       |
 | `Connection`            | execute le SQL via PDO (bindings, transactions, savepoints)             |
@@ -854,7 +856,7 @@ codes metier (`EVENT_NOT_FOUND`...), codes triggers (`EVENT_FULL`...),
 ### Moteur utilise
 
 - **Developpement / prod** : MariaDB 10.11+ (XAMPP)
-- **Tests unitaires** : SQLite en memoire (`:memory:`) pour tester `Model`, `QueryBuilder`, services sans serveur
+- **Tests unitaires** : SQLite en memoire (`:memory:`) pour tester les DAO, `QueryBuilder`, services sans serveur
 - **Tests d'integration** : MariaDB sur la base `dayout_test` (remise a zero par `run.sh`)
 
 ### Connexion
@@ -916,13 +918,13 @@ Les tests suivent l'arborescence de `src/` : le test de `src/Core/Http/Kernel.ph
 tests/
 ├── Unit/                       ← classe testee directement, sans serveur ni MariaDB
 │   ├── Controller/             ← DocsControllerTest
-│   ├── Core/                   ← ConfigTest, ContainerTest, RequestTest, ResponseTest, RouterTest, ValidatorTest
+│   ├── Core/                   ← ConfigTest, ContainerTest, EnvTest, RequestTest, ResponseTest, RouterTest, ValidatorTest
 │   │   ├── Http/               ← KernelTest, ExceptionRendererTest
 │   │   ├── Log/                ← ContextSanitizerTest, ErrorHandlerTest (processus a part)
 │   │   └── Orm/                ← CasterTest, ConnectionTest (transactions), Query/QueryBuilderTest
 │   ├── Docs/                   ← OpenApiSpecTest, OpenApiContractTest
 │   └── Model/
-│       ├── Dao/                ← ModelTest, CategoryTest (SQLite en memoire)
+│       ├── Dao/                ← DaoTest, CategoryTest (SQLite en memoire)
 │       ├── Enums/              ← EventStatusTest
 │       ├── Mappers/            ← EventMapperTest, CategoryMapperTest
 │       ├── Rules/              ← EventRulesTest (regles pures, sans base)
@@ -1006,7 +1008,7 @@ php -l src/Controller/EventController.php    # verifie la syntaxe
 - **statique** pour les fonctions pures sans etat : `Validator`, `Grammar`, `Compiler`, `Caster`, `Rows`, `ValueBinder`, `Password`, `SecurityHeaders`, `ExceptionRenderer`, constructeurs nommes de `HttpException`
 - **instance** pour ce qui porte un etat par requete ou des entrees/sorties : `Request`, `Response`, `Router`, `Kernel`, `Connection`, middlewares, controllers, services, models
 - **injection par constructeur** : controllers, services et models declarent leurs dependances, `App\Core\Container` les construit ; jamais de `new` d'un service ou d'un model dans le code applicatif
-- **facade statique configuree une fois** : `Log` uniquement
+- **facade statique configuree une fois** : `Log` uniquement ; il ne lit pas les superglobales, `public/index.php` lui passe la requete (`Log::captureRequest($_SERVER)`)
 
 ---
 
@@ -1206,17 +1208,22 @@ Verifier `tests/Unit/Docs/OpenApiContractTest.php` : il indique exactement ce qu
 
 ## 21) Ajouter une route (checklist complete)
 
-1. **DAO** dans `src/Model/Dao/<Ressource>/` (herite de `App\Model\Dao\Model`, voir section 11), avec ses
-   `XxxSearchParams` a cote s'il a une recherche filtree (et `Query/XxxFindQuery` pour la lire)
+1. **DAO** dans `src/Model/Dao/<Ressource>/` (herite de `App\Model\Dao\Dao`, voir section 11), avec ses
+   `XxxSearchParams` a cote s'il a une recherche filtree (champ `PageRequest $page`, liste via `paginate()`
+   et un `SORT_MAP` public ; `Query/XxxFindQuery` la lit avec `pageRules()` / `page()`),
    avec une methode nommee par besoin metier (`findPublishedById`, pas `find` public).
-2. **Service** dans `src/Model/Services/` : appelle les DAO, applique les regles,
-   leve des exceptions metier (`throw UserException::notFound($id)`), renvoie des DTO.
+   Statuts et roles : un enum dans `src/Model/Enums/`, jamais de chaine en dur.
+2. **Service** dans `src/Model/Services/` : orchestre, leve des exceptions metier
+   (`throw UserException::notFound($id)`), renvoie des DTO. Droits dans `Policies/XxxPolicy`,
+   regles sans base dans `Rules/XxxRules` (testables sans SQLite), relations a charger dans `Assemblers/`.
+   Dependances par le constructeur (resolues par le `Container`), jamais de `new`.
 3. **DTO** dans `src/Model/Dto/<Ressource>/` (ex. `Dto/Event/`) (`final readonly class ... implements JsonSerializable` :
    proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case).
 4. **Mapper** dans `src/Model/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`) ;
    pour une ressource ecrite, `XxxCreateDto` (`RULES`) / `XxxUpdateDto` (`rules()` = `Validator::forUpdate(XxxCreateDto::RULES)`) et `fromArray($json)`, et `toRow` / `toUpdateRow` dans le mapper, construits sur une seule liste `columns()`.
 5. **Controller** dans `src/Controller/` (herite de `App\Core\Controller`) ;
-   instancie son service dans le constructeur, logique HTTP seulement, **renvoie** une `Response`.
+   recoit son service par le constructeur, logique HTTP seulement (`$this->idParam()` pour un `{id}`),
+   **renvoie** une `Response`. Actions nommees comme le service (`findMany`, `findOne`, `create`...).
 6. **Documentation** dans `docs/openapi/<ressource>.yaml` (sinon `OpenApiContractTest` echoue).
 7. **Routes** dans `routes/<ressource>.php` (ex. `routes/users.php`), charge automatiquement par `routes/api.php`.
 8. **Middlewares** (optionnels) par route ou par groupe (`Authenticate::class`, `RequireRole('admin')`...).

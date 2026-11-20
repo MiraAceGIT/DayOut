@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Dao;
 
-/** Tri et fenetre d'une liste paginee, communs a toutes les ressources (voir Model::paginate). */
+/** Tri et fenetre d'une liste paginee, communs a toutes les ressources (voir Dao::paginate). */
 final readonly class PageRequest
 {
     public const DEFAULT_LIMIT = 20;

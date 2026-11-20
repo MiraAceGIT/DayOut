@@ -15,10 +15,10 @@ final class CreatorController extends Controller
     {
     }
 
-    public function index(Request $request): Response
+    public function findMany(Request $request): Response
     {
         $query = CreatorFindQuery::fromQuery($request->query());
 
-        return $this->ok($this->creators->searchPage($query->toParams()));
+        return $this->ok($this->creators->findMany($query->toParams()));
     }
 }

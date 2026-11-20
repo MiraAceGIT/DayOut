@@ -3,14 +3,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Model\Dao;
 
-use App\Core\ValidationException;
 use App\Core\Orm\Connection;
-use App\Model\Dao\Model;
+use App\Core\ValidationException;
+use App\Model\Dao\Dao;
 use PDO;
 use Tests\TestCase;
 
-/** Model de test sur SQLite en memoire : ecritures reelles sans MariaDB. */
-final class Note extends Model
+/** DAO de test sur SQLite en memoire : ecritures reelles sans MariaDB. */
+final class Note extends Dao
 {
     protected const TABLE    = 'notes';
     protected const COLUMNS  = ['id', 'title', 'pinned', 'author_id'];
@@ -23,7 +23,7 @@ final class Note extends Model
     }
 }
 
-final class ModelTest extends TestCase
+final class DaoTest extends TestCase
 {
     private Note $notes;
 
@@ -71,7 +71,7 @@ final class ModelTest extends TestCase
     public function testGenericFindersAreNotPublic(): void
     {
         foreach (['find', 'findMany', 'all'] as $method) {
-            $this->assertFalse((new \ReflectionMethod(Model::class, $method))->isPublic(), $method);
+            $this->assertFalse((new \ReflectionMethod(Dao::class, $method))->isPublic(), $method);
         }
     }
 }

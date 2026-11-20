@@ -47,7 +47,7 @@ final class CreatorServiceTest extends TestCase
      */
     private function search(array $query): array
     {
-        $page = $this->service->searchPage(CreatorFindQuery::fromQuery($query)->toParams());
+        $page = $this->service->findMany(CreatorFindQuery::fromQuery($query)->toParams());
         return array_map(static fn (CreatorDto $c): int => $c->id, $page->items);
     }
 
@@ -71,8 +71,8 @@ final class CreatorServiceTest extends TestCase
 
     public function testPageReportsTotalAndHasMore(): void
     {
-        $first = $this->service->searchPage(CreatorFindQuery::fromQuery(['limit' => '2'])->toParams());
-        $last  = $this->service->searchPage(CreatorFindQuery::fromQuery(['limit' => '2', 'offset' => '2'])->toParams());
+        $first = $this->service->findMany(CreatorFindQuery::fromQuery(['limit' => '2'])->toParams());
+        $last  = $this->service->findMany(CreatorFindQuery::fromQuery(['limit' => '2', 'offset' => '2'])->toParams());
 
         $this->assertCount(2, $first->items);
         $this->assertSame(3, $first->total);
@@ -83,7 +83,7 @@ final class CreatorServiceTest extends TestCase
 
     public function testExposesOnlyThePublicProfile(): void
     {
-        $page = $this->service->searchPage(CreatorFindQuery::fromQuery(['ids' => '2,3'])->toParams());
+        $page = $this->service->findMany(CreatorFindQuery::fromQuery(['ids' => '2,3'])->toParams());
         [$bde, $clement] = $page->items;
 
         $this->assertSame('BDE ISEP', $bde->displayName);

@@ -21,6 +21,8 @@ final class Log
     private static array $secrets = [];
     private static ?string $requestId = null;
     private static ?int $userId = null;
+    /** @var array{method: ?string, path: ?string, ip: ?string} requete en cours, fixee par captureRequest() */
+    private static array $request = ['method' => null, 'path' => null, 'ip' => null];
     private static bool $writing = false;
 
     /** @param array<int, string> $secrets */
@@ -67,13 +69,29 @@ final class Log
         self::write(self::AUDIT_CHANNEL, Level::Info->value, $action, [
             'resource' => ['type' => $resourceType, 'id' => $resourceId],
             'outcome'  => $outcome,
-            'ip'       => $_SERVER['REMOTE_ADDR'] ?? null,
+            'ip'       => self::$request['ip'],
         ] + $context);
     }
 
     public static function requestId(): string
     {
         return self::$requestId ??= bin2hex(random_bytes(8));
+    }
+
+    /**
+     * Rattache les entrees suivantes a la requete en cours ; appele par public/index.php avec $_SERVER,
+     * seul endroit ou Log touche aux superglobales. Sans query string : elle peut porter des tokens.
+     *
+     * @param array<string, mixed> $server
+     */
+    public static function captureRequest(array $server): void
+    {
+        $uri = $server['REQUEST_URI'] ?? null;
+        self::$request = [
+            'method' => isset($server['REQUEST_METHOD']) ? (string) $server['REQUEST_METHOD'] : null,
+            'path'   => is_string($uri) ? (parse_url($uri, PHP_URL_PATH) ?: null) : null,
+            'ip'     => isset($server['REMOTE_ADDR']) ? (string) $server['REMOTE_ADDR'] : null,
+        ];
     }
 
     /** A appeler par le middleware d'auth : rattache les entrees suivantes a l'utilisateur. */
@@ -98,9 +116,8 @@ final class Log
                 'message'   => $message,
                 'requestId' => self::requestId(),
                 'userId'    => self::$userId,
-                'method'    => $_SERVER['REQUEST_METHOD'] ?? null,
-                // Sans query string : elle peut porter des tokens.
-                'path'      => isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : null,
+                'method'    => self::$request['method'],
+                'path'      => self::$request['path'],
                 'context'   => (object) ContextSanitizer::sanitize($context),
             ];
             $line = ContextSanitizer::scrubSecrets((string) json_encode($entry, self::JSON_FLAGS), self::$secrets);

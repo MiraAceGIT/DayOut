@@ -4,10 +4,10 @@ declare(strict_types=1);
 namespace App\Model\Dao\Event;
 
 use App\Core\Orm\Query\QueryBuilder;
-use App\Model\Dao\Model;
+use App\Model\Dao\Dao;
 use App\Model\Enums\EventStatus;
 
-final class Event extends Model
+final class Event extends Dao
 {
     protected const TABLE = 'events';
 

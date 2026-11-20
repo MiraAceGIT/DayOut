@@ -10,7 +10,7 @@ use App\Core\Orm\Rows;
 use App\Core\ValidationException;
 use LogicException;
 
-abstract class Model
+abstract class Dao
 {
     protected const TABLE = '';
 

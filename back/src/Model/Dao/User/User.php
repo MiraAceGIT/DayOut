@@ -4,12 +4,12 @@ declare(strict_types=1);
 namespace App\Model\Dao\User;
 
 use App\Core\Orm\Query\QueryBuilder;
-use App\Model\Dao\Model;
+use App\Model\Dao\Dao;
 use App\Model\Enums\CreatorStatus;
 use App\Model\Enums\Role;
 
 /** Droits des comptes (table `users`) ; les profils publics des createurs sont dans Dao\Creator. */
-final class User extends Model
+final class User extends Dao
 {
     protected const TABLE = 'users';
 

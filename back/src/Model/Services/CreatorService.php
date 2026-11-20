@@ -16,7 +16,7 @@ final class CreatorService
     }
 
     /** @return PageDto<CreatorDto> */
-    public function searchPage(CreatorSearchParams $params): PageDto
+    public function findMany(CreatorSearchParams $params): PageDto
     {
         [$rows, $total] = $this->creators->findManyPublic($params);
 

@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace App\Model\Dao\Category;
 
 use App\Core\Orm\Rows;
-use App\Model\Dao\Model;
+use App\Model\Dao\Dao;
 
-final class Category extends Model
+final class Category extends Dao
 {
     protected const TABLE = 'categories';
 

@@ -4,12 +4,12 @@ declare(strict_types=1);
 namespace App\Model\Dao\Creator;
 
 use App\Core\Orm\Query\QueryBuilder;
-use App\Model\Dao\Model;
+use App\Model\Dao\Dao;
 use App\Model\Enums\CreatorStatus;
 use App\Model\Enums\EventStatus;
 use App\Model\Enums\Role;
 
-final class Creator extends Model
+final class Creator extends Dao
 {
     protected const TABLE = 'users';
 

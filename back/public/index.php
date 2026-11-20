@@ -8,12 +8,16 @@ require APP_ROOT . '/vendor/autoload.php';
 use App\Core\Http\Kernel;
 use App\Core\Log\AccessLog;
 use App\Core\Log\ErrorHandler;
+use App\Core\Log\Log;
 use App\Core\Request;
 use App\Core\Router;
 
+// Seul endroit qui passe $_SERVER aux logs (Request::fromGlobals() lit le reste).
+Log::captureRequest($_SERVER);
+
 // Avant la config : une config invalide doit aussi produire un 500 JSON journalise.
 ErrorHandler::register();
-AccessLog::register();
+AccessLog::register((float) ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)));
 
 /** @var \App\Core\Config $config */
 $config = require APP_ROOT . '/config/config.php';
