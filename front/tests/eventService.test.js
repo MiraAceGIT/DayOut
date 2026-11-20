@@ -5,7 +5,7 @@ import { eventDto } from "./fixtures.js";
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});
 const { ApiError } = await import("../src/core/api.js");
 const { fetchEvent, fetchUpcomingEventPage } = await import("../src/model/services/eventService.js");
-const { toEventQuery } = await import("../src/model/mappers/eventQueryMapper.js");
+const { toEventQuery } = await import("../src/model/mappers/eventRequestMapper.js");
 delete globalThis.window;
 
 const pageDto = (overrides = {}) => ({ items: [eventDto()], limit: 20, offset: 0, has_more: false, total: 1, ...overrides });
@@ -23,6 +23,12 @@ describe("requete GET /events", () => {
     for (const [input, expected] of cases) assert.equal(toEventQuery({ limit: input }).get("limit"), expected);
     for (const offset of [-1, 1.1, 10001, NaN, Infinity]) assert.throws(() => toEventQuery({ offset }), RangeError);
     for (const limit of [NaN, Infinity]) assert.throws(() => toEventQuery({ limit }), RangeError);
+  });
+
+  it("ajoute le mot-cle nettoye et coupe a la longueur acceptee par l'API", () => {
+    assert.equal(toEventQuery({ keyword: "  jazz  " }).get("q"), "jazz");
+    assert.equal(toEventQuery({ keyword: "   " }).has("q"), false);
+    assert.equal(toEventQuery({ keyword: "a".repeat(150) }).get("q")?.length, 100);
   });
 });
 

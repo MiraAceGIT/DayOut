@@ -1,15 +1,13 @@
 import { api, ApiError } from "../../core/api.js";
-import { MAX_KEYWORD_LENGTH } from "../../core/apiLimits.js";
 import { toEvent, toEvents } from "../mappers/eventMapper.js";
-import { toEventPath, toEventQuery } from "../mappers/eventQueryMapper.js";
+import { toEventPath, toEventQuery } from "../mappers/eventRequestMapper.js";
+import { DEFAULT_PAGE_LIMIT } from "../mappers/pageQueryMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */
 
-
 /** @param {{ limit?: number, offset?: number, from?: string, query?: string, signal?: AbortSignal }} [options] */
-export async function fetchUpcomingEventPage({ limit = 20, offset = 0, from, query: keyword = "", signal } = {}) {
-  const query = toEventQuery({ limit, offset, from });
-  if (keyword.trim()) query.set("q", keyword.trim().slice(0, MAX_KEYWORD_LENGTH));
+export async function fetchUpcomingEventPage({ limit = DEFAULT_PAGE_LIMIT, offset = 0, from, query: keyword = "", signal } = {}) {
+  const query = toEventQuery({ limit, offset, from, keyword });
   /** @type {EventPageDto} */
   const page = await api.get(`/events?${query}`, { signal });
   return {
