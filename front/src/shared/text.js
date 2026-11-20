@@ -3,5 +3,5 @@
  * @param {unknown} text
  */
 export function normalize(text) {
-  return String(text ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  return String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
