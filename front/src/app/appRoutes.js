@@ -1,6 +1,7 @@
 import { mountHome } from "../pages/home.js";
 import { mountEvents } from "../pages/events.js";
 import { mountEvent } from "../pages/event.js";
+import { mountFaq } from "../pages/faq.js";
 
 /**
  * Toutes les pages de l'app, au meme endroit.
@@ -11,6 +12,7 @@ import { mountEvent } from "../pages/event.js";
  * Ajouter une page : creer pages/ma-page.html (+ son JS dans src/pages/ si besoin), puis ajouter une ligne ici.
  */
 export const ROUTES = [
+  { path: "/faq", file: "pages/faq.html", mount: mountFaq },
   { path: "/",       file: "pages/home.html",   mount: mountHome },  // page par defaut (adresse du site seule)
   { path: "/my-events", file: "pages/events.html", mount: mountEvents },
   { path: "/event",     file: "pages/event.html",  mount: mountEvent },   // detail : /event?id=42

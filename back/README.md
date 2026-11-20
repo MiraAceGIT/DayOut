@@ -288,6 +288,44 @@ HTTP -> public/.htaccess -> public/index.php
 
 ## 8) Modeles & regles metier
 
+### FAQ
+
+La ressource `/faq` suit la meme structure que les evenements :
+`FaqFindQuery` valide la query string, puis `FaqSearchParams` porte les filtres
+jusqu'au DAO. `FaqService` renvoie les DTO convertis par `FaqMapper`.
+
+| Methode | Route | Comportement |
+| --- | --- | --- |
+| GET | `/faq` | Recherche paginee des questions actives |
+| GET | `/faq/{id}` | Question active, sinon 404 `FAQ_NOT_FOUND` |
+| POST | `/faq` | Creation, 201 avec la question creee |
+| PATCH | `/faq/{id}` | Modification des seuls champs fournis, 200 |
+| DELETE | `/faq/{id}` | Suppression, 204 sans corps ; 404 si absente |
+
+La liste accepte `q` (question ou reponse, 100 caracteres maximum), `ids`
+(50 identifiants maximum), `sort_by` (`sort_order`, `question`, `created_at`),
+`sort_dir` (`asc`, `desc`), `limit` (1 a 100, defaut 20) et `offset`
+(0 a 10000, defaut 0). Exemple :
+`GET /faq?q=inscription&limit=10&offset=0`.
+La reponse utilise `data: { items, limit, offset, has_more, total }` comme `/events`.
+Le front FAQ charge les pages successives pour afficher toutes les questions.
+
+Les ecritures utilisent `RequireAuth`, comme les evenements, puis verifient en base
+que l'utilisateur est un administrateur non banni. Le middleware de verification
+des tokens reste a raccorder sur cette branche : en son absence, les routes
+d'ecriture repondent 401, comme celles des evenements. Elles acceptent `question`
+(255 caracteres), `answer` (16000 caracteres), `sort_order` (entier non negatif,
+defaut 0) et `active` (booleen, defaut true). Les textes vides et `null` sont refuses.
+`question` et `answer` sont obligatoires a la creation ; un PATCH doit contenir
+au moins un champ modifiable. Les champs inconnus sont ignores.
+Un administrateur peut modifier, reactiver ou supprimer une question inactive ;
+elle reste exclue des deux routes GET publiques.
+
+Perimetre : cette ressource fournit la page publique et le CRUD API demande.
+Les ecrans d'administration FAQ restent dans SCRUM-79, la gestion des utilisateurs
+dans SCRUM-44 et l'authentification commune dans SCRUM-42. `FaqAdmin` se limite
+a la verification du droit d'ecriture FAQ ; aucun compte utilisateur n'est modifie.
+
 ### Declarer un model
 
 ```php
