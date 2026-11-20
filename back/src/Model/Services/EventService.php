@@ -4,12 +4,10 @@ declare(strict_types=1);
 namespace App\Model\Services;
 
 use App\Core\Log\Log;
-use App\Core\ValidationException;
-use App\Model\Dao\Category\Category;
-use App\Model\Dao\Creator\Creator;
+use App\Model\Assemblers\EventAssembler;
 use App\Model\Dao\Event\Event;
+use App\Model\Dao\Event\EventRecord;
 use App\Model\Dao\Event\EventSearchParams;
-use App\Model\Dao\User\User;
 use App\Model\Dto\Event\EventCreateDto;
 use App\Model\Dto\Event\EventDto;
 use App\Model\Dto\Event\EventUpdateDto;
@@ -17,19 +15,20 @@ use App\Model\Dto\PageDto;
 use App\Model\Enums\EventStatus;
 use App\Model\Exceptions\EventException;
 use App\Model\Mappers\EventMapper;
+use App\Model\Policies\EventPolicy;
+use App\Model\Rules\EventRules;
 use DateTimeImmutable;
-use LogicException;
 
-/** Renvoie des DTO : le controller n'a plus qu'a les serialiser. */
+/**
+ * Orchestration des cas d'usage : droits (EventPolicy), regles (EventRules), ecriture (DAO Event),
+ * puis reponse en DTO (EventAssembler) ; le controller n'a plus qu'a les serialiser.
+ */
 final class EventService
 {
-    private const LOCKED_WITH_REGISTRATIONS = ['start_at', 'end_at', 'is_paid', 'price_cents', 'currency'];
-
     public function __construct(
         private readonly Event $events,
-        private readonly Category $categories,
-        private readonly Creator $creators,
-        private readonly User $users,
+        private readonly EventPolicy $policy,
+        private readonly EventAssembler $assembler,
     ) {
     }
 
@@ -38,169 +37,79 @@ final class EventService
     {
         [$rows, $total] = $this->events->findManyPublished($params);
 
-        return PageDto::of($this->toDtos($rows), $params->page, $total);
+        return PageDto::of($this->assembler->toDtos($rows), $params->page, $total);
     }
 
     public function findOne(int $id): EventDto
     {
-        $event = $this->events->findPublishedById($id) ?? throw EventException::notFound($id);
-        return $this->toDtos([$event])[0];
+        return $this->assembler->toDto($this->events->findPublishedById($id) ?? throw EventException::notFound($id));
     }
 
     public function create(EventCreateDto $dto, int $userId): EventDto
     {
-        $this->assertCanManageEvents($userId);
-        $id = $this->events->create(EventMapper::toRow($dto), ['creator_id' => $userId, 'status' => 'draft']);
+        $this->policy->assertCanManage($userId);
+        $id = $this->events->create(EventMapper::toRow($dto), ['creator_id' => $userId, 'status' => EventStatus::Draft->value]);
         Log::audit('event.create', 'event', $id, 'success', ['user_id' => $userId]);
 
         return $this->findForWrite($id);
     }
 
+    /** `status` est envoye seul (EventUpdateDto) : c'est soit un changement de statut, soit de champs. */
     public function update(int $id, EventUpdateDto $dto, int $userId): EventDto
     {
         $event = $this->ownedEvent($id, $userId);
-        if ($dto->status === 'published') {
-            return $this->publish($event, $userId);
+        if ($dto->status !== null) {
+            return $this->changeStatus($event, EventStatus::from($dto->status), $userId);
         }
-        if ($dto->status === 'cancelled') {
-            return $this->cancel($event, $userId);
-        }
-        if (!in_array($event['status'], ['draft', 'published'], true)) {
-            throw EventException::invalidStatus($id, $event['status'], 'update');
-        }
-        $this->assertUnlockedFields($event, $dto);
 
-        if ($dto->has('start_at') || $dto->has('end_at')) {
-            EventCreateDto::checkDates($dto->startAt ?? $event['start_at'], $dto->endAt ?? $event['end_at']);
-        }
-        if ($dto->has('is_paid') || $dto->has('price_cents')) {
-            EventCreateDto::checkPrice($dto->isPaid ?? $event['is_paid'], $dto->priceCents ?? $event['price_cents']);
-        }
-        if ($dto->capacity !== null && $dto->capacity < $event['registered_count']) {
-            throw ValidationException::field('capacity', "Must be at least {$event['registered_count']} (current registrations)");
-        }
+        EventRules::checkUpdate($event, $dto);
         $this->events->updateById($id, EventMapper::toUpdateRow($dto));
         Log::audit('event.update', 'event', $id, 'success', ['user_id' => $userId, 'fields' => $dto->provided]);
 
         return $this->findForWrite($id);
     }
 
-    /** @param array<string, mixed> $event */
-    private function publish(array $event, int $userId): EventDto
-    {
-        $id = $event['id'];
-        if (new DateTimeImmutable($event['end_at']) <= new DateTimeImmutable()) {
-            throw ValidationException::field('end_at', 'Must be in the future to publish');
-        }
-        $this->transition($id, $event['status'], EventStatus::Draft, EventStatus::Published, 'publish', ['published_at' => new DateTimeImmutable()]);
-        Log::audit('event.publish', 'event', $id, 'success', ['user_id' => $userId]);
-
-        return $this->findForWrite($id);
-    }
-
-    /** @param array<string, mixed> $event */
-    private function cancel(array $event, int $userId): EventDto
-    {
-        $id = $event['id'];
-        $this->transition($id, $event['status'], EventStatus::Published, EventStatus::Cancelled, 'cancel');
-        Log::audit('event.cancel', 'event', $id, 'success', ['user_id' => $userId]);
-
-        return $this->findForWrite($id);
-    }
-
-    /** Suppression reservee aux brouillons : publie, l'event a un historique (inscriptions, clics, signalements). */
     public function delete(int $id, int $userId): void
     {
         $event = $this->ownedEvent($id, $userId);
-        if ($this->events->deleteDraft($id) === 0) {
-            throw EventException::invalidStatus($id, $event['status'], 'delete');
+        // deleteDraft() reverifie le statut dans le WHERE : un event publie entre-temps n'est pas supprime.
+        if (!$event->status->isDeletable() || $this->events->deleteDraft($id) === 0) {
+            throw EventException::invalidStatus($id, $event->status->value, 'delete');
         }
         Log::audit('event.delete', 'event', $id, 'success', ['user_id' => $userId]);
     }
 
-    private function assertCanManageEvents(int $userId): void
+    /** Publier un brouillon ou annuler un event publie ; atomique (le WHERE reverifie le statut de depart). */
+    private function changeStatus(EventRecord $event, EventStatus $to, int $userId): EventDto
     {
-        if (!$this->users->canPublish($userId)) {
-            throw EventException::creatorRequired();
+        $action = $to === EventStatus::Published ? 'publish' : 'cancel';
+        $server = [];
+        if ($to === EventStatus::Published) {
+            $now = new DateTimeImmutable();
+            EventRules::checkPublishable($event, $now);
+            $server = ['published_at' => $now];
         }
+
+        $from = $to->requiredFrom();
+        if ($from === null || $event->status !== $from || $this->events->changeStatus($event->id, $from, $to, $server) === 0) {
+            throw EventException::invalidStatus($event->id, $event->status->value, $action);
+        }
+        Log::audit("event.$action", 'event', $event->id, 'success', ['user_id' => $userId]);
+
+        return $this->findForWrite($event->id);
     }
 
-    /** @param array<string, mixed> $event */
-    private function assertUnlockedFields(array $event, EventUpdateDto $dto): void
+    private function ownedEvent(int $id, int $userId): EventRecord
     {
-        if ($event['status'] !== 'draft' && $dto->has('restricted_school_id')) {
-            throw EventException::fieldsLocked($event['id'], ['restricted_school_id'], 'the event is published');
-        }
-        if ($event['registered_count'] > 0) {
-            $locked = array_values(array_intersect(self::LOCKED_WITH_REGISTRATIONS, $dto->provided));
-            if ($locked !== []) {
-                throw EventException::fieldsLocked($event['id'], $locked, 'the event has registrations');
-            }
-        }
-    }
+        $this->policy->assertCanManage($userId);
+        $event = EventRecord::fromRow($this->events->findForWriteById($id) ?? throw EventException::notFound($id));
+        $this->policy->assertOwner($event, $userId);
 
-    /** @param array<string, mixed> $server */
-    private function transition(int $id, string $current, EventStatus $from, EventStatus $to, string $action, array $server = []): void
-    {
-        if ($current !== $from->value || $this->events->changeStatus($id, $from, $to, $server) === 0) {
-            throw EventException::invalidStatus($id, $current, $action);
-        }
-    }
-
-    /**
-     * Brouillon d'un autre : 404, pour ne pas reveler son existence.
-     *
-     * @return array<string, mixed>
-     */
-    private function ownedEvent(int $id, int $userId): array
-    {
-        $this->assertCanManageEvents($userId);
-        $event = $this->events->findForWriteById($id) ?? throw EventException::notFound($id);
-        if ($event['creator_id'] !== $userId) {
-            throw $event['status'] === 'published' ? EventException::notOwner($id) : EventException::notFound($id);
-        }
         return $event;
     }
 
     private function findForWrite(int $id): EventDto
     {
-        $event = $this->events->findForWriteById($id) ?? throw EventException::notFound($id);
-        return $this->toDtos([$event])[0];
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $rows
-     * @return list<EventDto>
-     */
-    private function toDtos(array $rows): array
-    {
-        return EventMapper::toDtos($this->withCreators($this->withCategories($rows)));
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $rows
-     * @return list<array<string, mixed>>
-     */
-    private function withCategories(array $rows): array
-    {
-        $byEvent = $this->categories->listActiveByEvent(array_column($rows, 'id'));
-        return array_map(
-            static fn (array $row): array => $row + ['categories' => $byEvent[$row['id']] ?? []],
-            array_values($rows)
-        );
-    }
-
-    /**
-     * @param list<array<string, mixed>> $rows
-     * @return list<array<string, mixed>>
-     */
-    private function withCreators(array $rows): array
-    {
-        $byId = $this->creators->listPublicByIds(array_column($rows, 'creator_id'));
-        return array_map(
-            static fn (array $row): array => $row + ($byId[$row['creator_id']]
-                ?? throw new LogicException("Creator {$row['creator_id']} of event {$row['id']} not found")),
-            $rows
-        );
+        return $this->assembler->toDto($this->events->findForWriteById($id) ?? throw EventException::notFound($id));
     }
 }

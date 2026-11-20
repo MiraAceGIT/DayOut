@@ -208,11 +208,15 @@ back/
 │   ├── Shared/         ← petits utilitaires purs, sans dependance a Core ni Model :
 │   │                     Password, Yaml (lecteur YAML minimal)
 │   ├── Model/          ← M
-│   │   ├── Dao/        ← Model.php (base), PageRequest + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php ;
+│   │   ├── Dao/        ← Model.php (base), PageRequest + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php,
+│   │   │                 Event/EventRecord.php (ligne typee pour les regles) ;
 │   │   │                 User/User.php (droits des comptes : isAdmin, canPublish)
 │   │   ├── Enums/      ← valeurs des ENUM MariaDB : EventStatus (cycle de vie), Role, CreatorStatus
 │   │   ├── Query/      ← lecture des query strings : EventFindQuery, CreatorFindQuery ; ParsesQueryString (trait commun)
-│   │   ├── Services/   ← regles metier (appelle les DAO, leve des exceptions metier)
+│   │   ├── Services/   ← cas d'usage : orchestre policy, regles, DAO et assembler ; renvoie des DTO
+│   │   ├── Policies/   ← droits sur une ressource (EventPolicy : createur approuve, proprietaire)
+│   │   ├── Rules/      ← regles metier pures, sans base (EventRules : dates, prix, champs verrouilles, publication)
+│   │   ├── Assemblers/ ← lignes -> DTO complets avec leurs relations en une requete chacune (EventAssembler)
 │   │   ├── Exceptions/ ← une classe par ressource (EventException, FaqException), heritant de Core\BusinessException
 │   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
 │   │   └── Mappers/    ← ligne du Model <-> DTO (toDto / toDtos / toRow / toUpdateRow)
@@ -285,8 +289,8 @@ HTTP -> public/.htaccess -> public/index.php
      -> Kernel::handle(Request::fromGlobals())
           -> Router::dispatch : match {param}, middlewares, Controller::action -> Response
              (controllers et middlewares obtenus du Container, dependances injectees)
-             -> Service -> Model (methode nommee) -> QueryBuilder -> Compiler (SQL)
-                -> Connection (bindings) -> PDO -> MariaDB -> Caster -> Mapper -> DTO
+             -> Service (Policy, Rules) -> Model (methode nommee) -> QueryBuilder -> Compiler (SQL)
+                -> Connection (bindings) -> PDO -> MariaDB -> Caster -> Assembler / Mapper -> DTO
           -> toute exception -> ExceptionRenderer -> Response d'erreur
           -> SecurityHeaders + Cors + X-Request-Id sur toutes les reponses
      -> Response::send() (seul endroit qui ecrit statut, en-tetes et body)
@@ -912,19 +916,22 @@ Les tests suivent l'arborescence de `src/` : le test de `src/Core/Http/Kernel.ph
 tests/
 ├── Unit/                       ← classe testee directement, sans serveur ni MariaDB
 │   ├── Controller/             ← DocsControllerTest
-│   ├── Core/                   ← ConfigTest, RequestTest, ResponseTest, RouterTest, ValidatorTest, YamlTest
+│   ├── Core/                   ← ConfigTest, ContainerTest, RequestTest, ResponseTest, RouterTest, ValidatorTest
 │   │   ├── Http/               ← KernelTest, ExceptionRendererTest
 │   │   ├── Log/                ← ContextSanitizerTest, ErrorHandlerTest (processus a part)
 │   │   └── Orm/                ← CasterTest, ConnectionTest (transactions), Query/QueryBuilderTest
 │   ├── Docs/                   ← OpenApiSpecTest, OpenApiContractTest
 │   └── Model/
 │       ├── Dao/                ← ModelTest, CategoryTest (SQLite en memoire)
+│       ├── Enums/              ← EventStatusTest
 │       ├── Mappers/            ← EventMapperTest, CategoryMapperTest
-│       └── Services/           ← EventServiceTest (SQLite en memoire)
+│       ├── Rules/              ← EventRulesTest (regles pures, sans base)
+│       └── Services/           ← EventServiceTest (SQLite en memoire, services obtenus du conteneur)
+│   └── Shared/                 ← YamlTest
 ├── Integration/                ← vraies requetes HTTP
 │   ├── Controller/             ← EventControllerTest, HealthControllerTest, DocsControllerTest
 │   └── Core/                   ← RouterTest, Http/{Kernel,Cors,ExceptionRenderer}Test, Log/AccessLogTest
-├── Support/                    ← doublures partagees (EchoController, AppRouter)
+├── Support/                    ← doublures partagees (EchoController, AppRouter, TestContainer)
 ├── fixtures/                   ← scripts lances dans un processus a part
 └── TestCase.php, HttpTestCase.php, run.php, run.sh
 ```

@@ -3,9 +3,8 @@ declare(strict_types=1);
 
 namespace App\Model\Dto\Event;
 
-use App\Core\ValidationException;
 use App\Core\Validator;
-use DateTimeImmutable;
+use App\Model\Rules\EventRules;
 
 final readonly class EventCreateDto
 {
@@ -55,8 +54,8 @@ final readonly class EventCreateDto
     public static function fromArray(array $json): self
     {
         $v = Validator::check($json, self::RULES);
-        self::checkDates($v['start_at'], $v['end_at']);
-        self::checkPrice($v['is_paid'] ?? false, $v['price_cents'] ?? 0);
+        EventRules::checkDates($v['start_at'], $v['end_at']);
+        EventRules::checkPrice($v['is_paid'] ?? false, $v['price_cents'] ?? 0);
 
         return new self(
             title: $v['title'],
@@ -78,19 +77,5 @@ final readonly class EventCreateDto
             externalTicketUrl: $v['external_ticket_url'] ?? null,
             restrictedSchoolId: $v['restricted_school_id'] ?? null,
         );
-    }
-
-    public static function checkDates(string $startAt, string $endAt): void
-    {
-        if ((new DateTimeImmutable($endAt))->getTimestamp() <= (new DateTimeImmutable($startAt))->getTimestamp()) {
-            throw ValidationException::field('end_at', 'Must be after start_at');
-        }
-    }
-
-    public static function checkPrice(bool $isPaid, int $priceCents): void
-    {
-        if ($isPaid !== ($priceCents > 0)) {
-            throw ValidationException::field('price_cents', $isPaid ? 'Must be greater than 0 for a paid event' : 'Must be 0 for a free event');
-        }
     }
 }

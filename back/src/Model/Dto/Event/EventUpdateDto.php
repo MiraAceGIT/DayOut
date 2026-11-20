@@ -5,6 +5,7 @@ namespace App\Model\Dto\Event;
 
 use App\Core\ValidationException;
 use App\Core\Validator;
+use App\Model\Rules\EventRules;
 
 final readonly class EventUpdateDto
 {
@@ -50,10 +51,10 @@ final readonly class EventUpdateDto
             throw ValidationException::field('status', 'Must be sent alone');
         }
         if (isset($v['start_at'], $v['end_at'])) {
-            EventCreateDto::checkDates($v['start_at'], $v['end_at']);
+            EventRules::checkDates($v['start_at'], $v['end_at']);
         }
         if (isset($v['is_paid'], $v['price_cents'])) {
-            EventCreateDto::checkPrice($v['is_paid'], $v['price_cents']);
+            EventRules::checkPrice($v['is_paid'], $v['price_cents']);
         }
 
         return new self(
