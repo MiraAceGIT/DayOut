@@ -1,5 +1,5 @@
 import { distanceKm, isLatLng } from "../../shared/geo.js";
-import { isUpcoming } from "./Event.js";
+import { isUpcoming } from "./event.js";
 import { matchesCriteria } from "./eventFilters.js";
 
 export function measureFrom(origin) {

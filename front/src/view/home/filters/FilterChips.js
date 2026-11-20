@@ -11,6 +11,7 @@ export class FilterChips {
   constructor({ filtersEl, categoriesEl }) {
     this.filtersEl = filtersEl;
     this.categoriesEl = categoriesEl;
+    /** @type {(slug: string, on: boolean) => void} */
     this.onCategory = () => {};
   }
 

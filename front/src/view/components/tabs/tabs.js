@@ -5,7 +5,7 @@ export function bindTabs(tabs, { root = document } = {}) {
       const active = t === tab;
       t.setAttribute("aria-selected", String(active));
       t.tabIndex = active ? 0 : -1;
-      const panel = root.querySelector(`#${t.getAttribute("aria-controls")}`);
+      const panel = /** @type {HTMLElement|null} */ (root.querySelector(`#${t.getAttribute("aria-controls")}`));
       if (panel) panel.hidden = !active;
     }
     if (focus) tab.focus();

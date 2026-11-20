@@ -3,10 +3,8 @@ import { after, before, describe, it } from "node:test";
 import { event } from "./fixtures.js";
 
 // Le controleur importe la configuration navigateur ; vue, carte et champ de recherche sont injectes.
-// Import par variable : tsc (jsconfig.json) ne verifie pas encore la couche view/ que le controleur tire avec lui.
-const homeControllerPath = "../src/controller/HomeController.js";
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});
-const { HomeController } = await import(homeControllerPath);
+const { HomeController } = await import("../src/controller/HomeController.js");
 const { ApiError } = await import("../src/core/api.js");
 delete globalThis.window;
 

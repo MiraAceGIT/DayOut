@@ -1,4 +1,4 @@
-import { availabilityOf, remainingPlaces } from "../domain/Event.js";
+import { availabilityOf, remainingPlaces } from "../domain/event.js";
 import { toCategory, toCategoryDto } from "./categoryMapper.js";
 import { toCreator, toCreatorDto } from "./creatorMapper.js";
 

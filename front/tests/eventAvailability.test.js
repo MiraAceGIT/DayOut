@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD } from "../src/model/domain/Event.js";
+import { remainingPlaces, availabilityOf, LAST_PLACES_THRESHOLD } from "../src/model/domain/event.js";
 import { toEvent } from "../src/model/mappers/eventMapper.js";
 import { eventDto } from "./fixtures.js";
 

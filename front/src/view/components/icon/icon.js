@@ -62,7 +62,7 @@ export function pinIcon({ size = 32, className = "map-pin__svg" } = {}) {
   });
   svg.append(
     svgEl("path", {
-      d: ICONS["map-pin"][0][1].d,
+      d: /** @type {{ d: string }} */ (ICONS["map-pin"][0][1]).d,
       fill: "currentColor",
       stroke: "#ffffff",
       "stroke-width": 1.5,

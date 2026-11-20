@@ -18,7 +18,7 @@ export class HomeView {
     this.errorEl   = root.querySelector("#home-error");
     this.statusEl  = root.querySelector("#home-status");
     this.listEl    = root.querySelector("#home-list");
-    this.loginLink = root.querySelector("#home-login-link");
+    this.loginLink = /** @type {HTMLAnchorElement|null} */ (root.querySelector("#home-login-link"));
     this.point = new PointCard({
       labelEl:   root.querySelector("#home-point-label"),
       changeBtn: root.querySelector("#home-point-change"),
@@ -36,6 +36,7 @@ export class HomeView {
       errorEl: root.querySelector("#home-suggestions-error"),
     });
     this.status = new LiveStatus(this.statusEl);
+    /** @type {(id: number) => void} */
     this.onSelect = () => {};
   }
 

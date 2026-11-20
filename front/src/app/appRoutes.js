@@ -14,7 +14,7 @@ import { mountFaq } from "../pages/faq.js";
 export const ROUTES = [
   { path: "/faq", file: "pages/faq.html", mount: mountFaq },
   { path: "/",       file: "pages/home.html",   mount: mountHome },  // page par defaut (adresse du site seule)
-  { path: "/my-events", file: "pages/events.html", mount: mountEvents },
+  { path: "/events",    file: "pages/events.html", mount: mountEvents },
   { path: "/event",     file: "pages/event.html",  mount: mountEvent },   // detail : /event?id=42
 ];
 

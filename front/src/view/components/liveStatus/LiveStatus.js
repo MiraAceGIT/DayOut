@@ -2,7 +2,8 @@
 export class LiveStatus {
   constructor(el) {
     this.el = el;
-    this.timer = 0;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    this.timer = undefined;
   }
 
   set(message, { delay = 0 } = {}) {

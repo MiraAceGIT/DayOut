@@ -8,7 +8,7 @@ import { renderSearchBox } from "../../components/searchBox/searchBox.js";
 const NAV_ITEMS = [
   { label: "Carte",          path: "/" },
   { label: "Pour toi",       path: "/for-you" },
-  { label: "Mes événements", path: "/my-events" },
+  { label: "Événements",     path: "/events" },
   { label: "Planning",       path: "/planning" },
 ];
 

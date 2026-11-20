@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isUpcoming } from "../src/model/domain/Event.js";
+import { isUpcoming } from "../src/model/domain/event.js";
 import { matchesCriteria, weekendRange } from "../src/model/domain/eventFilters.js";
 import { normalize } from "../src/shared/text.js";
 import { searchEvents } from "../src/model/domain/eventSearch.js";

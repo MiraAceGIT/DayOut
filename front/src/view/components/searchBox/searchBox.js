@@ -32,7 +32,8 @@ export function renderSearchBox({ id = INPUT_ID } = {}) {
 /** A construire apres boot() ; sans champ, tout est sans effet. Les champs du header et de l'accueil restent synchronises. */
 export class SearchBox {
   constructor(root = document) {
-    this.inputs = [...root.querySelectorAll(`input.${INPUT_CLASS}`)];
+    /** @type {HTMLInputElement[]} */
+    this.inputs = [...root.querySelectorAll(`input.${INPUT_CLASS}`)].map((el) => /** @type {HTMLInputElement} */ (el));
   }
 
   setQuery(query) {
@@ -40,7 +41,9 @@ export class SearchBox {
   }
 
   /** Recherche a l'envoi (Entree), ou des que le champ est vide (croix du champ search) : pas un appel par frappe.
-   * `signal` retire ces ecouteurs quand on quitte la carte (le header reste affiche). */
+   * `signal` retire ces ecouteurs quand on quitte la carte (le header reste affiche).
+   * @param {(query: string) => void} onQuery
+   * @param {{ signal?: AbortSignal }} [options] */
   bindSubmit(onQuery, { signal } = {}) {
     for (const input of this.inputs) {
       input.form?.addEventListener("submit", (e) => {

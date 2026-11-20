@@ -1,6 +1,6 @@
 {
   // Verification des types depuis les JSDoc : VS Code l'applique en direct, la CI lance `tsc -p front/jsconfig.json`.
-  // Perimetre : les couches sans DOM (et ce qu'elles importent). La couche view/ suivra.
+  // Perimetre : couches sans DOM, controleurs (et les views qu'ils importent) ; le reste de view/ suivra.
   "compilerOptions": {
     "checkJs": true,
     "allowJs": true,
@@ -17,6 +17,7 @@
     "src/model/**/*.js",
     "src/shared/**/*.js",
     "src/core/**/*.js",
+    "src/controller/**/*.js",
     "tests/**/*.js"
   ]
 }
