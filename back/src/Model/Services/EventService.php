@@ -8,6 +8,7 @@ use App\Model\Assemblers\EventAssembler;
 use App\Model\Dao\Event\Event;
 use App\Model\Dao\Event\EventRecord;
 use App\Model\Dao\Event\EventSearchParams;
+use App\Model\DomainServices\EventRules;
 use App\Model\Dto\Event\EventCreateDto;
 use App\Model\Dto\Event\EventDto;
 use App\Model\Dto\Event\EventUpdateDto;
@@ -16,7 +17,6 @@ use App\Model\Enums\EventStatus;
 use App\Model\Exceptions\EventException;
 use App\Model\Mappers\EventMapper;
 use App\Model\Policies\EventPolicy;
-use App\Model\Rules\EventRules;
 use DateTimeImmutable;
 
 /**

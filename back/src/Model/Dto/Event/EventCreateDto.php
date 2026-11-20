@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace App\Model\Dto\Event;
 
 use App\Core\Validator;
-use App\Model\Rules\EventRules;
+use App\Model\DomainServices\EventRules;
 
 final readonly class EventCreateDto
 {

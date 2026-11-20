@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Unit\Model\Rules;
+namespace Tests\Unit\Model\DomainServices;
 
 use App\Core\ValidationException;
 use App\Model\Dao\Event\EventRecord;
+use App\Model\DomainServices\EventRules;
 use App\Model\Dto\Event\EventUpdateDto;
 use App\Model\Enums\EventStatus;
 use App\Model\Exceptions\EventException;
-use App\Model\Rules\EventRules;
 use DateTimeImmutable;
 use Tests\TestCase;
 

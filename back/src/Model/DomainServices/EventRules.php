@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Model\Rules;
+namespace App\Model\DomainServices;
 
 use App\Core\ValidationException;
 use App\Model\Dao\Event\EventRecord;

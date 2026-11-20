@@ -215,7 +215,7 @@ back/
 │   │   ├── Query/      ← lecture des query strings : EventFindQuery, CreatorFindQuery ; ParsesQueryString (trait commun)
 │   │   ├── Services/   ← cas d'usage : orchestre policy, regles, DAO et assembler ; renvoie des DTO
 │   │   ├── Policies/   ← droits sur une ressource (EventPolicy : createur approuve, proprietaire)
-│   │   ├── Rules/      ← regles metier pures, sans base (EventRules : dates, prix, champs verrouilles, publication)
+│   │   ├── DomainServices/ ← regles metier pures, sans base (EventRules : dates, prix, champs verrouilles, publication)
 │   │   ├── Assemblers/ ← lignes -> DTO complets avec leurs relations en une requete chacune (EventAssembler)
 │   │   ├── Exceptions/ ← une classe par ressource (EventException, FaqException), heritant de Core\BusinessException
 │   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
@@ -245,7 +245,7 @@ back/
 
 #### Service (regles metier)
 
-- Orchestre : droits (`Policies/`), regles pures (`Rules/`), DAO, puis DTO (`Mappers/` ou `Assemblers/`) ; leve des **exceptions metier** (`EventException::notFound($id)`)
+- Orchestre : droits (`Policies/`), regles pures (`DomainServices/`), DAO, puis DTO (`Mappers/` ou `Assemblers/`) ; leve des **exceptions metier** (`EventException::notFound($id)`)
 - Recoit ses dependances par le constructeur, jamais de `new` d'un DAO ou d'un service
 - Renvoie des **DTO**, jamais une ligne brute du DAO
 - Ne connait ni HTTP ni requete
@@ -291,7 +291,7 @@ HTTP -> public/.htaccess -> public/index.php
      -> Kernel::handle(Request::fromGlobals())
           -> Router::dispatch : match {param}, middlewares, Controller::action -> Response
              (controllers et middlewares obtenus du Container, dependances injectees)
-             -> Service (Policy, Rules) -> DAO (methode nommee) -> QueryBuilder -> Compiler (SQL)
+             -> Service (Policy, DomainServices) -> DAO (methode nommee) -> QueryBuilder -> Compiler (SQL)
                 -> Connection (bindings) -> PDO -> MariaDB -> Caster -> Assembler / Mapper -> DTO
           -> toute exception -> ExceptionRenderer -> Response d'erreur
           -> SecurityHeaders + Cors + X-Request-Id sur toutes les reponses
@@ -927,7 +927,7 @@ tests/
 │       ├── Dao/                ← DaoTest, CategoryTest (SQLite en memoire)
 │       ├── Enums/              ← EventStatusTest
 │       ├── Mappers/            ← EventMapperTest, CategoryMapperTest
-│       ├── Rules/              ← EventRulesTest (regles pures, sans base)
+│       ├── DomainServices/     ← EventRulesTest (regles pures, sans base)
 │       └── Services/           ← EventServiceTest (SQLite en memoire, services obtenus du conteneur)
 │   └── Shared/                 ← YamlTest
 ├── Integration/                ← vraies requetes HTTP
@@ -1215,7 +1215,7 @@ Verifier `tests/Unit/Docs/OpenApiContractTest.php` : il indique exactement ce qu
    Statuts et roles : un enum dans `src/Model/Enums/`, jamais de chaine en dur.
 2. **Service** dans `src/Model/Services/` : orchestre, leve des exceptions metier
    (`throw UserException::notFound($id)`), renvoie des DTO. Droits dans `Policies/XxxPolicy`,
-   regles sans base dans `Rules/XxxRules` (testables sans SQLite), relations a charger dans `Assemblers/`.
+   regles sans base dans `DomainServices/XxxRules` (testables sans SQLite), relations a charger dans `Assemblers/`.
    Dependances par le constructeur (resolues par le `Container`), jamais de `new`.
 3. **DTO** dans `src/Model/Dto/<Ressource>/` (ex. `Dto/Event/`) (`final readonly class ... implements JsonSerializable` :
    proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case).
