@@ -19,11 +19,11 @@ pas de build, pas de npm : modules ES natifs servis tels quels.
 **V1 publique en lecture seule** — Trois pages implementees :
 
 - `index.html` : carte interactive "Que faire autour de toi ?" (plein ecran)
-- `pages/events.html` : liste des evenements (cartes + footer)
-- `pages/event.html?id=1` : detail dynamique et ecran 404 pour un evenement inaccessible
+- `/events` (`pages/events.html`) : liste des evenements a venir (cartes + footer)
+- `/event?id=1` (`pages/event.html`) : detail dynamique et ecran 404 pour un evenement inaccessible
 
 L'auth (login, pages protegees), les inscriptions et l'admin sont en cours
-(infrastructure deja en place : `boot()` installe un handler `401`, `loginUrl()` genere l'URL de connexion).
+(infrastructure deja en place : `app/boot.js` installe un handler `401`, `loginUrl()` genere l'URL de connexion).
 
 ### Perimetre exact
 
@@ -36,7 +36,7 @@ L'auth (login, pages protegees), les inscriptions et l'admin sont en cours
 - Client API avec enveloppe, timeout, gestion CSRF, redirection 401
 - Composants reutilisables : header, footer, cartes, pastilles, chips, onglets ARIA
 - Tests unitaires (`node:test`) + test de contrat contre la spec OpenAPI du back
-- Verification des types JSDoc via `tsc` (`model/`, `shared/`, `core/`, tests)
+- Verification des types JSDoc via `tsc` (`model/`, `shared/`, `core/`, `controller/`, tests)
 - Accessibilite : skip-link, roles ARIA (`status`, `alert`), focus visible, contrastes WCAG AA
 
 ---
@@ -147,8 +147,8 @@ Ouvrir `index.html` directement par `file://` **ne marchera pas**.
 ### Pages disponibles
 
 - **`/`** (`index.html`) : carte "Que faire autour de toi ?" (accueil plein ecran)
-- **`/pages/events.html`** : liste des evenements (cartes + footer)
-- **`/pages/event.html?id=1`** : detail dynamique via `GET /events/1`, d'apres l'ecran 02 des maquettes. Le header et le footer utilisent le gabarit partage ; les blocs meteo/transports/mini-carte/discussion restent reserves et les actions desactivees.
+- **`/events`** (`pages/events.html`) : liste des evenements a venir (cartes + footer)
+- **`/event?id=1`** (`pages/event.html`) : detail dynamique via `GET /events/1`, d'apres l'ecran 02 des maquettes. Le header et le footer utilisent le gabarit partage ; les blocs meteo/transports/mini-carte/discussion restent reserves et les actions desactivees.
 
 ---
 
@@ -173,23 +173,27 @@ front/
 ├── src/
 │   ├── config.local.example.js   ← modele de surcharge locale
 │   ├── config.local.js           ← surcharge locale optionnelle (ignore git)
-│   ├── core/                     ← infrastructure : config, api, errors, geolocation, routes
-│   ├── app/boot.js               ← header + footer + handler 401
-│   ├── shared/                   ← utilitaires purs sans dependance : dom (h), format, geo, forms
+│   ├── core/                     ← infrastructure : config, api, apiLimits (plafonds de l'API), errors, geolocation, routes
+│   ├── app/                      ← boot.js (header + footer + handler 401), router.js, appRoutes.js (liste des pages)
+│   ├── shared/                   ← utilitaires purs sans dependance : dom (h), format, geo, highlight, text (normalize)
 │   ├── model/                    ← M : sans DOM
 │   │   ├── dto/                  ← typedefs JSDoc du JSON API (snake_case), un fichier par ressource
-│   │   ├── mappers/              ← DTO <-> modele (camelCase), seuls a lire les noms JSON
-│   │   ├── services/             ← appels API REST via core/api.js, retournent des modeles
+│   │   ├── mappers/              ← DTO <-> modele (camelCase), seuls a lire les noms JSON ;
+│   │   │                           requetes : pageQueryMapper (limit/offset), eventRequestMapper, faqRequestMapper
+│   │   ├── services/             ← appels API REST via core/api.js, retournent des modeles ; ne construisent aucune URL
 │   │   ├── domain/               ← regles metier pures (ni reseau, ni DOM, ni etat)
 │   │   └── state/                ← etat d'une page (ex. MapSearch : criteres, chargement, selection)
 │   ├── view/                     ← V : construisent et mettent a jour le DOM
-│   │   ├── layout/header/        ← renderHeader({ current }), SearchBox
+│   │   ├── layout/header/        ← renderHeader(), SearchBox
 │   │   ├── layout/footer/        ← renderFooter()
 │   │   ├── components/           ← category, logo, icon, pill, eventMeta, eventCard, eventRow, eventPopup, tabs, liveStatus
-│   │   ├── home/                 ← HomeView, PointCard, FilterChips, ResultsList, MapView (LeafletMap + MapLegend + MapStatus)
-│   │   └── EventsView.js
-│   ├── controller/               ← C : mediateurs minces (HomeController, EventsController)
-│   ├── pages/                    ← points d'entree minces (un par page HTML)
+│   │   ├── home/                 ← HomeView, homeMessages, PointCard, FilterChips, ResultsList, MapView (LeafletMap + MapLegend + MapStatus)
+│   │   ├── events/               ← EventsView, eventsMessages
+│   │   ├── event/                ← EventDetailView, eventDetailPresenter
+│   │   └── faq/                  ← FaqView, faqMessages
+│   ├── controller/               ← C : mediateurs minces (Home, Events, EventDetail, Faq) ;
+│   │                               PageLoader (cycle de chargement), LatestTask (derniere requete), OriginPicker (point de depart)
+│   ├── pages/                    ← points d'entree minces (un par page HTML), appeles par le routeur
 │   └── types/globals.d.ts        ← declarations globales (DAYOUT_CONFIG, Leaflet)
 ├── tests/                        ← node:test, aucune dependance npm
 ├── tools/typecheck.sh            ← installe TypeScript dans .cache/ et verifie les JSDoc
@@ -208,28 +212,29 @@ transverses (points d'entree, demarrage, infrastructure, utilitaires).
   - **services/** : acces a l'API REST (via `core/api.js`). Equivalent client de `back/src/Model/Dao`. Un service par **ressource appelee** (`/events` -> `eventService.js`), pas par modele.
   - **domain/** : regles metier pures (a venir, places restantes, filtres, zone couverte). Aucun DOM, aucun texte affiche, aucune couleur, aucun nom du JSON, aucun appel reseau, aucun etat.
   - **state/** : etat d'une page (`MapSearch` : evenements charges, criteres, selection), s'appuie sur `domain/`.
-- **view/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes et choix d'affichage. Aucun appel API, aucune regle metier. Une view de page est seule a connaitre ses ids et les passe a des sous-vues sans id, reutilisables.
-- **controller/** : mediateurs minces (relaient les evenements des views vers le model, redessinent). Ne touchent **jamais** le DOM, ne contiennent ni texte affiche ni regle metier. Dependances injectables par le constructeur (tests).
-- **pages/** : points d'entree minces, un par page HTML. `boot({ page })` **en premier**, puis demarrage du controleur.
+- **view/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes et choix d'affichage. Aucun appel API, aucune regle metier. Une view de page est seule a connaitre ses ids et les passe a des sous-vues sans id, reutilisables. Les textes calcules (statuts, page detail) sont des **fonctions pures a cote de la view** (`xxxMessages.js`, `eventDetailPresenter.js`), testees sans DOM.
+- **controller/** : mediateurs minces (relaient les evenements des views vers le model, redessinent). Ne touchent **jamais** le DOM, ne contiennent ni texte affiche ni regle metier. Dependances injectables par le constructeur (tests). Tous demarrent par `start({ signal, ...params })` ; un chargement passe par `PageLoader` (un a la fois, message d'erreur, rien apres le depart de la page).
+- **pages/** : points d'entree minces, un par page HTML. Le routeur appelle `mount({ signal, params })` : `signal` est annule quand on quitte la page, `params` est la query string. Le header, le footer et le handler 401 sont poses une fois par `app/boot.js`.
 - **Fonctions** pour ce qui est sans etat (models, composants) ; **petite classe** pour ce qui garde des references (view et ses elements, etat de page, controleur).
 
 ### Regle de dependances
 
 ```
-pages/           -> app/boot.js, controller/
-controller/      -> model/services/, model/state/, model/domain/, view/, core/errors.js, core/geolocation.js, core/routes.js
+app/             -> pages/ (appRoutes.js), core/, shared/dom.js, view/layout/
+pages/           -> controller/, view/components/ (champ de recherche de l'accueil)
+controller/      -> model/services/, model/state/, model/domain/, view/, core/ (sauf api.js)
 model/services/  -> core/api.js, model/mappers/, model/dto/ (types)
-model/mappers/   -> model/domain/ (regles de calcul), model/dto/ (types)
+model/mappers/   -> model/domain/ (regles de calcul), model/dto/ (types), core/apiLimits.js
 model/state/     -> model/domain/
-model/domain/    -> model/domain/, shared/geo.js (calcul pur)
-view/            -> view/, shared/, core/config.js (frontUrl), core/routes.js (loginUrl uniquement)
-app/boot.js      -> core/, view/layout/
+model/domain/    -> model/domain/, shared/geo.js, shared/text.js (calcul pur)
+view/            -> view/, shared/, core/config.js (frontUrl), core/routes.js (loginUrl, routeUrl), core/apiLimits.js
 core/            -> core/ uniquement
-shared/          -> rien (utilitaires purs)
+shared/          -> shared/ uniquement (utilitaires purs)
 ```
 
-- Rien n'importe `pages/` ; pas de dependance circulaire
-- Une view n'importe **ni** `model/` **ni** `core/api.js` ; un model n'importe **ni** `view/` **ni** `shared/dom.js`
+- Seul `app/appRoutes.js` importe `pages/` ; pas de dependance circulaire
+- Une view n'importe **ni** `model/` **ni** `core/api.js` (un `import()` de type JSDoc est permis) ; un model n'importe **ni** `view/` **ni** `shared/dom.js`
+- Les plafonds de l'API (`limit`, `offset`, longueur de `q`) ne sont ecrits que dans `core/apiLimits.js`
 - Ce dont une view a besoin cote metier est un **champ de l'objet normalise** (`event.remainingPlaces`, `event.availability`) ou lui est **passe par le controleur**
 - Leaflet n'est lu que dans `view/home/map/LeafletMap.js`
 
@@ -356,7 +361,7 @@ Un fichier de `domain/` ne contient :
 ### Exemple : places restantes
 
 ```js
-// model/domain/Event.js
+// model/domain/event.js
 export const LAST_PLACES_THRESHOLD = 5;
 
 export function remainingPlaces(capacity, registeredCount) {
@@ -458,8 +463,8 @@ front/tools/typecheck.sh
 ```
 
 - `jsconfig.json` active la verification JSDoc (VS Code en direct, `tsc` en CI)
-- Perimetre : `model/`, `shared/`, `core/` et les tests
-- Les views **ne sont pas encore** dans le perimetre
+- Perimetre : `model/`, `shared/`, `core/`, `controller/` (et les views qu'ils importent) et les tests
+- Le reste de `view/` (carte Leaflet, header, composants non importes) **n'est pas encore** dans le perimetre
 - `tools/typecheck.sh` installe TypeScript (version epinglee) dans `tools/.cache/` (ignore par git)
 
 ---
@@ -470,7 +475,9 @@ front/tools/typecheck.sh
 
 - [`src/model/mappers/eventMapper.js`](src/model/mappers/eventMapper.js) : `toEvent(dto)`, `toEvents(dtos)`, `toEventDto(event)`
 - [`src/model/mappers/categoryMapper.js`](src/model/mappers/categoryMapper.js) : `toCategory(dto)`, `toCategoryDto(category)`
-- [`src/model/mappers/eventQueryMapper.js`](src/model/mappers/eventQueryMapper.js) : `toEventQuery({ limit, offset, from })` (query string de `GET /events`, bornes `MAX_EVENTS_LIMIT` / `MAX_EVENTS_OFFSET`), `toEventPath(id)` (`/events/{id}`, ou `null` si l'identifiant est invalide)
+- [`src/model/mappers/pageQueryMapper.js`](src/model/mappers/pageQueryMapper.js) : `toPageQuery({ limit, offset })` (pagination commune a toutes les listes, bornes de `core/apiLimits.js`)
+- [`src/model/mappers/eventRequestMapper.js`](src/model/mappers/eventRequestMapper.js) : `toEventQuery({ limit, offset, from, keyword })` (query string de `GET /events`), `toEventPath(id)` (`/events/{id}`, ou `null` si l'identifiant est invalide)
+- [`src/model/mappers/faqRequestMapper.js`](src/model/mappers/faqRequestMapper.js) : `toFaqQuery({ limit, offset })` (query string de `GET /faq`)
 
 ### Operations
 
@@ -488,10 +495,10 @@ const dto = toEventDto(event);       // camelCase -> snake_case pour un envoi (l
 - Renommer un champ cote API ne touche qu'ici (+ le typedef DTO + le schema YAML cote back)
 - `toEvent` construit la structure camelCase du front, incluant :
   - `position: { lat, lng } | null` (plutot que `latitude`/`longitude` separes)
-  - `remainingPlaces` et `availability` calcules via `domain/Event.js`
+  - `remainingPlaces` et `availability` calcules via `domain/event.js`
   - Dates `Date` (plutot que strings ISO)
 - `toEventDto` **ne renvoie pas** les champs calcules (pas d'aller-retour)
-- Dans l'autre sens, les criteres de lecture deviennent des parametres d'API dans `eventQueryMapper.js` : le service ne construit pas lui-meme les noms `limit`, `offset`, `from` ni le chemin `/events/{id}`
+- Dans l'autre sens, les criteres de lecture deviennent des parametres d'API dans les mappers de requete (`eventRequestMapper.js`, `faqRequestMapper.js`) : le service ne construit lui-meme ni les noms `limit`, `offset`, `from`, `q` ni le chemin `/events/{id}`
 
 Le test de contrat `tests/contract.test.js` echoue si un champ du JSON back n'est pas lu par `toEvent` ou pas renvoye par `toEventDto`.
 
@@ -503,7 +510,9 @@ Le test de contrat `tests/contract.test.js` echoue si un champ du JSON back n'es
 
 Fichiers dans [`src/model/services/`](src/model/services/) :
 
-- [`eventService.js`](src/model/services/eventService.js) : `fetchUpcomingEventPage` (une page de `GET /events`), `fetchUpcomingEvents` (ses elements), `fetchEvent(id)` (`GET /events/{id}` ; un identifiant invalide leve une `ApiError` 404 sans appel reseau), `MAX_EVENTS_LIMIT`, `MAX_EVENTS_OFFSET`, `MAX_KEYWORD_LENGTH`
+- [`eventService.js`](src/model/services/eventService.js) : `fetchUpcomingEventPage` (une page de `GET /events`), `fetchUpcomingEvents` (ses elements), `fetchEvent(id)` (`GET /events/{id}` ; un identifiant invalide leve une `ApiError` 404 sans appel reseau)
+- [`faqService.js`](src/model/services/faqService.js) : `fetchFaq()` (toutes les questions actives, page par page)
+- Plafonds de l'API (`MAX_PAGE_LIMIT`, `MAX_PAGE_OFFSET`, `MAX_KEYWORD_LENGTH`) : [`core/apiLimits.js`](src/core/apiLimits.js)
 
 ### Regle
 
@@ -513,18 +522,14 @@ les categories arrivent dans les evenements, donc pas de `categoryService` pour 
 ### Exemple
 
 ```js
-// src/model/services/eventService.js
+// src/model/services/eventService.js : le mapper de requete construit la query, le mapper de reponse le modele
 import { api } from "../../core/api.js";
 import { toEvents } from "../mappers/eventMapper.js";
+import { toEventQuery } from "../mappers/eventRequestMapper.js";
 
-export const MAX_EVENTS_LIMIT = 100;
-
-export async function fetchUpcomingEvents({ from, limit = MAX_EVENTS_LIMIT, signal } = {}) {
-    const params = new URLSearchParams();
-    if (from) params.set("from", from.toISOString());
-    params.set("limit", String(limit));
-    const page = await api.get(`/events?${params.toString()}`, { signal });
-    return toEvents(page.items);
+export async function fetchUpcomingEventPage({ limit, offset = 0, from, query: keyword = "", signal } = {}) {
+    const page = await api.get(`/events?${toEventQuery({ limit, offset, from, keyword })}`, { signal });
+    return { items: toEvents(page.items), limit: page.limit, offset: page.offset, hasMore: page.has_more, total: page.total ?? null };
 }
 ```
 
@@ -542,7 +547,7 @@ api.del(path, { signal, timeout })
 - **Echec** : leve une `ApiError` avec `type` (`network`, `timeout`, `abort`, `parse`, `http`), `status`, `code`, `details`, `requestId` (en-tete `X-Request-Id`), `cause`, et le getter `isValidation` (422 + `VALIDATION_ERROR`).
 - `credentials: "include"` par defaut (front et API sont deux origines ; session cookie a venir).
 - `X-CSRF-Token` envoye sur POST/PUT/PATCH/DELETE si `setCsrfTokenProvider(fn)` fournit un jeton.
-- `setUnauthorizedHandler(fn)` : appele sur tout 401 avant de lever l'erreur. `boot()` l'installe pour rediriger vers `pages/login.html?next=...` (`loginUrl()` dans `core/routes.js`).
+- `setUnauthorizedHandler(fn)` : appele sur tout 401 avant de lever l'erreur. `app/boot.js` l'installe pour rediriger vers `pages/login.html?next=...` (`loginUrl()` dans `core/routes.js`).
 - **Timeout par defaut 10 s** (`timeout: 0` pour desactiver), combinable avec un `signal` appelant.
 
 ---
@@ -551,8 +556,11 @@ api.del(path, { signal, timeout })
 
 ### Localisation
 
-- [`src/controller/HomeController.js`](src/controller/HomeController.js) : page carte
+- [`src/controller/HomeController.js`](src/controller/HomeController.js) : page carte ; s'appuie sur [`LatestTask`](src/controller/LatestTask.js) (seule la derniere recherche compte) et [`OriginPicker`](src/controller/OriginPicker.js) (clic sur la carte ou position de l'appareil)
 - [`src/controller/EventsController.js`](src/controller/EventsController.js) : page liste
+- [`src/controller/EventDetailController.js`](src/controller/EventDetailController.js) : page detail
+- [`src/controller/FaqController.js`](src/controller/FaqController.js) : FAQ
+- [`src/controller/PageLoader.js`](src/controller/PageLoader.js) : cycle d'un chargement (un a la fois, chargement -> succes ou message, rien apres le depart de la page)
 
 ### Regles
 
@@ -560,31 +568,34 @@ api.del(path, { signal, timeout })
 - **Ne contiennent ni texte affiche ni regle metier** (les views et `domain/` s'en chargent)
 - Dependances **injectables par le constructeur** (views, `loadEvents`, `getPosition`...) avec valeurs par defaut
 - Pas de conteneur d'injection : le constructeur suffit
+- Demarrage uniforme : `start({ signal, ...params })` ; `signal` (depart de la page) est transmis a l'API et aux ecouteurs
+- Un chargement passe par `PageLoader.run(task, { onSuccess, onError })` : pas de `try/catch` recopie
 
 ### Exemple
 
 ```js
-// src/controller/EventsController.js
-import { isApiError, messageFor } from "../core/errors.js";
-import { fetchUpcomingEvents } from "../model/services/eventService.js";
-import { EventsView } from "../view/EventsView.js";
-
-export class EventsController {
-    constructor({ view = new EventsView(), loadEvents = fetchUpcomingEvents } = {}) {
+// src/controller/EventDetailController.js (extrait)
+export class EventDetailController {
+    constructor({ view = new EventDetailView(), loadEvent = fetchEvent } = {}) {
         this.view = view;
-        this.loadEvents = loadEvents;
+        this.loadEvent = loadEvent;
+        this.loader = new PageLoader(view);
     }
 
-    async start() {
-        if (!this.view.isReady) return;
-        try {
-            this.view.showLoading();
-            const events = await this.loadEvents();
-            this.view.showEvents(events);
-        } catch (err) {
-            if (!isApiError(err)) console.error(err);
-            this.view.showError(messageFor(err));
-        }
+    async start({ id = null, signal } = {}) {
+        if (!this.view.isReady || signal?.aborted) return;
+        this.loader = new PageLoader(this.view, { signal });
+        this.id = parseEventId(id);
+        this.view.bind({ onRetry: () => this.load() }, signal);
+        await this.load();
+    }
+
+    async load() {
+        await this.loader.run((signal) => this.loadEvent(this.id, { signal }), {
+            onSuccess: (event) => this.view.showEvent(event),
+            // erreur attendue traitee ici ; sinon PageLoader affiche messageFor(err)
+            onError: (err) => isApiError(err) && err.status === 404 && (this.view.showNotFound(), true),
+        });
     }
 }
 ```
@@ -592,12 +603,13 @@ export class EventsController {
 ### Point d'entree (page)
 
 ```js
-// src/pages/events.js
-import { boot } from "../app/boot.js";
-import { EventsController } from "../controller/EventsController.js";
+// src/pages/event.js : appele par le routeur (app/appRoutes.js) une fois pages/event.html affiche
+import { EventDetailController } from "../controller/EventDetailController.js";
 
-boot({ page: "events" });          // header + footer + handler 401
-new EventsController().start();
+export function mountEvent({ signal, params }) {
+    const ids = params.getAll("id");
+    return new EventDetailController().start({ id: ids.length === 1 ? ids[0] : null, signal });
+}
 ```
 
 ---
@@ -609,14 +621,13 @@ new EventsController().start();
 Levee par `core/api.js` ; les controleurs la rattrapent et affichent via la view.
 
 ```js
+// Le plus souvent via PageLoader ; a la main :
 try {
-    const events = await fetchUpcomingEvents();
+    const events = await fetchUpcomingEvents({ signal });
 } catch (err) {
-    if (err.isValidation) {
-        // 422 avec details = champ -> message
-        showFieldErrors(form, err.details);
-    } else {
-        console.error(err);
+    if (isApiError(err) && err.status === 404) this.view.showNotFound();   // erreur attendue
+    else {
+        if (!isApiError(err)) console.error(err);                         // bug
         this.view.showError(messageFor(err));
     }
 }
@@ -641,29 +652,14 @@ C'est le **controleur** qui calcule le message et le passe a la view (la view ga
 
 ### Erreurs de formulaire
 
-```js
-import { showFieldErrors, clearFieldErrors } from "../shared/forms.js";
-
-form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    clearFieldErrors(form);
-    try {
-        await api.post("/events", data);
-    } catch (err) {
-        if (err.isValidation) {
-            showFieldErrors(form, err.details);    // aria-invalid + <p class="field-error">
-            return;
-        }
-        this.view.showError(messageFor(err));
-    }
-});
-```
-
-`showFieldErrors` pose `aria-invalid="true"` sur le champ et un `<p id="<champ>-error" class="field-error">` relie par `aria-describedby`. `clearFieldErrors` les retire.
+Aucune page n'envoie encore de formulaire. Une erreur 422 arrive en `ApiError` avec `isValidation === true`
+et `details` = champ -> message : la view du formulaire pose `aria-invalid="true"` et un message relie par
+`aria-describedby`. Les helpers `showFieldErrors` / `clearFieldErrors` (retires car inutilises) sont dans
+l'historique git (`shared/forms.js`) si on veut les reprendre avec le premier formulaire.
 
 ### Redirection 401
 
-`boot({ page })` installe un handler `setUnauthorizedHandler` qui redirige vers
+`app/boot.js` installe un handler `setUnauthorizedHandler` qui redirige vers
 `pages/login.html?next=<URL courante>` sur tout 401. Les appels API echouent **avant** d'atteindre le controleur sur 401 -> l'utilisateur est redirige directement.
 
 ### Erreurs reseau et offline
@@ -685,8 +681,9 @@ Voir [`../back/README.md`](../back/README.md) pour la liste complete.
 
 | Methode | Chemin         | Utilise par                   |
 | ------- | -------------- | ----------------------------- |
-| GET     | `/events`      | `fetchUpcomingEvents` (home, events) |
-| GET     | `/events/{id}` | (page detail a venir)         |
+| GET     | `/events`      | `fetchUpcomingEventPage` (liste), `fetchUpcomingEvents` (carte) |
+| GET     | `/events/{id}` | `fetchEvent` (detail)         |
+| GET     | `/faq`         | `fetchFaq` (FAQ)              |
 | GET     | `/health`      | (non utilise)                 |
 
 ### Conventions
@@ -725,7 +722,8 @@ tests/
 - **Mappers** : `toEvent`, `toEventDto`, aller-retour bidirectionnel
 - **Domain** : filtres, recherche de la carte, `isUpcoming`, zone couverte, places restantes
 - **Shared** : `h()` (XSS, URLs refusees), formats (dates, prix, distance, pluralize), `distanceKm`, `isLatLng`
-- **Views** : pas encore couvertes (peu de logique testable, le DOM est teste indirectement)
+- **Views** : leurs textes calcules (`*Messages.js`, `eventDetailPresenter.js`) sont testes ; le DOM l'est indirectement
+- **Controleurs** : avec des doubles de view ; `PageLoader`, `LatestTask`, `OriginPicker` testes directement
 
 ### Test de contrat (`contract.test.js`)
 
@@ -759,14 +757,14 @@ front/tools/typecheck.sh
 ```
 
 - Installe TypeScript (version epinglee) dans `tools/.cache/` au premier lancement
-- Verifie les JSDoc de `model/`, `shared/`, `core/`, tests
+- Verifie les JSDoc de `model/`, `shared/`, `core/`, `controller/` (et les views qu'ils importent), tests
 - Globales (`DAYOUT_CONFIG`, `L`) declarees dans `src/types/globals.d.ts`
 
 ### Conventions de nommage
 
 - **Variables / fonctions** : `camelCase`
 - **Classes** : `PascalCase`
-- **Constantes de module** : `UPPER_SNAKE_CASE` (`MAX_EVENTS_LIMIT`, `LAST_PLACES_THRESHOLD`)
+- **Constantes de module** : `UPPER_SNAKE_CASE` (`MAX_PAGE_LIMIT`, `LAST_PLACES_THRESHOLD`)
 - **Fichiers** : camelCase sauf pour les classes exportees par defaut (ex. `EventsController.js`, `EventsView.js`)
 
 ### Conventions de langue
@@ -1011,64 +1009,63 @@ FAQ / CGU / Mentions legales / Contact a ajouter quand ces pages existeront (**p
 
 ### 1. HTML
 
+Seul le `<main id="app-root">` est copie par le routeur dans `index.html` (header, footer, polices et CSS y sont deja).
+
 ```html
 <!-- pages/ma-page.html -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fredoka:wght@600;700&display=swap">
-<link rel="stylesheet" href="../assets/css/main.css">
-...
-<a class="skip-link" href="#main">Aller au contenu</a>
-<header class="site-header" data-layout>
-  <noscript><!-- nav de secours en liens relatifs --></noscript>
-</header>
-<main id="main" class="container" tabindex="-1">
-  <h1>Titre unique de la page</h1>
-  <p id="ma-page-error" class="alert alert--error" role="alert"></p>
-  <p id="ma-page-status" class="status-message" role="status"></p>
-</main>
-<footer class="site-footer" data-layout>
-  <noscript><!-- meme contenu en statique (voir pages/events.html) --></noscript>
-</footer>
-<script src="../src/config.local.js"></script>
-<script type="module" src="../src/pages/ma-page.js"></script>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Ma page — DayOut</title>
+</head>
+<body>
+  <main id="app-root" class="container ma-page">
+    <h1>Titre unique de la page</h1>
+    <p id="ma-page-status" class="status-message" role="status"></p>
+    <p id="ma-page-error" class="alert alert--error" role="alert"></p>
+    <div id="ma-page-content" aria-busy="false"></div>
+  </main>
+</body>
+</html>
 ```
 
-### 2. Service (si besoin)
+### 2. Service et mapper de requete (si besoin)
 
 ```js
-// src/model/services/eventService.js
-export async function fetchEvent(id, { signal } = {}) {
-    return toEvent(await api.get(`/events/${encodeURIComponent(id)}`, { signal }));
+// src/model/mappers/xxxRequestMapper.js : la query string (pagination via toPageQuery)
+export function toXxxQuery(page = {}) {
+    return toPageQuery(page);
+}
+
+// src/model/services/xxxService.js : appel + mapper de reponse, aucune URL construite a la main
+export async function fetchXxx({ signal } = {}) {
+    const page = await api.get(`/xxx?${toXxxQuery()}`, { signal });
+    return toXxxEntries(page.items);
 }
 ```
 
-### 3. View
+### 3. View (+ messages)
 
 ```js
-// src/view/MaPageView.js
-import { h } from "../shared/dom.js";
+// src/view/ma-page/MaPageView.js : seule a connaitre les ids de la page
+import { maPageStatus } from "./maPageMessages.js"; // textes calcules : fonctions pures, testees sans DOM
 
 export class MaPageView {
     constructor(root = document) {
-        this.errorEl  = root.querySelector("#ma-page-error");
-        this.statusEl = root.querySelector("#ma-page-status");
+        this.statusEl  = root.querySelector("#ma-page-status");
+        this.errorEl   = root.querySelector("#ma-page-error");
+        this.contentEl = root.querySelector("#ma-page-content");
     }
 
     get isReady() {
-        return Boolean(this.errorEl && this.statusEl);
+        return Boolean(this.statusEl && this.errorEl && this.contentEl);
     }
 
-    showEvent(event) { /* h(...) + textContent, jamais innerHTML */ }
-
-    showMissing() {
-        this.showError("Aucun evenement selectionne.");
-    }
-
-    showError(message) {
-        this.statusEl.textContent = "";
-        this.errorEl.textContent = message;
-    }
+    showLoading() { this.contentEl.setAttribute("aria-busy", "true"); this.errorEl.textContent = ""; }
+    endLoading()  { this.contentEl.setAttribute("aria-busy", "false"); }
+    showItems(items) { /* h(...) + textContent, jamais innerHTML */ this.statusEl.textContent = maPageStatus(items.length); }
+    showError(message) { this.statusEl.textContent = ""; this.errorEl.textContent = message; }
 }
 ```
 
@@ -1076,42 +1073,38 @@ export class MaPageView {
 
 ```js
 // src/controller/MaPageController.js
-import { isApiError, messageFor } from "../core/errors.js";
-import { fetchEvent } from "../model/services/eventService.js";
-import { MaPageView } from "../view/MaPageView.js";
+import { fetchXxx } from "../model/services/xxxService.js";
+import { MaPageView } from "../view/ma-page/MaPageView.js";
+import { PageLoader } from "./PageLoader.js";
 
 export class MaPageController {
-    constructor({ view = new MaPageView(), loadEvent = fetchEvent } = {}) {
+    constructor({ view = new MaPageView(), load = fetchXxx } = {}) {
         this.view = view;
-        this.loadEvent = loadEvent;
+        this.load = load;
     }
 
-    async start(id) {
-        if (!this.view.isReady) return;
-        if (!id) {
-            this.view.showMissing();
-            return;
-        }
-        try {
-            this.view.showEvent(await this.loadEvent(id));
-        } catch (err) {
-            if (!isApiError(err)) console.error(err);
-            this.view.showError(messageFor(err));
-        }
+    async start({ signal } = {}) {
+        if (!this.view.isReady || signal?.aborted) return;
+        // un chargement a la fois, message d'erreur, rien apres le depart de la page
+        await new PageLoader(this.view, { signal }).run((s) => this.load({ signal: s }), {
+            onSuccess: (items) => this.view.showItems(items),
+        });
     }
 }
 ```
 
-### 5. Point d'entree
+### 5. Point d'entree et route
 
 ```js
-// src/pages/ma-page.js
-import { boot } from "../app/boot.js";
+// src/pages/ma-page.js : appele par le routeur une fois pages/ma-page.html affiche
 import { MaPageController } from "../controller/MaPageController.js";
 
-boot({ page: "ma-page" });   // ajouter dans NAV_ITEMS (view/layout/header/header.js) si besoin
+export function mountMaPage({ signal, params }) {
+    return new MaPageController().start({ signal });
+}
 
-new MaPageController().start(new URLSearchParams(location.search).get("id"));
+// src/app/appRoutes.js : une ligne, et NAV_ITEMS (view/layout/header/header.js) si la page est dans le menu
+{ path: "/ma-page", file: "pages/ma-page.html", mount: mountMaPage },
 ```
 
 ### 6. Tests
