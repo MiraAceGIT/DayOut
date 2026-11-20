@@ -4,9 +4,13 @@ import { describe, it } from "node:test";
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});
 const { FaqController } = await import("../src/controller/FaqController.js");
 const { fetchFaq } = await import("../src/model/services/faqService.js");
+const { toFaqEntry, toFaqDto } = await import("../src/model/mappers/faqMapper.js");
+const { searchFaq } = await import("../src/model/domain/faqSearch.js");
 delete globalThis.window;
 
-const entries = [{ id: 3, question: "Qui peut s'inscrire ?", answer: "Les étudiants." }];
+const dto = { id: 3, question: "Qui peut s'inscrire ?", answer: "Les étudiants.", sort_order: 1, active: true };
+const entry = { id: 3, question: "Qui peut s'inscrire ?", answer: "Les étudiants.", sortOrder: 1, active: true };
+const entries = [entry];
 
 function page(items, { offset = 0, has_more = false, total = items.length } = {}) {
   return { items, limit: 100, offset, has_more, total };
@@ -14,32 +18,69 @@ function page(items, { offset = 0, has_more = false, total = items.length } = {}
 
 function viewStub() {
   return {
-    isReady: true, state: "idle", entries: null, busy: false, error: "",
-    retry: () => {},
-    bind(onRetry) { this.retry = onRetry; },
+    isReady: true, state: "idle", entries: null, search: null, busy: false, error: "",
+    retry: () => {}, query: (/** @type {string} */ _) => {},
+    bind({ onRetry, onQuery }) { this.retry = onRetry; this.query = onQuery; },
     showLoading() { this.state = "loading"; this.busy = true; this.error = ""; },
     endLoading() { this.busy = false; },
-    showEntries(value) { this.entries = value; this.state = "success"; },
+    showEntries(value, search) { this.entries = value; this.search = search; this.state = "success"; },
     showError(message) { this.error = message; this.state = "error"; },
   };
 }
 
-describe("FAQ : API", () => {
-  it("charge la route publique et preserve l'ordre ainsi que le texte", async t => {
-    const data = [...entries, { id: 1, question: "<img src=x onerror=alert(1)>", answer: "<b>Texte</b> & réponse" }];
-    t.mock.method(globalThis, "fetch", async (url, options) => {
-      assert.equal(new URL(url).pathname, "/faq");
-      assert.equal(new URL(url).searchParams.get("limit"), "100");
-      assert.equal(options.method, "GET");
-      return Response.json({ data: page(data) });
-    });
-    assert.deepEqual(await fetchFaq(), data);
+describe("FAQ : mapper", () => {
+  it("convertit le JSON de l'API en camelCase et inversement", () => {
+    assert.deepEqual(toFaqEntry(dto), entry);
+    assert.deepEqual(toFaqDto(entry), dto);
   });
 
-  it("accepte une liste vide mais refuse un contrat invalide", async t => {
-    for (const data of [page([]), null, {}, [], page([null]), page([{ id: "1", question: "Q", answer: "R" }]),
-      page([{ id: 1, question: "Q" }]), page([], { has_more: true }), page(entries, { offset: 100 }),
-      { ...page(entries), limit: 0 }, { ...page(entries), total: -1 }, { ...page(entries), has_more: "false" }]) {
+  it("garde le texte brut, sans l'interpreter", () => {
+    const raw = { ...dto, question: "<img src=x onerror=alert(1)>", answer: "<b>Texte</b> & réponse" };
+    assert.equal(toFaqEntry(raw).question, raw.question);
+    assert.equal(toFaqEntry(raw).answer, raw.answer);
+  });
+});
+
+describe("FAQ : filtre instantane", () => {
+  const faq = [
+    { id: 1, question: "Comment créer un compte ?", answer: "Avec ton e-mail étudiant." },
+    { id: 2, question: "Qu'est-ce que le score de fiabilité ?", answer: "Un indicateur de présence." },
+    { id: 3, question: "Comment fonctionne le QR code ?", answer: "Il valide ta PRÉSENCE le jour J." },
+  ];
+
+  it("renvoie tout, dans l'ordre, sans saisie", () => {
+    assert.deepEqual(searchFaq(faq, ""), faq);
+    assert.deepEqual(searchFaq(faq, "   "), faq);
+    assert.deepEqual(searchFaq(faq), faq);
+  });
+
+  it("cherche dans la question et la reponse, sans casse ni accents", () => {
+    assert.deepEqual(searchFaq(faq, "FIABILITE").map(e => e.id), [2]);
+    assert.deepEqual(searchFaq(faq, "presence").map(e => e.id), [2, 3]);
+    assert.deepEqual(searchFaq(faq, "  qr ").map(e => e.id), [3]);
+  });
+
+  it("traite les caracteres speciaux comme du texte", () => {
+    assert.deepEqual(searchFaq(faq, "?").map(e => e.id), [1, 2, 3]);
+    assert.deepEqual(searchFaq(faq, ".*"), []);
+  });
+});
+
+describe("FAQ : API", () => {
+  it("charge la route publique avec limit/offset et convertit les questions", async t => {
+    t.mock.method(globalThis, "fetch", async (url, options) => {
+      const query = new URL(url).searchParams;
+      assert.equal(new URL(url).pathname, "/faq");
+      assert.equal(query.get("limit"), "100");
+      assert.equal(query.get("offset"), "0");
+      assert.equal(options.method, "GET");
+      return Response.json({ data: page([dto]) });
+    });
+    assert.deepEqual(await fetchFaq(), entries);
+  });
+
+  it("accepte une liste vide mais refuse une reponse sans liste ou une pagination sans fin", async t => {
+    for (const data of [page([]), null, {}, [], page([], { has_more: true })]) {
       const mock = t.mock.method(globalThis, "fetch", async () => Response.json({ data }));
       if (data?.items?.length === 0 && data.has_more === false) assert.deepEqual(await fetchFaq(), []);
       else await assert.rejects(fetchFaq(), TypeError);
@@ -48,8 +89,8 @@ describe("FAQ : API", () => {
   });
 
   it("charge toutes les pages dans l'ordre", async t => {
-    const first = Array.from({ length: 100 }, (_, i) => ({ id: i + 1, question: "Q", answer: "R" }));
-    const last = [{ id: 101, question: "Derniere", answer: "R" }];
+    const first = Array.from({ length: 100 }, (_, i) => ({ ...dto, id: i + 1 }));
+    const last = [{ ...dto, id: 101, question: "Derniere" }];
     const offsets = [];
     t.mock.method(globalThis, "fetch", async url => {
       const offset = Number(new URL(url).searchParams.get("offset"));
@@ -58,7 +99,7 @@ describe("FAQ : API", () => {
         ? page(first, { has_more: true, total: 101 })
         : page(last, { offset: 100, total: 101 }) });
     });
-    assert.deepEqual(await fetchFaq(), [...first, ...last]);
+    assert.deepEqual((await fetchFaq()).map(e => e.id), [...first, ...last].map(e => e.id));
     assert.deepEqual(offsets, [0, 100]);
   });
 
@@ -74,9 +115,37 @@ describe("FAQ : controleur", () => {
       const view = viewStub();
       await new FaqController({ view, loadFaq: async () => data }).start();
       assert.deepEqual(view.entries, data);
+      assert.deepEqual(view.search, { query: "", total: data.length });
       assert.equal(view.state, "success");
       assert.equal(view.busy, false);
     }
+  });
+
+  it("filtre les questions chargees a chaque saisie, sans recharger", async () => {
+    const view = viewStub();
+    const faq = [entry, { ...entry, id: 4, question: "Comment signaler ?", answer: "Bouton Signaler." }];
+    let calls = 0;
+    await new FaqController({ view, loadFaq: async () => { calls++; return faq; } }).start();
+    view.query("SIGNALER");
+    assert.deepEqual(view.entries.map(e => e.id), [4]);
+    assert.deepEqual(view.search, { query: "SIGNALER", total: 2 });
+    view.query("");
+    assert.deepEqual(view.entries, faq);
+    assert.equal(calls, 1);
+  });
+
+  it("garde la saisie faite pendant le chargement", async () => {
+    const view = viewStub();
+    /** @type {(value: typeof entries) => void} */
+    let resolve = () => {};
+    const controller = new FaqController({ view, loadFaq: () => new Promise(done => { resolve = done; }) });
+    const loading = controller.start();
+    view.query("aucun");
+    assert.equal(view.entries, null);
+    resolve(entries);
+    await loading;
+    assert.deepEqual(view.entries, []);
+    assert.deepEqual(view.search, { query: "aucun", total: 1 });
   });
 
   it("permet de reessayer apres une panne", async () => {
@@ -98,7 +167,7 @@ describe("FAQ : controleur", () => {
   it("annule le chargement au depart de la page et ignore une reponse tardive", async () => {
     const view = viewStub();
     const leave = new AbortController();
-    /** @type {(value: import("../src/model/services/faqService.js").FaqEntry[]) => void} */
+    /** @type {(value: typeof entries) => void} */
     let resolve = () => {};
     const result = new Promise(done => { resolve = done; });
     let calls = 0;

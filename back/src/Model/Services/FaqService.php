@@ -17,12 +17,12 @@ use App\Model\Mappers\FaqMapper;
 final class FaqService
 {
     private Faq $faq;
-    private ?FaqAdmin $admins;
+    private FaqAdmin $admins;
 
     public function __construct(?Faq $faq = null, ?FaqAdmin $admins = null)
     {
-        $this->faq = $faq ?? new Faq();
-        $this->admins = $admins;
+        $this->faq    = $faq ?? new Faq();
+        $this->admins = $admins ?? new FaqAdmin();
     }
 
     /** @return PageDto<FaqDto> */
@@ -68,7 +68,6 @@ final class FaqService
 
     private function assertCanManageFaq(int $userId): void
     {
-        $this->admins ??= new FaqAdmin();
         if (!$this->admins->existsById($userId)) {
             throw FaqException::adminRequired();
         }

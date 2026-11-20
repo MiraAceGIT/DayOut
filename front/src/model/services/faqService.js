@@ -1,26 +1,28 @@
 import { api } from "../../core/api.js";
+import { toFaqEntries } from "../mappers/faqMapper.js";
 
-/** @typedef {{ id: number, question: string, answer: string }} FaqEntry */
+/** @typedef {import("../dto/faqDto.js").FaqPageDto} FaqPageDto */
+/** @typedef {import("../mappers/faqMapper.js").FaqEntry} FaqEntry */
 
-/** @param {{ signal?: AbortSignal }} [options]
+/** Plafond de `limit` cote API (back : FaqFindQuery::RULES). */
+export const MAX_FAQ_LIMIT = 100;
+
+/** Toutes les questions actives, page par page, dans l'ordre d'affichage.
+ * @param {{ signal?: AbortSignal }} [options]
  * @returns {Promise<FaqEntry[]>}
  */
 export async function fetchFaq({ signal } = {}) {
+  /** @type {FaqEntry[]} */
   const entries = [];
-  let offset = 0;
-  while (true) {
-    const page = await api.get(`/faq?limit=100&offset=${offset}`, { signal });
-    if (!page || !Array.isArray(page.items) || !page.items.every(entry =>
-      entry && Number.isSafeInteger(entry.id) && entry.id > 0
-      && typeof entry.question === "string" && typeof entry.answer === "string"
-    ) || page.limit !== 100 || page.offset !== offset
-      || !Number.isSafeInteger(page.total) || page.total < 0
-      || typeof page.has_more !== "boolean" || page.items.length > page.limit
-      || (page.has_more && page.items.length === 0)) {
+  for (let offset = 0; ; offset += MAX_FAQ_LIMIT) {
+    const query = new URLSearchParams({ limit: String(MAX_FAQ_LIMIT), offset: String(offset) });
+    /** @type {FaqPageDto} */
+    const page = await api.get(`/faq?${query}`, { signal });
+    // Une page vide annoncee "has_more" bouclerait sans fin.
+    if (!Array.isArray(page?.items) || (page.has_more && page.items.length === 0)) {
       throw new TypeError("Invalid FAQ response");
     }
-    entries.push(...page.items);
+    entries.push(...toFaqEntries(page.items));
     if (!page.has_more) return entries;
-    offset += page.limit;
   }
 }
