@@ -9,9 +9,10 @@ export class ResultsList {
     this.listEl.setAttribute("aria-busy", String(busy));
   }
 
-  render(items, { selectedId = null, onSelect } = {}) {
+  render(items, { selectedId = null, keyword = "", onSelect } = {}) {
     this.listEl.replaceChildren(...items.map((item) => renderEventRow(item, {
       selected: item.event.id === selectedId,
+      keyword,
       onSelect,
     })));
   }

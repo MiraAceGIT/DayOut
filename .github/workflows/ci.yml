@@ -48,11 +48,15 @@ jobs:
           extensions: pdo_mysql, mbstring
           coverage: none
 
+      - name: Dépendances Composer (autoload, PHPStan)
+        working-directory: back
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: Client MariaDB (reset_db.sh, migrate.sh)
         run: sudo apt-get update -q && sudo apt-get install -y -q mariadb-client
 
       - name: Syntaxe PHP
-        run: find back -name '*.php' -not -path '*/tools/.cache/*' -print0 | xargs -0 -n1 php -l > /dev/null
+        run: find back -name '*.php' -not -path '*/tools/.cache/*' -not -path 'back/vendor/*' -print0 | xargs -0 -n1 php -l > /dev/null
 
       - name: Tests unitaires
         run: bash back/tests/run.sh --unit
@@ -66,7 +70,8 @@ jobs:
 
       - name: Analyse statique (PHPStan)
         if: matrix.php == '8.5'
-        run: bash back/tools/phpstan.sh
+        working-directory: back
+        run: composer stan
 
   front:
     name: Front

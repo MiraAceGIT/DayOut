@@ -72,6 +72,7 @@
 .event-card--popup { min-width: 15rem; font-family: var(--font-body); color: var(--color-text); }
 .event-card--popup .event-card__body { padding: var(--space-3); }
 .event-card--popup .event-card__image { max-height: 9rem; }
+.highlight { background: var(--color-highlight); color: inherit; font-weight: 700; border-radius: 2px; }
 @media (max-width: 360px) {
   .event-card--compact { padding: var(--space-3); gap: var(--space-2); }
   .event-card--compact .event-card__image { width: 2.5rem; height: 2.5rem; }

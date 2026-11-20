@@ -31,7 +31,7 @@ describe("eventFilters", () => {
 
     assert.equal(matchesCriteria({})(paid), true, "aucun filtre actif");
     assert.equal(matchesCriteria({ free: true })(paid), false);
-    assert.equal(matchesCriteria({ free: true, query: "CONCERT" })(free), true);
+    assert.equal(matchesCriteria({ free: true })(free), true);
     assert.equal(matchesCriteria({ free: true, available: true })(full), false);
     assert.equal(matchesCriteria({ categories: new Set(["sport"]) })(paid), false);
     assert.equal(matchesCriteria({ categories: new Set(["sport", "soiree"]) })(paid), true, "categories en OU");

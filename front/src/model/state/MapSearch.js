@@ -16,9 +16,10 @@ const FLAGS = new Set(["weekend", "free", "available"]);
  * Les criteres sont modifiables avant la fin du chargement ; `results()` n'a de sens qu'une fois `isReady`.
  */
 export class MapSearch {
-  constructor({ origin = DEFAULT_ORIGIN, radiusKm = DEFAULT_RADIUS_KM, query = "" } = {}) {
+  constructor({ origin = DEFAULT_ORIGIN, radiusKm = DEFAULT_RADIUS_KM } = {}) {
     this.status = "loading"; // "loading" | "ready" | "error" : pas de rendu de liste hors "ready"
     this.events = [];
+    this.keyword = "";
     this.truncated = false;
     this.selectedId = null;
     this.criteria = {
@@ -28,7 +29,6 @@ export class MapSearch {
       free: false,
       available: false,
       categories: new Set(), // slugs
-      query,
     };
   }
 
@@ -37,10 +37,13 @@ export class MapSearch {
   }
 
   /** `limit` demande a l'API : l'atteindre signifie que des evenements a venir peuvent manquer (pas de filtre de date). */
-  load(events, { limit }) {
+  load(events, { limit, keyword = "" }) {
     this.events = events;
+    this.keyword = keyword;
     this.truncated = events.length >= limit;
     this.status = "ready";
+    const present = new Set(categoriesIn(events).map((c) => c.slug));
+    this.criteria.categories = new Set([...this.criteria.categories].filter((slug) => present.has(slug)));
   }
 
   fail() {
@@ -49,10 +52,6 @@ export class MapSearch {
 
   get categories() {
     return categoriesIn(this.events);
-  }
-
-  setQuery(query) {
-    this.criteria.query = query;
   }
 
   setRadius(km) {
@@ -83,7 +82,7 @@ export class MapSearch {
   results({ now = new Date() } = {}) {
     const result = searchEvents(this.events, { ...this.criteria, now });
     if (!result.items.some((item) => item.event.id === this.selectedId)) this.selectedId = null;
-    return { ...result, loadedCap: this.truncated ? this.events.length : 0 };
+    return { ...result, loadedCap: this.truncated ? this.events.length : 0, keyword: this.keyword, total: this.events.length };
   }
 
   suggestions({ now = new Date() } = {}) {
