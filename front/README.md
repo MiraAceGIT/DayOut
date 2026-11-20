@@ -712,7 +712,12 @@ node --test "tests/**/*.test.js"
 tests/
 ├── eventMapper.test.js      ← aller-retour DTO <-> modele
 ├── eventSearch.test.js      ← filtres, recherche, distance, tri
-├── shared.test.js           ← dom (h), format (dates/prix/distance), geo (haversine), forms
+├── shared.test.js           ← dom (h), format (dates/prix/distance), geo (haversine)
+├── eventService.test.js     ← requetes GET /events (eventRequestMapper) et service
+├── pageLoader.test.js       ← cycle de chargement, depart de la page
+├── originPicker.test.js     ← LatestTask, choix du point de depart
+├── viewMessages.test.js     ← textes de statut et presenter de la page detail
+├── *Controller.test.js, faq.test.js, eventsPagination.test.js ← controleurs avec doubles de view
 ├── contract.test.js         ← contrat avec la spec OpenAPI du back
 └── fixtures.js              ← eventDto(), event() : donnees communes
 ```
