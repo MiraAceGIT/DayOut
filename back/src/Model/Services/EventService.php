@@ -8,7 +8,7 @@ use App\Model\Assemblers\EventAssembler;
 use App\Model\Dao\Event\Event;
 use App\Model\Dao\Event\EventRecord;
 use App\Model\Dao\Event\EventSearchParams;
-use App\Model\DomainServices\EventRules;
+use App\Model\DomainServices\EventDomainService;
 use App\Model\Dto\Event\EventCreateDto;
 use App\Model\Dto\Event\EventDto;
 use App\Model\Dto\Event\EventUpdateDto;
@@ -20,7 +20,7 @@ use App\Model\Policies\EventPolicy;
 use DateTimeImmutable;
 
 /**
- * Orchestration des cas d'usage : droits (EventPolicy), regles (EventRules), ecriture (DAO Event),
+ * Orchestration des cas d'usage : droits (EventPolicy), regles (EventDomainService), ecriture (DAO Event),
  * puis reponse en DTO (EventAssembler) ; le controller n'a plus qu'a les serialiser.
  */
 final class EventService
@@ -62,7 +62,7 @@ final class EventService
             return $this->changeStatus($event, EventStatus::from($dto->status), $userId);
         }
 
-        EventRules::checkUpdate($event, $dto);
+        EventDomainService::checkUpdate($event, $dto);
         $this->events->updateById($id, EventMapper::toUpdateRow($dto));
         Log::audit('event.update', 'event', $id, 'success', ['user_id' => $userId, 'fields' => $dto->provided]);
 
@@ -86,7 +86,7 @@ final class EventService
         $server = [];
         if ($to === EventStatus::Published) {
             $now = new DateTimeImmutable();
-            EventRules::checkPublishable($event, $now);
+            EventDomainService::checkPublishable($event, $now);
             $server = ['published_at' => $now];
         }
 

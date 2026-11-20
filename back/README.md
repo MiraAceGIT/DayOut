@@ -215,7 +215,7 @@ back/
 │   │   ├── Query/      ← lecture des query strings : EventFindQuery, CreatorFindQuery ; ParsesQueryString (trait commun)
 │   │   ├── Services/   ← cas d'usage : orchestre policy, regles, DAO et assembler ; renvoie des DTO
 │   │   ├── Policies/   ← droits sur une ressource (EventPolicy : createur approuve, proprietaire)
-│   │   ├── DomainServices/ ← regles metier pures, sans base (EventRules : dates, prix, champs verrouilles, publication)
+│   │   ├── DomainServices/ ← regles metier pures, sans base (EventDomainService : dates, prix, champs verrouilles, publication)
 │   │   ├── Assemblers/ ← lignes -> DTO complets avec leurs relations en une requete chacune (EventAssembler)
 │   │   ├── Exceptions/ ← une classe par ressource (EventException, FaqException), heritant de Core\BusinessException
 │   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
@@ -927,7 +927,7 @@ tests/
 │       ├── Dao/                ← DaoTest, CategoryTest (SQLite en memoire)
 │       ├── Enums/              ← EventStatusTest
 │       ├── Mappers/            ← EventMapperTest, CategoryMapperTest
-│       ├── DomainServices/     ← EventRulesTest (regles pures, sans base)
+│       ├── DomainServices/     ← EventDomainServiceTest (regles pures, sans base)
 │       └── Services/           ← EventServiceTest (SQLite en memoire, services obtenus du conteneur)
 │   └── Shared/                 ← YamlTest
 ├── Integration/                ← vraies requetes HTTP
@@ -1215,7 +1215,7 @@ Verifier `tests/Unit/Docs/OpenApiContractTest.php` : il indique exactement ce qu
    Statuts et roles : un enum dans `src/Model/Enums/`, jamais de chaine en dur.
 2. **Service** dans `src/Model/Services/` : orchestre, leve des exceptions metier
    (`throw UserException::notFound($id)`), renvoie des DTO. Droits dans `Policies/XxxPolicy`,
-   regles sans base dans `DomainServices/XxxRules` (testables sans SQLite), relations a charger dans `Assemblers/`.
+   regles sans base dans `DomainServices/XxxDomainService` (testables sans SQLite), relations a charger dans `Assemblers/`.
    Dependances par le constructeur (resolues par le `Container`), jamais de `new`.
 3. **DTO** dans `src/Model/Dto/<Ressource>/` (ex. `Dto/Event/`) (`final readonly class ... implements JsonSerializable` :
    proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case).

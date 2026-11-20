@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace App\Model\Dto\Event;
 
 use App\Core\Validator;
-use App\Model\DomainServices\EventRules;
+use App\Model\DomainServices\EventDomainService;
 
 final readonly class EventCreateDto
 {
@@ -54,8 +54,8 @@ final readonly class EventCreateDto
     public static function fromArray(array $json): self
     {
         $v = Validator::check($json, self::RULES);
-        EventRules::checkDates($v['start_at'], $v['end_at']);
-        EventRules::checkPrice($v['is_paid'] ?? false, $v['price_cents'] ?? 0);
+        EventDomainService::checkDates($v['start_at'], $v['end_at']);
+        EventDomainService::checkPrice($v['is_paid'] ?? false, $v['price_cents'] ?? 0);
 
         return new self(
             title: $v['title'],

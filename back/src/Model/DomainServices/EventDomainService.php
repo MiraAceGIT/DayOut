@@ -11,7 +11,7 @@ use App\Model\Exceptions\EventException;
 use DateTimeImmutable;
 
 /** Regles metier des events, sans base ni etat : appelees par les DTO (422 a la lecture) et par EventService. */
-final class EventRules
+final class EventDomainService
 {
     /** Figees des qu'il y a des inscrits : changer la date ou le prix tromperait les participants. */
     private const LOCKED_WITH_REGISTRATIONS = ['start_at', 'end_at', 'is_paid', 'price_cents', 'currency'];
