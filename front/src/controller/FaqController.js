@@ -1,50 +1,47 @@
-import { messageFor } from "../core/errors.js";
 import { searchFaq } from "../model/domain/faqSearch.js";
 import { fetchFaq } from "../model/services/faqService.js";
 import { FaqView } from "../view/faq/FaqView.js";
+import { PageLoader } from "./PageLoader.js";
 
 /** @typedef {import("../model/mappers/faqMapper.js").FaqEntry} FaqEntry */
 
 export class FaqController {
   /** @param {{ view?: Pick<FaqView, "isReady" | "bind" | "showLoading" | "endLoading" | "showEntries" | "showError">,
-   * loadFaq?: typeof fetchFaq, signal?: AbortSignal }} [options] */
-  constructor({ view = new FaqView(), loadFaq = fetchFaq, signal } = {}) {
+   * loadFaq?: typeof fetchFaq }} [options] */
+  constructor({ view = new FaqView(), loadFaq = fetchFaq } = {}) {
     this.view = view;
     this.loadFaq = loadFaq;
-    this.signal = signal;
-    this.busy = false;
+    this.loader = new PageLoader(view);
+    /** @type {AbortSignal | undefined} */
+    this.signal = undefined;
     /** @type {FaqEntry[]} */
     this.entries = [];
     this.query = "";
   }
 
-  async start() {
-    if (!this.view.isReady || this.signal?.aborted) return;
-    this.view.bind({ onRetry: () => this.load(), onQuery: (query) => this.filter(query) }, this.signal);
+  /** @param {{ signal?: AbortSignal }} [options] `signal` : depart de la page */
+  async start({ signal } = {}) {
+    if (!this.view.isReady || signal?.aborted) return;
+    this.signal = signal;
+    this.loader = new PageLoader(this.view, { signal });
+    this.view.bind({ onRetry: () => this.load(), onQuery: (query) => this.filter(query) }, signal);
     await this.load();
   }
 
   async load() {
-    if (this.busy || this.signal?.aborted) return;
-    this.busy = true;
-    this.view.showLoading();
-    try {
-      const entries = await this.loadFaq({ signal: this.signal });
-      if (this.signal?.aborted) return;
-      this.entries = entries;
-      this.render();
-    } catch (error) {
-      if (!this.signal?.aborted) this.view.showError(messageFor(error));
-    } finally {
-      this.busy = false;
-      if (!this.signal?.aborted) this.view.endLoading();
-    }
+    await this.loader.run((signal) => this.loadFaq({ signal }), {
+      onSuccess: (entries) => {
+        this.entries = entries;
+        this.render();
+      },
+    });
   }
 
-  /** @param {string} query */
+  /** Filtre local a chaque saisie ; pendant le chargement, la saisie est gardee pour le premier rendu.
+   * @param {string} query */
   filter(query) {
     this.query = query;
-    if (!this.busy) this.render();
+    if (!this.loader.busy) this.render();
   }
 
   render() {

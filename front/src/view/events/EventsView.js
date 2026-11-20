@@ -1,5 +1,5 @@
-import { pluralize } from "../shared/format.js";
-import { renderEventCard } from "./components/eventCard/eventCard.js";
+import { pluralize } from "../../shared/format.js";
+import { renderEventCard } from "../components/eventCard/eventCard.js";
 
 export class EventsView {
   constructor(root = document) {
@@ -14,8 +14,9 @@ export class EventsView {
     return Boolean(this.listEl && this.errorEl && this.statusEl && this.moreBtn);
   }
 
-  bind({ onLoadMore }) {
-    this.moreBtn.addEventListener("click", onLoadMore);
+  /** @param {{ onLoadMore: () => void }} handlers @param {AbortSignal} [signal] retire l'ecouteur au depart de la page */
+  bind({ onLoadMore }, signal) {
+    this.moreBtn.addEventListener("click", onLoadMore, { signal });
   }
 
   setStatus(message) {

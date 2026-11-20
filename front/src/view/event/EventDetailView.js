@@ -19,8 +19,9 @@ export class EventDetailView {
     return Boolean(this.main && this.detail && this.state && this.stateTitle && this.code && this.status && this.error && this.retry);
   }
 
-  bind({ onRetry }) {
-    this.retry.addEventListener("click", onRetry);
+  /** @param {{ onRetry: () => void }} handlers @param {AbortSignal} [signal] retire l'ecouteur au depart de la page */
+  bind({ onRetry }, signal) {
+    this.retry.addEventListener("click", onRetry, { signal });
   }
 
   showLoading() {

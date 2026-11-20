@@ -5,7 +5,8 @@ import { h } from "../shared/dom.js";
 /**
  * Routeur : l'adresse `/events` charge pages/events.html et copie le contenu de son <main id="app-root">
  * dans celui de index.html. Header et footer ne bougent pas.
- * Les pages sont listees dans app/appRoutes.js ; `signal` (passe a mount) est annule quand on quitte la page.
+ * Les pages sont listees dans app/appRoutes.js ; mount recoit `signal` (annule quand on quitte la page)
+ * et `params` (query string de l'adresse).
  */
 export function startRouter({ routes, notFound, root, onChange }) {
   if (!root) return;
@@ -29,7 +30,7 @@ export function startRouter({ routes, notFound, root, onChange }) {
     root.className = page.className;
     root.replaceChildren(...page.children);
     document.title = page.title;
-    route.mount?.({ signal });
+    route.mount?.({ signal, params: new URLSearchParams(location.search) });
 
     if (!initial) {
       window.scrollTo(0, 0);

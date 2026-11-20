@@ -1,7 +1,8 @@
-import { isApiError, messageFor } from "../core/errors.js";
+import { isApiError } from "../core/errors.js";
 import { fetchEvent } from "../model/services/eventService.js";
 import { parseEventId } from "../model/domain/eventId.js";
 import { EventDetailView } from "../view/event/EventDetailView.js";
+import { PageLoader } from "./PageLoader.js";
 
 export class EventDetailController {
   /** @param {{ view?: Pick<EventDetailView, "isReady" | "bind" | "showLoading" | "endLoading" | "showEvent" | "showNotFound" | "showError">,
@@ -9,17 +10,18 @@ export class EventDetailController {
   constructor({ view = new EventDetailView(), loadEvent = fetchEvent } = {}) {
     this.view = view;
     this.loadEvent = loadEvent;
+    this.loader = new PageLoader(view);
     this.id = null;
-    this.busy = false;
     this.started = false;
   }
 
-  /** @param {string|null} id */
-  async start(id) {
-    if (!this.view.isReady || this.started) return;
+  /** @param {{ id?: string|null, signal?: AbortSignal }} [options] `id` brut de l'URL ; `signal` : depart de la page */
+  async start({ id = null, signal } = {}) {
+    if (!this.view.isReady || this.started || signal?.aborted) return;
     this.started = true;
+    this.loader = new PageLoader(this.view, { signal });
     this.id = parseEventId(id);
-    this.view.bind({ onRetry: () => this.load() });
+    this.view.bind({ onRetry: () => this.load() }, signal);
     if (this.id === null) {
       this.view.showNotFound();
       this.view.endLoading();
@@ -29,20 +31,16 @@ export class EventDetailController {
   }
 
   async load() {
-    if (this.busy || this.id === null) return;
-    this.busy = true;
-    this.view.showLoading();
-    try {
-      this.view.showEvent(await this.loadEvent(this.id));
-    } catch (error) {
-      if (isApiError(error) && error.status === 404) this.view.showNotFound();
-      else {
-        if (!isApiError(error)) console.error(error);
-        this.view.showError(messageFor(error));
-      }
-    } finally {
-      this.busy = false;
-      this.view.endLoading();
-    }
+    const id = this.id;
+    if (id === null) return;
+    await this.loader.run((signal) => this.loadEvent(id, { signal }), {
+      onSuccess: (event) => this.view.showEvent(event),
+      // Inexistant ou non publie : page 404 plutot qu'un message d'erreur.
+      onError: (error) => {
+        if (!isApiError(error) || error.status !== 404) return false;
+        this.view.showNotFound();
+        return true;
+      },
+    });
   }
 }

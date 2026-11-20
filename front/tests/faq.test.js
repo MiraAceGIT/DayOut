@@ -171,12 +171,12 @@ describe("FAQ : controleur", () => {
     let resolve = () => {};
     const result = new Promise(done => { resolve = done; });
     let calls = 0;
-    const controller = new FaqController({ view, signal: leave.signal, loadFaq: ({ signal }) => {
+    const controller = new FaqController({ view, loadFaq: ({ signal }) => {
       calls++;
       assert.equal(signal, leave.signal);
       return result;
     } });
-    const loading = controller.start();
+    const loading = controller.start({ signal: leave.signal });
     await controller.load();
     assert.equal(calls, 1);
     leave.abort();

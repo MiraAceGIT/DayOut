@@ -36,7 +36,7 @@ describe("validation de l'identifiant d'evenement", () => {
       const view = viewStub();
       let calls = 0;
       const controller = new EventDetailController({ view, loadEvent: async () => { calls++; return detail(); } });
-      await controller.start(id);
+      await controller.start({ id });
       assert.equal(view.state, "404", String(id));
       assert.equal(view.busy, false);
       assert.equal(calls, 0);
@@ -49,7 +49,7 @@ describe("controleur de detail", () => {
     const view = viewStub();
     let requestedId;
     const controller = new EventDetailController({ view, loadEvent: async id => { requestedId = id; return detail(); } });
-    await controller.start("1");
+    await controller.start({ id: "1" });
     assert.equal(requestedId, "1");
     assert.equal(view.state, "event");
     assert.equal(view.event.id, 1);
@@ -60,7 +60,7 @@ describe("controleur de detail", () => {
     for (const id of ["9999", "8", "9", "10"]) {
       const view = viewStub();
       const controller = new EventDetailController({ view, loadEvent: async () => { throw new ApiError("Event not found", { status: 404 }); } });
-      await controller.start(id);
+      await controller.start({ id });
       assert.equal(view.state, "404");
       assert.equal(view.event, null);
       assert.equal(view.busy, false);
@@ -75,7 +75,7 @@ describe("controleur de detail", () => {
         if (++calls === 1) throw error;
         return detail();
       } });
-      await controller.start("1");
+      await controller.start({ id: "1" });
       assert.equal(view.state, "error");
       assert.ok(view.error);
       assert.equal(view.busy, false);
