@@ -227,4 +227,13 @@ final class ValidatorTest extends TestCase
     {
         $this->assertSame(['a' => 5], Validator::check(['a' => '5'], ['a' => ' required | int | min: 1 ']));
     }
+
+    public function testUpdateRulesMakeEverythingOptionalButRequiredFieldsNotBlank(): void
+    {
+        $rules = Validator::forUpdate(['title' => 'required|string|max:5', 'note' => 'nullable|string']);
+
+        $this->assertSame(['title' => 'filled|string|max:5', 'note' => 'nullable|string'], $rules);
+        $this->assertSame([], Validator::check([], $rules));
+        $this->assertSame(['title' => 'This field cannot be empty'], $this->errors(['title' => ' '], $rules));
+    }
 }

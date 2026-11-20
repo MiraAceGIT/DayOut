@@ -8,12 +8,11 @@ use App\Core\Validator;
 
 final readonly class FaqUpdateDto
 {
-    public const RULES = [
-        'question'   => 'filled|string|max:255',
-        'answer'     => 'filled|string|max:16000',
-        'sort_order' => 'int|min:0|max:4294967295',
-        'active'     => 'bool',
-    ];
+    /** @return array<string, string> regles de FaqCreateDto, rien d'obligatoire */
+    public static function rules(): array
+    {
+        return Validator::forUpdate(FaqCreateDto::RULES);
+    }
 
     /** @param list<string> $provided */
     public function __construct(
@@ -27,9 +26,10 @@ final readonly class FaqUpdateDto
 
     public static function fromArray(array $json): self
     {
-        $clean = Validator::check($json, self::RULES);
+        $rules = self::rules();
+        $clean = Validator::check($json, $rules);
         if ($clean === []) {
-            throw ValidationException::field('body', 'No writable field (allowed: ' . implode(', ', array_keys(self::RULES)) . ')');
+            throw ValidationException::field('body', 'No writable field (allowed: ' . implode(', ', array_keys($rules)) . ')');
         }
 
         return new self(

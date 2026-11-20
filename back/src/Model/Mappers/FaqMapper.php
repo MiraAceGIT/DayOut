@@ -20,23 +20,26 @@ final class FaqMapper
         return array_map(self::toDto(...), array_values($rows));
     }
 
+    /** @return array<string, mixed> */
     public static function toRow(FaqCreateDto $dto): array
     {
-        return [
-            'question' => $dto->question,
-            'answer' => $dto->answer,
-            'sort_order' => $dto->sortOrder,
-            'active' => $dto->active,
-        ];
+        return self::columns($dto);
     }
 
+    /** @return array<string, mixed> seulement les champs envoyes (`provided`) */
     public static function toUpdateRow(FaqUpdateDto $dto): array
     {
-        return array_intersect_key([
-            'question' => $dto->question,
-            'answer' => $dto->answer,
+        return array_intersect_key(self::columns($dto), array_flip($dto->provided));
+    }
+
+    /** @return array<string, mixed> seule liste des colonnes ecrites */
+    private static function columns(FaqCreateDto|FaqUpdateDto $dto): array
+    {
+        return [
+            'question'   => $dto->question,
+            'answer'     => $dto->answer,
             'sort_order' => $dto->sortOrder,
-            'active' => $dto->active,
-        ], array_flip($dto->provided));
+            'active'     => $dto->active,
+        ];
     }
 }

@@ -9,6 +9,9 @@ use LogicException;
 /** min / max dependent du type deja caste : placer la regle de type avant (`int|min:1`, pas `min:1|int`). */
 final class Validator
 {
+    /** Borne d'une colonne INT UNSIGNED, pour `max:` (chaine : depasse PHP_INT_MAX sur 32 bits). */
+    public const INT_UNSIGNED_MAX = '4294967295';
+
     private const DATETIME_FORMATS = ['Y-m-d\TH:i:sP', 'Y-m-d\TH:i:s.vP'];
 
     /** Regle => argument attendu : null (aucun), 'int' (min:3) ou 'list' (in:a,b). */
@@ -66,6 +69,24 @@ final class Validator
             throw new ValidationException($errors);
         }
         return $clean;
+    }
+
+    /**
+     * Regles d'une mise a jour partielle tirees de celles de la creation : rien n'est obligatoire,
+     * mais un champ `required` envoye ne peut pas etre vide (`filled`).
+     *
+     * @param array<string, string> $createRules
+     * @return array<string, string>
+     */
+    public static function forUpdate(array $createRules): array
+    {
+        return array_map(
+            static fn (string $rules): string => implode('|', array_map(
+                static fn (string $rule): string => $rule === 'required' ? 'filled' : $rule,
+                explode('|', $rules)
+            )),
+            $createRules
+        );
     }
 
     /**

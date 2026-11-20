@@ -55,6 +55,31 @@ final class EventMapper
      */
     public static function toRow(EventCreateDto $dto): array
     {
+        return self::columns($dto);
+    }
+
+    /**
+     * Seulement les champs envoyes (`provided`).
+     *
+     * @return array<string, mixed>
+     */
+    public static function toUpdateRow(EventUpdateDto $dto): array
+    {
+        $columns = self::columns($dto);
+        $row = array_intersect_key($columns, array_flip($dto->provided));
+        if ($dto->has('restricted_school_id')) {
+            $row['school_restricted'] = $columns['school_restricted'];
+        }
+        return $row;
+    }
+
+    /**
+     * Seule liste des colonnes ecrites, pour la creation comme pour la mise a jour.
+     *
+     * @return array<string, mixed>
+     */
+    private static function columns(EventCreateDto|EventUpdateDto $dto): array
+    {
         return [
             'title'                => $dto->title,
             'slug'                 => $dto->slug,
@@ -73,44 +98,13 @@ final class EventMapper
             'currency'             => $dto->currency,
             'is_paid'              => $dto->isPaid,
             'external_ticket_url'  => $dto->externalTicketUrl,
-            // Les deux ensemble : trg_events_bi/bu refuse l'un sans l'autre.
+            'restricted_school_id' => $dto->restrictedSchoolId,
+            // Toujours avec restricted_school_id : trg_events_bi/bu refuse l'un sans l'autre.
             'school_restricted'    => $dto->restrictedSchoolId !== null,
-            'restricted_school_id' => $dto->restrictedSchoolId,
         ];
     }
-
-    /** @return array<string, mixed> */
-    public static function toUpdateRow(EventUpdateDto $dto): array
+    private static function toDbDatetime(?string $iso): ?string
     {
-        $columns = [
-            'title'                => $dto->title,
-            'slug'                 => $dto->slug,
-            'description'          => $dto->description,
-            'cover_image_url'      => $dto->coverImageUrl,
-            'start_at'             => $dto->startAt === null ? null : self::toDbDatetime($dto->startAt),
-            'end_at'               => $dto->endAt === null ? null : self::toDbDatetime($dto->endAt),
-            'venue_name'           => $dto->venueName,
-            'address_line'         => $dto->addressLine,
-            'city'                 => $dto->city,
-            'postal_code'          => $dto->postalCode,
-            'latitude'             => $dto->latitude,
-            'longitude'            => $dto->longitude,
-            'capacity'             => $dto->capacity,
-            'price_cents'          => $dto->priceCents,
-            'currency'             => $dto->currency,
-            'is_paid'              => $dto->isPaid,
-            'external_ticket_url'  => $dto->externalTicketUrl,
-            'restricted_school_id' => $dto->restrictedSchoolId,
-        ];
-        $row = array_intersect_key($columns, array_flip($dto->provided));
-        if ($dto->has('restricted_school_id')) {
-            $row['school_restricted'] = $dto->restrictedSchoolId !== null;
-        }
-        return $row;
-    }
-
-    private static function toDbDatetime(string $iso): string
-    {
-        return (new DateTimeImmutable($iso))->setTimezone(new DateTimeZone('UTC'))->format(self::DB_DATETIME);
+        return $iso === null ? null : (new DateTimeImmutable($iso))->setTimezone(new DateTimeZone('UTC'))->format(self::DB_DATETIME);
     }
 }

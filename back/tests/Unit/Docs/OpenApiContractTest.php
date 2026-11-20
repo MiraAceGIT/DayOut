@@ -125,7 +125,7 @@ final class OpenApiContractTest extends TestCase
         $this->assertSame(array_keys(EventCreateDto::RULES), array_keys($schemas['EventCreate']['properties']));
         $required = array_keys(array_filter(EventCreateDto::RULES, static fn (string $r): bool => str_starts_with($r, 'required')));
         $this->assertSame($required, $schemas['EventCreate']['required']);
-        $this->assertSame(array_keys(EventUpdateDto::RULES), array_keys($schemas['EventUpdate']['properties']));
+        $this->assertSame(array_keys(EventUpdateDto::rules()), array_keys($schemas['EventUpdate']['properties']));
         $this->assertArrayNotHasKey('required', $schemas['EventUpdate']);
     }
 
@@ -137,7 +137,7 @@ final class OpenApiContractTest extends TestCase
         $this->assertSame($keys, $schemas['Faq']['required']);
         $this->assertSame(array_keys(FaqCreateDto::RULES), array_keys($schemas['FaqCreate']['properties']));
         $this->assertSame(['question', 'answer'], $schemas['FaqCreate']['required']);
-        $this->assertSame(array_keys(FaqUpdateDto::RULES), array_keys($schemas['FaqUpdate']['properties']));
+        $this->assertSame(array_keys(FaqUpdateDto::rules()), array_keys($schemas['FaqUpdate']['properties']));
         $this->assertArrayNotHasKey('required', $schemas['FaqUpdate']);
     }
 

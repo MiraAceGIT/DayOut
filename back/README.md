@@ -258,7 +258,7 @@ back/
   - `EventDto` : lecture (ce que l'API renvoie)
   - `EventCreateDto` : corps de creation, champs obligatoires et valeurs par defaut
   - `EventUpdateDto` : corps de modification partielle, tout optionnel ; `provided` distingue « absent » de « null »
-- Les DTO d'ecriture portent leurs regles (`RULES`) et se construisent par `fromArray($json)`, qui valide (422 sinon)
+- Les DTO d'ecriture portent leurs regles (`RULES` pour la creation ; l'update les derive avec `Validator::forUpdate()`, `required` devenant `filled`) et se construisent par `fromArray($json)`, qui valide (422 sinon)
   et ignore ce qu'un client ne peut pas ecrire (`id`, `creator_id`, `status`...)
 
 #### Mapper
@@ -1205,7 +1205,7 @@ Verifier `tests/Unit/Docs/OpenApiContractTest.php` : il indique exactement ce qu
 3. **DTO** dans `src/Model/Dto/<Ressource>/` (ex. `Dto/Event/`) (`final readonly class ... implements JsonSerializable` :
    proprietes en camelCase, `jsonSerialize()` donne les noms publics en snake_case).
 4. **Mapper** dans `src/Model/Mappers/` (`toDto(array $row)`, `toDtos(array $rows)`) ;
-   pour une ressource ecrite, `XxxCreateDto` / `XxxUpdateDto` avec `RULES` et `fromArray($json)`, et `toRow` / `toUpdateRow` dans le mapper.
+   pour une ressource ecrite, `XxxCreateDto` (`RULES`) / `XxxUpdateDto` (`rules()` = `Validator::forUpdate(XxxCreateDto::RULES)`) et `fromArray($json)`, et `toRow` / `toUpdateRow` dans le mapper, construits sur une seule liste `columns()`.
 5. **Controller** dans `src/Controller/` (herite de `App\Core\Controller`) ;
    instancie son service dans le constructeur, logique HTTP seulement, **renvoie** une `Response`.
 6. **Documentation** dans `docs/openapi/<ressource>.yaml` (sinon `OpenApiContractTest` echoue).

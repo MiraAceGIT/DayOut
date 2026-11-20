@@ -10,7 +10,7 @@ final readonly class FaqCreateDto
     public const RULES = [
         'question'   => 'required|string|max:255',
         'answer'     => 'required|string|max:16000',
-        'sort_order' => 'int|min:0|max:4294967295',
+        'sort_order' => 'int|min:0|max:' . Validator::INT_UNSIGNED_MAX,
         'active'     => 'bool',
     ];
 

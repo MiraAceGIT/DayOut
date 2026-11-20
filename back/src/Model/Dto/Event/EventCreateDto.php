@@ -9,8 +9,6 @@ use DateTimeImmutable;
 
 final readonly class EventCreateDto
 {
-    public const INT_UNSIGNED_MAX = '4294967295';
-
     public const RULES = [
         'title'                => 'required|string|max:180',
         'slug'                 => 'required|string|slug|max:200',
@@ -24,12 +22,12 @@ final readonly class EventCreateDto
         'postal_code'          => 'nullable|string|max:20',
         'latitude'             => 'nullable|number|min:-90|max:90',
         'longitude'            => 'nullable|number|min:-180|max:180',
-        'capacity'             => 'nullable|int|min:1|max:' . self::INT_UNSIGNED_MAX,
-        'price_cents'          => 'int|min:0|max:' . self::INT_UNSIGNED_MAX,
+        'capacity'             => 'nullable|int|min:1|max:' . Validator::INT_UNSIGNED_MAX,
+        'price_cents'          => 'int|min:0|max:' . Validator::INT_UNSIGNED_MAX,
         'currency'             => 'in:EUR',
         'is_paid'              => 'bool',
         'external_ticket_url'  => 'nullable|url|max:255',
-        'restricted_school_id' => 'nullable|int|min:1|max:' . self::INT_UNSIGNED_MAX,
+        'restricted_school_id' => 'nullable|int|min:1|max:' . Validator::INT_UNSIGNED_MAX,
     ];
 
     public function __construct(

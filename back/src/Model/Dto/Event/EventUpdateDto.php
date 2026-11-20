@@ -8,27 +8,11 @@ use App\Core\Validator;
 
 final readonly class EventUpdateDto
 {
-    public const RULES = [
-        'title'                => 'filled|string|max:180',
-        'slug'                 => 'filled|string|slug|max:200',
-        'description'          => 'filled|string|max:16000',
-        'cover_image_url'      => 'nullable|url|max:255',
-        'start_at'             => 'datetime',
-        'end_at'               => 'datetime',
-        'venue_name'           => 'nullable|string|max:160',
-        'address_line'         => 'nullable|string|max:200',
-        'city'                 => 'nullable|string|max:80',
-        'postal_code'          => 'nullable|string|max:20',
-        'latitude'             => 'nullable|number|min:-90|max:90',
-        'longitude'            => 'nullable|number|min:-180|max:180',
-        'capacity'             => 'nullable|int|min:1|max:' . EventCreateDto::INT_UNSIGNED_MAX,
-        'price_cents'          => 'int|min:0|max:' . EventCreateDto::INT_UNSIGNED_MAX,
-        'currency'             => 'in:EUR',
-        'is_paid'              => 'bool',
-        'external_ticket_url'  => 'nullable|url|max:255',
-        'restricted_school_id' => 'nullable|int|min:1|max:' . EventCreateDto::INT_UNSIGNED_MAX,
-        'status'               => 'in:published,cancelled',
-    ];
+    /** @return array<string, string> regles de EventCreateDto, rien d'obligatoire, plus `status` (envoye seul) */
+    public static function rules(): array
+    {
+        return Validator::forUpdate(EventCreateDto::RULES) + ['status' => 'in:published,cancelled'];
+    }
 
     /** @param list<string> $provided */
     public function __construct(
@@ -57,9 +41,10 @@ final readonly class EventUpdateDto
 
     public static function fromArray(array $json): self
     {
-        $v = Validator::check($json, self::RULES);
+        $rules = self::rules();
+        $v = Validator::check($json, $rules);
         if ($v === []) {
-            throw ValidationException::field('body', 'No writable field (allowed: ' . implode(', ', array_keys(self::RULES)) . ')');
+            throw ValidationException::field('body', 'No writable field (allowed: ' . implode(', ', array_keys($rules)) . ')');
         }
         if (isset($v['status']) && count($v) > 1) {
             throw ValidationException::field('status', 'Must be sent alone');
