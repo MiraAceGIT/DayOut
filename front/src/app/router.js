@@ -9,18 +9,19 @@ import { h } from "../shared/dom.js";
  */
 export function startRouter({ routes, notFound, root, onChange }) {
   if (!root) return;
-  let shownPath = null;
+  let shownLocation = null;
   let leave = null;
 
   async function show(initial) {
     const path = currentRoute();
-    if (path === shownPath) return; // meme page (ex. lien d'evitement #app-root)
+    const pageLocation = path + location.search;
+    if (pageLocation === shownLocation) return; // une ancre seule ne change pas les donnees
     const route = routes.find((r) => r.path === path) ?? notFound;
 
     leave?.abort();
     leave = new AbortController();
     const { signal } = leave;
-    shownPath = path;
+    shownLocation = pageLocation;
     onChange(path);
 
     const page = await loadPage(route.file, signal);
@@ -44,7 +45,7 @@ export function startRouter({ routes, notFound, root, onChange }) {
       || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || link.target || link.hasAttribute("download")) return;
     const url = new URL(link.href);
     if (url.origin !== location.origin || url.pathname.includes(".")) return;
-    if (url.hash && url.pathname === location.pathname) return;
+    if (url.hash && url.pathname === location.pathname && url.search === location.search) return;
     e.preventDefault();
     if (url.href !== location.href) history.pushState(null, "", url);
     show(false);

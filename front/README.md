@@ -470,6 +470,7 @@ front/tools/typecheck.sh
 
 - [`src/model/mappers/eventMapper.js`](src/model/mappers/eventMapper.js) : `toEvent(dto)`, `toEvents(dtos)`, `toEventDto(event)`
 - [`src/model/mappers/categoryMapper.js`](src/model/mappers/categoryMapper.js) : `toCategory(dto)`, `toCategoryDto(category)`
+- [`src/model/mappers/eventQueryMapper.js`](src/model/mappers/eventQueryMapper.js) : `toEventQuery({ limit, offset, from })` (query string de `GET /events`, bornes `MAX_EVENTS_LIMIT` / `MAX_EVENTS_OFFSET`), `toEventPath(id)` (`/events/{id}`, ou `null` si l'identifiant est invalide)
 
 ### Operations
 
@@ -490,6 +491,7 @@ const dto = toEventDto(event);       // camelCase -> snake_case pour un envoi (l
   - `remainingPlaces` et `availability` calcules via `domain/Event.js`
   - Dates `Date` (plutot que strings ISO)
 - `toEventDto` **ne renvoie pas** les champs calcules (pas d'aller-retour)
+- Dans l'autre sens, les criteres de lecture deviennent des parametres d'API dans `eventQueryMapper.js` : le service ne construit pas lui-meme les noms `limit`, `offset`, `from` ni le chemin `/events/{id}`
 
 Le test de contrat `tests/contract.test.js` echoue si un champ du JSON back n'est pas lu par `toEvent` ou pas renvoye par `toEventDto`.
 
@@ -501,7 +503,7 @@ Le test de contrat `tests/contract.test.js` echoue si un champ du JSON back n'es
 
 Fichiers dans [`src/model/services/`](src/model/services/) :
 
-- [`eventService.js`](src/model/services/eventService.js) : `fetchUpcomingEvents`, `MAX_EVENTS_LIMIT`
+- [`eventService.js`](src/model/services/eventService.js) : `fetchUpcomingEventPage` (une page de `GET /events`), `fetchUpcomingEvents` (ses elements), `fetchEvent(id)` (`GET /events/{id}` ; un identifiant invalide leve une `ApiError` 404 sans appel reseau), `MAX_EVENTS_LIMIT`, `MAX_EVENTS_OFFSET`, `MAX_KEYWORD_LENGTH`
 
 ### Regle
 
