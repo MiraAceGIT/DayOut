@@ -199,12 +199,14 @@ back/
 │   ├── index.php       ← front controller unique
 │   └── .htaccess       ← rewrite + blocage des fichiers sensibles
 ├── src/
-│   ├── Core/           ← Config, Router, Request, Response, Controller, Database,
-│   │                     Validator, HttpException, Password, Yaml (lecteur YAML minimal)
+│   ├── Core/           ← infrastructure : Config, Router, Request, Response, Controller,
+│   │                     Database, Validator, HttpException
 │   │   ├── Http/       ← Kernel, Middleware, ExceptionRenderer, DbErrorMapper,
 │   │   │                 Cors, SecurityHeaders
 │   │   ├── Log/        ← journalisation (error / info / audit) + ErrorHandler
 │   │   └── Orm/        ← moteur ORM maison (Connection, Caster, QueryBuilder, Compiler, Grammar)
+│   ├── Shared/         ← petits utilitaires purs, sans dependance a Core ni Model :
+│   │                     Password, Yaml (lecteur YAML minimal)
 │   ├── Model/          ← M
 │   │   ├── Dao/        ← Model.php (base) + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php
 │   │   ├── Query/      ← lecture des query strings : EventFindQuery, CreatorFindQuery ; ParsesQueryString (trait commun)
@@ -1002,7 +1004,7 @@ php -l src/Controller/EventController.php    # verifie la syntaxe
 - **Connexion BDD** avec delai 3 s (echec rapide, pas de requete bloquee)
 - **`Vary: Origin`** sur toutes les reponses (cache partage sans fuite de CORS entre origines)
 - **Jamais de `$e->getMessage()` ou de trace** dans la reponse HTTP (log serveur uniquement)
-- **`App\Core\Password`** : bcrypt cost 12, pret pour l'auth future
+- **`App\Shared\Password`** : bcrypt cost 12, pret pour l'auth future
 - **Logs sanitizes** : les cles sensibles (`password`, `token`, `secret`, `authorization`, `cookie`, `csrf`, `session`, `api_key`...) sont remplacees par `[REDACTED]` ; `DB_PASSWORD` masque partout ; IP uniquement dans l'audit
 - **Swagger UI** charge depuis jsDelivr en version epinglee avec SRI (DocsController), sa propre CSP (scripts du CDN + script d'init autorise par son hash)
 

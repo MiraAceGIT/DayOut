@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Tests\Unit\Core;
+namespace Tests\Unit\Shared;
 
-use App\Core\Yaml;
+use App\Shared\Yaml;
 use RuntimeException;
 use stdClass;
 use Tests\TestCase;

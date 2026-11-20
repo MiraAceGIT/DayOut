@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Docs;
 
-use App\Core\Yaml;
+use App\Shared\Yaml;
 use LogicException;
 
 final class OpenApiSpec
