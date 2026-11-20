@@ -7,7 +7,7 @@ use App\Core\Http\Middleware;
 use LogicException;
 
 /**
- * Controllers et middlewares donnes par nom de classe sont instancies sans argument.
+ * Controllers et middlewares donnes par nom de classe sont obtenus du Container (dependances injectees).
  *
  * @phpstan-type Handler array{0: class-string, 1: string}
  * @phpstan-type Middlewares array<int, Middleware|class-string<Middleware>>
@@ -28,6 +28,10 @@ final class Router
 
     /** @var array<int, Middleware|class-string<Middleware>> */
     private array $groupMiddlewares = [];
+
+    public function __construct(private readonly Container $container = new Container())
+    {
+    }
 
     /** @param Handler $handler @param Middlewares $middlewares */
     public function get(string $path, array $handler, array $middlewares = []): void    { $this->add('GET', $path, $handler, $middlewares); }
@@ -128,12 +132,17 @@ final class Router
         return $regex;
     }
 
-    /** Pipeline : middlewares dans l'ordre de declaration, puis l'action. */
+    /**
+     * Pipeline : middlewares dans l'ordre de declaration, puis l'action.
+     *
+     * @param array{handler: Handler, middlewares: Middlewares} $route
+     */
     private function run(array $route, Request $request): Response
     {
         [$class, $action] = $route['handler'];
-        $next = static function (Request $request) use ($class, $action): Response {
-            $response = (new $class())->$action($request);
+        $container = $this->container;
+        $next = static function (Request $request) use ($container, $class, $action): Response {
+            $response = $container->get($class)->$action($request);
             if (!$response instanceof Response) {
                 throw new LogicException("$class::$action must return a Response");
             }
@@ -141,7 +150,9 @@ final class Router
         };
 
         foreach (array_reverse($route['middlewares']) as $middleware) {
-            $middleware = is_string($middleware) ? new $middleware() : $middleware;
+            $middleware = is_string($middleware) ? $this->container->get($middleware) : $middleware;
+            // Les fichiers de routes ne sont pas types a l'execution : un nom de classe quelconque reste possible.
+            // @phpstan-ignore instanceof.alwaysTrue
             if (!$middleware instanceof Middleware) {
                 throw new LogicException($middleware::class . ' must implement ' . Middleware::class);
             }

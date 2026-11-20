@@ -8,29 +8,15 @@ use PDO;
 use PDOException;
 use RuntimeException;
 
-/** Point d'acces unique a la BDD : orm(), jamais le PDO brut. */
+/** Ouverture de la BDD ; les models recoivent la Connection du Container, jamais le PDO brut. */
 final class Database
 {
     private const CONNECT_TIMEOUT = 3;
 
-    private static ?Config $config = null;
-    private static ?Connection $orm = null;
-
-    public static function configure(Config $config): void
+    /** Connexion ouverte au premier SQL : une requete rejetee avant (404, 422) ne touche pas la base. */
+    public static function connection(Config $config): Connection
     {
-        self::$config = $config;
-        self::$orm    = null;
-    }
-
-    /** Instance unique par requete : une transaction ouverte couvre tous les models. */
-    public static function orm(): Connection
-    {
-        return self::$orm ??= new Connection(self::connect());
-    }
-
-    private static function connect(): PDO
-    {
-        return self::open(self::$config ?? throw new RuntimeException('Database::configure() was not called'));
+        return new Connection(static fn (): PDO => self::open($config));
     }
 
     public static function open(Config $config): PDO

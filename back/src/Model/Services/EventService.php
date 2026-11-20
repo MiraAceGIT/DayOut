@@ -23,15 +23,11 @@ final class EventService
 {
     private const LOCKED_WITH_REGISTRATIONS = ['start_at', 'end_at', 'is_paid', 'price_cents', 'currency'];
 
-    private Event $events;
-    private Category $categories;
-    private Creator $creators;
-
-    public function __construct(?Event $events = null, ?Category $categories = null, ?Creator $creators = null)
-    {
-        $this->events     = $events ?? new Event();
-        $this->categories = $categories ?? new Category();
-        $this->creators   = $creators ?? new Creator();
+    public function __construct(
+        private readonly Event $events,
+        private readonly Category $categories,
+        private readonly Creator $creators,
+    ) {
     }
 
     /** @return PageDto<EventDto> */

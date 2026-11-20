@@ -11,11 +11,8 @@ use App\Model\Mappers\CreatorMapper;
 
 final class CreatorService
 {
-    private Creator $creators;
-
-    public function __construct(?Creator $creators = null)
+    public function __construct(private readonly Creator $creators)
     {
-        $this->creators = $creators ?? new Creator();
     }
 
     /** @return PageDto<CreatorDto> */

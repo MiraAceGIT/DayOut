@@ -41,6 +41,5 @@ App\Core\Log\Log::configure(
     $config->auditRetentionDays,
     [$config->dbPassword],
 );
-App\Core\Database::configure($config);
 
 return $config;

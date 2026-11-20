@@ -4,19 +4,26 @@ declare(strict_types=1);
 namespace App\Core\Orm;
 
 use App\Core\Orm\Query\QueryBuilder;
+use Closure;
 use PDO;
 use PDOStatement;
 use Throwable;
 
-/** Seule classe de l'ORM a manipuler PDOStatement : le reste ne voit que SQL + bindings. */
+/**
+ * Seule classe de l'ORM a manipuler PDOStatement : le reste ne voit que SQL + bindings.
+ * Ouverture paresseuse si on lui donne une fabrique : une requete qui echoue avant tout SQL
+ * (route invalide, validation) ne contacte pas la base.
+ */
 final class Connection
 {
-    private PDO $pdo;
+    /** @var PDO|Closure(): PDO */
+    private PDO|Closure $pdo;
 
     /** Transactions ouvertes par transaction() : 0 = aucune, 1 = la transaction, au-dela = savepoints. */
     private int $depth = 0;
 
-    public function __construct(PDO $pdo)
+    /** @param PDO|Closure(): PDO $pdo */
+    public function __construct(PDO|Closure $pdo)
     {
         $this->pdo = $pdo;
     }
@@ -42,7 +49,7 @@ final class Connection
     public function insert(string $sql, array $bindings): int
     {
         $this->run($sql, $bindings);
-        return (int) $this->pdo->lastInsertId();
+        return (int) $this->pdo()->lastInsertId();
     }
 
     public function affecting(string $sql, array $bindings): int
@@ -57,29 +64,35 @@ final class Connection
     public function transaction(callable $fn): mixed
     {
         $savepoint = $this->depth > 0 ? 'sp_' . $this->depth : null;
-        $savepoint === null ? $this->pdo->beginTransaction() : $this->pdo->exec("SAVEPOINT $savepoint");
+        $pdo = $this->pdo();
+        $savepoint === null ? $pdo->beginTransaction() : $pdo->exec("SAVEPOINT $savepoint");
         $this->depth++;
         try {
             $result = $fn($this);
         } catch (Throwable $e) {
             $this->depth--;
             if ($savepoint !== null) {
-                $this->pdo->exec("ROLLBACK TO SAVEPOINT $savepoint");
-            } elseif ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+                $pdo->exec("ROLLBACK TO SAVEPOINT $savepoint");
+            } elseif ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
             throw $e;
         }
         $this->depth--;
-        $savepoint === null ? $this->pdo->commit() : $this->pdo->exec("RELEASE SAVEPOINT $savepoint");
+        $savepoint === null ? $pdo->commit() : $pdo->exec("RELEASE SAVEPOINT $savepoint");
         return $result;
     }
 
     private function run(string $sql, array $bindings): PDOStatement
     {
-        $stmt = $this->pdo->prepare($sql);
+        $stmt = $this->pdo()->prepare($sql);
         ValueBinder::bindAll($stmt, $bindings);
         $stmt->execute();
         return $stmt;
+    }
+
+    private function pdo(): PDO
+    {
+        return $this->pdo = $this->pdo instanceof Closure ? ($this->pdo)() : $this->pdo;
     }
 }

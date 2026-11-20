@@ -14,7 +14,7 @@ use App\Model\Services\FaqService;
 
 final class FaqController extends Controller
 {
-    public function __construct(private ?FaqService $faq = null)
+    public function __construct(private readonly FaqService $faq)
     {
     }
 
@@ -22,14 +22,14 @@ final class FaqController extends Controller
     {
         $query = FaqFindQuery::fromQuery($request->query());
 
-        return $this->ok($this->faq()->findMany($query->toParams()));
+        return $this->ok($this->faq->findMany($query->toParams()));
     }
 
     public function findOne(Request $request): Response
     {
         $id = self::faqId($request);
 
-        return $this->ok($this->faq()->findOne($id));
+        return $this->ok($this->faq->findOne($id));
     }
 
     public function create(Request $request): Response
@@ -37,7 +37,7 @@ final class FaqController extends Controller
         $userId = $this->userId($request);
         $dto = FaqCreateDto::fromArray($request->json());
 
-        return $this->ok($this->faq()->create($dto, $userId), 201);
+        return $this->ok($this->faq->create($dto, $userId), 201);
     }
 
     public function update(Request $request): Response
@@ -46,13 +46,13 @@ final class FaqController extends Controller
         $id = self::faqId($request);
         $dto = FaqUpdateDto::fromArray($request->json());
 
-        return $this->ok($this->faq()->update($id, $dto, $userId));
+        return $this->ok($this->faq->update($id, $dto, $userId));
     }
 
     public function delete(Request $request): Response
     {
         $userId = $this->userId($request);
-        $this->faq()->delete(self::faqId($request), $userId);
+        $this->faq->delete(self::faqId($request), $userId);
 
         return $this->noContent();
     }
@@ -65,10 +65,5 @@ final class FaqController extends Controller
             throw HttpException::notFound('FAQ entry not found');
         }
         return $id;
-    }
-
-    private function faq(): FaqService
-    {
-        return $this->faq ??= new FaqService();
     }
 }

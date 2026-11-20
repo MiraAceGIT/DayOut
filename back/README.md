@@ -199,8 +199,8 @@ back/
 │   ├── index.php       ← front controller unique
 │   └── .htaccess       ← rewrite + blocage des fichiers sensibles
 ├── src/
-│   ├── Core/           ← infrastructure : Config, Router, Request, Response, Controller,
-│   │                     Database, Validator, HttpException
+│   ├── Core/           ← infrastructure : Config, Container, Router, Request, Response, Controller,
+│   │                     Database, Validator, HttpException, BusinessException, ErrorKind
 │   │   ├── Http/       ← Kernel, Middleware, ExceptionRenderer, DbErrorMapper,
 │   │   │                 Cors, SecurityHeaders
 │   │   ├── Log/        ← journalisation (error / info / audit) + ErrorHandler
@@ -216,7 +216,9 @@ back/
 │   │   └── Mappers/    ← ligne du Model <-> DTO (toDto / toDtos / toRow / toUpdateRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
 │   └── Controller/     ← C : logique HTTP, une classe par ressource
-├── config/config.php   ← charge le .env, construit la Config
+├── config/
+│   ├── config.php      ← charge le .env, construit la Config
+│   └── container.php   ← racine de composition (Container : Config, Connection)
 ├── routes/             ← un fichier par ressource (charges par api.php)
 ├── docs/openapi/       ← spec OpenAPI 3 en YAML, un fichier par controller
 ├── storage/logs/       ← logs (crees a la volee, ignores par git)
@@ -275,10 +277,12 @@ back/
 
 ```
 HTTP -> public/.htaccess -> public/index.php
-     -> autoload, ErrorHandler, config/config.php (Config, Log, Database)
+     -> autoload, ErrorHandler, config/config.php (Config, Log)
+     -> config/container.php (Container : Config + Connection, le reste par les constructeurs)
      -> routes/api.php -> routes/<ressource>.php [+ routes/docs.php si DOCS_ENABLED]
      -> Kernel::handle(Request::fromGlobals())
           -> Router::dispatch : match {param}, middlewares, Controller::action -> Response
+             (controllers et middlewares obtenus du Container, dependances injectees)
              -> Service -> Model (methode nommee) -> QueryBuilder -> Compiler (SQL)
                 -> Connection (bindings) -> PDO -> MariaDB -> Caster -> Mapper -> DTO
           -> toute exception -> ExceptionRenderer -> Response d'erreur
@@ -560,8 +564,9 @@ $users->deleteById($id);
 // Requete libre (sans FILLABLE ni casts)
 $this->table()->where('event_id', 4)->update(['status' => 'cancelled']);
 
-// Transaction (connection partagee -> tous les models participent)
-Database::orm()->transaction(function (Connection $db) use ($events) {
+// Transaction : le service recoit la Connection par son constructeur ; une seule par Container,
+// donc tous les models de la requete participent
+$this->connection->transaction(function (Connection $db) use ($events) {
     // tout ou rien
 });
 // Imbricable : la transaction interne pose un SAVEPOINT
@@ -845,7 +850,8 @@ codes metier (`EVENT_NOT_FOUND`...), codes triggers (`EVENT_FULL`...),
 
 ### Connexion
 
-- `App\Core\Database::configure($config)` au demarrage, `Database::orm()` partout ailleurs
+- `config/container.php` declare la `Connection` (`Database::connection($config)`) ; les models la recoivent par leur constructeur
+- Ouverture paresseuse : le PDO n'est cree qu'au premier SQL (une requete rejetee en 404 / 422 ne touche pas la base)
 - PDO `ERRMODE_EXCEPTION` + `EMULATE_PREPARES=false` + placeholders `?` bindes (anti-SQLi)
 - Timeout de connexion : **3 secondes** (MariaDB injoignable -> echec rapide, pas de requete bloquee)
 
@@ -986,8 +992,9 @@ php -l src/Controller/EventController.php    # verifie la syntaxe
 ### Statique ou instance
 
 - **statique** pour les fonctions pures sans etat : `Validator`, `Grammar`, `Compiler`, `Caster`, `Rows`, `ValueBinder`, `Password`, `SecurityHeaders`, `ExceptionRenderer`, constructeurs nommes de `HttpException`
-- **instance** pour ce qui porte un etat par requete ou des entrees/sorties : `Request`, `Response`, `Router`, `Kernel`, `Connection`, middlewares, controllers, models
-- **facade statique configuree une fois** : `Log` et `Database` uniquement
+- **instance** pour ce qui porte un etat par requete ou des entrees/sorties : `Request`, `Response`, `Router`, `Kernel`, `Connection`, middlewares, controllers, services, models
+- **injection par constructeur** : controllers, services et models declarent leurs dependances, `App\Core\Container` les construit ; jamais de `new` d'un service ou d'un model dans le code applicatif
+- **facade statique configuree une fois** : `Log` uniquement
 
 ---
 

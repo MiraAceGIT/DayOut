@@ -11,22 +11,14 @@ use App\Model\Services\CreatorService;
 
 final class CreatorController extends Controller
 {
-    private ?CreatorService $creators;
-
-    public function __construct(?CreatorService $creators = null)
+    public function __construct(private readonly CreatorService $creators)
     {
-        $this->creators = $creators;
     }
 
     public function index(Request $request): Response
     {
         $query = CreatorFindQuery::fromQuery($request->query());
 
-        return $this->ok($this->creators()->searchPage($query->toParams()));
-    }
-
-    private function creators(): CreatorService
-    {
-        return $this->creators ??= new CreatorService();
+        return $this->ok($this->creators->searchPage($query->toParams()));
     }
 }

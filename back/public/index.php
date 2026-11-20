@@ -18,7 +18,10 @@ AccessLog::register();
 /** @var \App\Core\Config $config */
 $config = require APP_ROOT . '/config/config.php';
 
-$router = new Router();
+/** @var Closure(\App\Core\Config): \App\Core\Container $containerFor */
+$containerFor = require APP_ROOT . '/config/container.php';
+
+$router = new Router($containerFor($config));
 require APP_ROOT . '/routes/api.php';
 if ($config->docsEnabled) {
     require APP_ROOT . '/routes/docs.php';

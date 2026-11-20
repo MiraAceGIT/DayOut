@@ -16,13 +16,10 @@ use App\Model\Mappers\FaqMapper;
 
 final class FaqService
 {
-    private Faq $faq;
-    private FaqAdmin $admins;
-
-    public function __construct(?Faq $faq = null, ?FaqAdmin $admins = null)
-    {
-        $this->faq    = $faq ?? new Faq();
-        $this->admins = $admins ?? new FaqAdmin();
+    public function __construct(
+        private readonly Faq $faq,
+        private readonly FaqAdmin $admins,
+    ) {
     }
 
     /** @return PageDto<FaqDto> */

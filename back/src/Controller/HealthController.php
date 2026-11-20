@@ -4,19 +4,23 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Core\Controller;
-use App\Core\Database;
 use App\Core\Log\Log;
+use App\Core\Orm\Connection;
 use App\Core\Request;
 use App\Core\Response;
 use Throwable;
 
 final class HealthController extends Controller
 {
+    public function __construct(private readonly Connection $db)
+    {
+    }
+
     public function index(Request $request): Response
     {
         $db = 'down';
         try {
-            Database::orm()->scalar('SELECT 1');
+            $this->db->scalar('SELECT 1');
             $db = 'up';
         } catch (Throwable $e) {
             // /health doit toujours repondre, meme BDD down.

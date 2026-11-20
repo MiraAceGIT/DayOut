@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Model\Dao;
 
-use App\Core\Database;
 use App\Core\Orm\Caster;
 use App\Core\Orm\Connection;
 use App\Core\Orm\Query\QueryBuilder;
@@ -28,12 +27,12 @@ abstract class Model
 
     private Connection $connection;
 
-    public function __construct(?Connection $connection = null)
+    public function __construct(Connection $connection)
     {
         if (static::TABLE === '') {
             throw new LogicException(static::class . ' must define TABLE');
         }
-        $this->connection = $connection ?? Database::orm();
+        $this->connection = $connection;
     }
 
     // find / findMany / all ignorent la visibilite (ex. `published`) : exposer des methodes nommees.
