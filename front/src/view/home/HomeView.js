@@ -5,7 +5,7 @@ import { FilterChips } from "./filters/FilterChips.js";
 import { PointCard } from "./pointCard/PointCard.js";
 import { ResultsList } from "./resultsList/ResultsList.js";
 import { SuggestionsList } from "./suggestions/SuggestionsList.js";
-import { resultsMessage } from "./resultsMessage.js";
+import { resultsMessage } from "./homeMessages.js";
 
 // Le compte est annonce par role=status : on attend la fin de la frappe / du glissement pour ne pas saturer.
 const STATUS_DELAY_MS = 400;

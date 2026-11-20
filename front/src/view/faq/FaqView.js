@@ -1,22 +1,18 @@
 import { h } from "../../shared/dom.js";
 import { highlight } from "../../shared/highlight.js";
+import { faqStatus } from "./faqMessages.js";
 
 /** @typedef {import("../../model/mappers/faqMapper.js").FaqEntry} FaqEntry */
 
+/** Les elements sont garantis par `isReady`, verifie par le controleur avant tout appel. */
 export class FaqView {
   constructor(root = document) {
-    /** @type {HTMLElement | null} */
-    this.list = root.querySelector("#faq-list");
-    /** @type {HTMLElement | null} */
-    this.status = root.querySelector("#faq-status");
-    /** @type {HTMLElement | null} */
-    this.error = root.querySelector("#faq-error");
-    /** @type {HTMLElement | null} */
-    this.retry = root.querySelector("#faq-retry");
-    /** @type {HTMLElement | null} */
-    this.searchField = root.querySelector("#faq-search-field");
-    /** @type {HTMLInputElement | null} */
-    this.search = root.querySelector("#faq-search");
+    this.list = /** @type {HTMLElement} */ (root.querySelector("#faq-list"));
+    this.status = /** @type {HTMLElement} */ (root.querySelector("#faq-status"));
+    this.error = /** @type {HTMLElement} */ (root.querySelector("#faq-error"));
+    this.retry = /** @type {HTMLElement} */ (root.querySelector("#faq-retry"));
+    this.searchField = /** @type {HTMLElement} */ (root.querySelector("#faq-search-field"));
+    this.search = /** @type {HTMLInputElement} */ (root.querySelector("#faq-search"));
   }
 
   get isReady() {
@@ -24,30 +20,29 @@ export class FaqView {
   }
 
   /** @param {{ onRetry: () => void, onQuery: (query: string) => void }} handlers
-   * @param {AbortSignal} [signal] */
+   * @param {AbortSignal} [signal] retire les ecouteurs au depart de la page */
   bind({ onRetry, onQuery }, signal) {
-    this.retry?.addEventListener("click", onRetry, { signal });
+    this.retry.addEventListener("click", onRetry, { signal });
     // Filtre a chaque frappe : les questions sont deja chargees, aucun appel reseau.
-    this.search?.addEventListener("input", () => onQuery(this.search?.value ?? ""), { signal });
+    this.search.addEventListener("input", () => onQuery(this.search.value), { signal });
   }
 
   showLoading() {
-    this.list?.setAttribute("aria-busy", "true");
-    if (this.status) this.status.textContent = "Chargement des questions…";
-    if (this.error) this.error.textContent = "";
-    if (this.retry) this.retry.hidden = true;
-    if (this.searchField) this.searchField.hidden = true;
+    this.list.setAttribute("aria-busy", "true");
+    this.status.textContent = "Chargement des questions…";
+    this.error.textContent = "";
+    this.retry.hidden = true;
+    this.searchField.hidden = true;
   }
 
   endLoading() {
-    this.list?.setAttribute("aria-busy", "false");
+    this.list.setAttribute("aria-busy", "false");
   }
 
   /** @param {FaqEntry[]} entries questions a afficher (deja filtrees)
    * @param {{ query?: string, total?: number }} [search] saisie du filtre et nombre total de questions
    * @param {AbortSignal} [signal] */
   showEntries(entries, { query = "", total = entries.length } = {}, signal) {
-    if (!this.list) return;
     /** @type {{ button: HTMLElement, panel: HTMLElement } | null} */
     let opened = null;
     const items = entries.map(entry => {
@@ -73,23 +68,14 @@ export class FaqView {
       return h("section", { class: "faq-item" }, h("h2", {}, button), panel);
     });
     this.list.replaceChildren(...items);
-    if (this.searchField) this.searchField.hidden = total === 0;
-    if (this.status) this.status.textContent = FaqView.statusText(entries.length, total, query);
-  }
-
-  /** @param {number} shown @param {number} total @param {string} query */
-  static statusText(shown, total, query) {
-    if (total === 0) return "Aucune question disponible pour le moment.";
-    const keyword = query.trim();
-    if (!keyword) return "";
-    if (shown === 0) return `Aucune question ne correspond à « ${keyword} ».`;
-    return `${shown} question${shown > 1 ? "s" : ""} sur ${total} correspond${shown > 1 ? "ent" : ""} à « ${keyword} ».`;
+    this.searchField.hidden = total === 0;
+    this.status.textContent = faqStatus(entries.length, total, query);
   }
 
   /** @param {string} message */
   showError(message) {
-    if (this.status) this.status.textContent = "";
-    if (this.error) this.error.textContent = message;
-    if (this.retry) this.retry.hidden = false;
+    this.status.textContent = "";
+    this.error.textContent = message;
+    this.retry.hidden = false;
   }
 }

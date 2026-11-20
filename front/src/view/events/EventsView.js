@@ -1,5 +1,5 @@
-import { pluralize } from "../../shared/format.js";
 import { renderEventCard } from "../components/eventCard/eventCard.js";
+import { errorStatus, paginationStatus } from "./eventsMessages.js";
 
 export class EventsView {
   constructor(root = document) {
@@ -43,15 +43,12 @@ export class EventsView {
   showPagination({ hasMore, limitReached = false }) {
     this.moreBtn.hidden = !hasMore;
     this.moreBtn.textContent = "Voir plus";
-    const count = this.count === 0 ? "Aucun événement à venir." : `${pluralize(this.count, "événement")} à venir affiché${this.count > 1 ? "s" : ""}.`;
-    this.setStatus(limitReached
-      ? `${count} La limite de consultation est atteinte.`
-      : `${count}${!hasMore && this.count > 0 ? " Tous les événements ont été affichés." : ""}`);
+    this.setStatus(paginationStatus(this.count, { hasMore, limitReached }));
   }
 
   showError(message) {
     // Une erreur sur une page suivante ne doit pas effacer les cartes deja chargees.
-    this.setStatus(this.count ? `${pluralize(this.count, "événement")} déjà affiché${this.count > 1 ? "s" : ""}.` : "");
+    this.setStatus(errorStatus(this.count));
     this.errorEl.textContent = message;
     this.moreBtn.hidden = false;
     this.moreBtn.textContent = "Réessayer";

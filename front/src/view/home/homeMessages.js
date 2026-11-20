@@ -1,3 +1,4 @@
+// Textes de statut de la carte (annonces role=status) : fonctions pures, testees sans DOM.
 import { pluralize } from "../../shared/format.js";
 
 /** `keyword` / `total` : recherche par mot-cle ; `total` = resultats de l'API avant rayon et filtres. */

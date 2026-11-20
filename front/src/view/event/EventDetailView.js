@@ -1,6 +1,6 @@
 import { h, isSafeUrl } from "../../shared/dom.js";
-import { formatEventWhen, formatPrice, formatRemainingPlaces, pluralize } from "../../shared/format.js";
 import { frontUrl } from "../../core/config.js";
+import { presentEventDetail } from "./eventDetailPresenter.js";
 
 export class EventDetailView {
   constructor(root = document) {
@@ -66,56 +66,50 @@ export class EventDetailView {
     this.stateTitle.focus();
   }
 
-  /** @param {Awaited<ReturnType<import("../../model/services/eventService.js").fetchEvent>>} event */
+  /** @param {import("./eventDetailPresenter.js").Event} event */
   showEvent(event) {
+    const view = presentEventDetail(event);
     const text = (selector, value) => {
       for (const el of this.root.querySelectorAll(selector)) el.textContent = value;
     };
-    const address = [event.addressLine, [event.postalCode, event.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-    const place = event.venueName || event.city || "Lieu à préciser";
-    const name = event.creator.displayName;
-    text("#event-title", event.title);
-    text("#event-venue", place);
-    const date = this.root.querySelector("#event-date");
-    date.replaceChildren(
-      h("time", { datetime: event.startAt }, formatEventWhen(event.startAt, event.endAt, { withEnd: true, withYear: true })),
+    text("#event-title", view.title);
+    text("#event-venue", view.place);
+    this.root.querySelector("#event-date").replaceChildren(
+      h("time", { datetime: view.when.datetime }, view.when.label),
       h("span", { class: "event-date__timezone event-note" }, "Heure de Paris"),
     );
-    text("#event-address, #event-map-address", address || "Adresse à préciser");
-    text("#event-map-name", place);
-    text("#event-map-city", event.city || "");
-    text("[data-event-creator-name]", name);
-    text("#event-creator-school", event.creator.schoolName || "Organisateur");
-    text("#event-creator-description", event.creator.description || "");
-    text("#event-creator-avatar", name.trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase());
-    text("#event-description", event.description);
-    text("#event-places", formatRemainingPlaces(event.remainingPlaces));
-    this.root.querySelector("#event-places").setAttribute("data-availability", event.availability || "unlimited");
-    text("#event-practical-summary", [event.capacity === null ? "Capacité illimitée" : pluralize(event.capacity, "place"),
-      event.schoolRestricted ? "Accès réservé à une école" : "Ouvert à toutes les écoles"].join(" · "));
-    text("#registration-title", formatPrice(event.priceCents, { isPaid: event.isPaid, currency: event.currency }));
-    text("#event-registration-count", `${pluralize(event.registeredCount, "inscrit")}${event.capacity === null ? " · Capacité illimitée" : ` sur ${pluralize(event.capacity, "place")}`}`);
+    text("#event-address, #event-map-address", view.address);
+    text("#event-map-name", view.place);
+    text("#event-map-city", view.city);
+    text("[data-event-creator-name]", view.creator.name);
+    text("#event-creator-school", view.creator.school);
+    text("#event-creator-description", view.creator.description);
+    text("#event-creator-avatar", view.creator.initials);
+    text("#event-description", view.description);
+    text("#event-places", view.places);
+    this.root.querySelector("#event-places").setAttribute("data-availability", view.availability);
+    text("#event-practical-summary", view.practicalSummary);
+    text("#registration-title", view.price);
+    text("#event-registration-count", view.registrations);
     const progress = /** @type {HTMLProgressElement} */ (this.root.querySelector("#event-capacity"));
-    progress.hidden = event.capacity === null;
-    if (event.capacity !== null) {
-      progress.max = event.capacity;
-      progress.value = event.registeredCount;
-      progress.textContent = `${event.registeredCount} / ${event.capacity}`;
+    progress.hidden = view.capacity === null;
+    if (view.capacity !== null) {
+      progress.max = view.capacity.max;
+      progress.value = view.capacity.value;
+      progress.textContent = view.capacity.label;
     }
-    text("#event-register", event.availability === "full" ? "Complet" : "Je m’inscris");
-    // La maquette reserve le QR code DayOut et les quotas de fiabilite aux inscriptions gratuites.
-    this.root.querySelector("#event-free-entry").toggleAttribute("hidden", event.isPaid);
-    this.root.querySelector("#event-free-reliability").toggleAttribute("hidden", event.isPaid);
-    const tags = [...event.categories.map(category => category.label), event.isPaid ? "Payant" : "Gratuit"];
-    this.root.querySelector("#event-tags").replaceChildren(...tags.map(label => h("span", {}, label)));
+    text("#event-register", view.registerLabel);
+    this.root.querySelector("#event-free-entry").toggleAttribute("hidden", !view.showFreeEntry);
+    this.root.querySelector("#event-free-reliability").toggleAttribute("hidden", !view.showFreeEntry);
+    this.root.querySelector("#event-tags").replaceChildren(...view.tags.map((label) => h("span", {}, label)));
     const cover = /** @type {HTMLImageElement} */ (this.root.querySelector("#event-cover"));
     const fallback = frontUrl("assets/img/event-cover-placeholder.svg").href;
-    cover.src = event.coverImageUrl && isSafeUrl(event.coverImageUrl) ? event.coverImageUrl : fallback;
+    cover.src = view.coverImageUrl && isSafeUrl(view.coverImageUrl) ? view.coverImageUrl : fallback;
     cover.onerror = () => { cover.onerror = null; cover.src = fallback; };
     this.state.hidden = true;
     this.detail.hidden = false;
     this.status.textContent = "";
     this.error.textContent = "";
-    this.root.title = `${event.title} — DayOut`;
+    this.root.title = view.documentTitle;
   }
 }

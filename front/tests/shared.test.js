@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { formatCoordinates, formatDate, formatDay, formatDistance, formatEventWhen, formatHour, formatPrice, formatRemainingPlaces, pluralize } from "../src/shared/format.js";
 import { distanceKm, isLatLng } from "../src/shared/geo.js";
 import { isInCoverageArea } from "../src/model/domain/coverageArea.js";
-import { resultsMessage } from "../src/view/home/resultsMessage.js";
+import { resultsMessage } from "../src/view/home/homeMessages.js";
 import { spaces } from "./fixtures.js";
 
 describe("format", () => {

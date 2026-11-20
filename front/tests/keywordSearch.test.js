@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { MapSearch } from "../src/model/state/MapSearch.js";
 import { excerptAround, splitMatches } from "../src/shared/highlight.js";
-import { resultsMessage } from "../src/view/home/resultsMessage.js";
+import { resultsMessage } from "../src/view/home/homeMessages.js";
 import { event } from "./fixtures.js";
 
 const NOW = new Date("2026-11-04T12:00:00Z");
