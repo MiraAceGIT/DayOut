@@ -208,7 +208,9 @@ back/
 │   ├── Shared/         ← petits utilitaires purs, sans dependance a Core ni Model :
 │   │                     Password, Yaml (lecteur YAML minimal)
 │   ├── Model/          ← M
-│   │   ├── Dao/        ← Model.php (base) + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php
+│   │   ├── Dao/        ← Model.php (base), PageRequest + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php ;
+│   │   │                 User/User.php (droits des comptes : isAdmin, canPublish)
+│   │   ├── Enums/      ← valeurs des ENUM MariaDB : EventStatus (cycle de vie), Role, CreatorStatus
 │   │   ├── Query/      ← lecture des query strings : EventFindQuery, CreatorFindQuery ; ParsesQueryString (trait commun)
 │   │   ├── Services/   ← regles metier (appelle les DAO, leve des exceptions metier)
 │   │   ├── Exceptions/ ← une classe par ressource (EventException, FaqException), heritant de Core\BusinessException
@@ -329,7 +331,7 @@ elle reste exclue des deux routes GET publiques.
 
 Perimetre : cette ressource fournit la page publique et le CRUD API demande.
 Les ecrans d'administration FAQ restent dans SCRUM-79, la gestion des utilisateurs
-dans SCRUM-44 et l'authentification commune dans SCRUM-42. `FaqAdmin` se limite
+dans SCRUM-44 et l'authentification commune dans SCRUM-42. `User::isAdmin()` se limite
 a la verification du droit d'ecriture FAQ ; aucun compte utilisateur n'est modifie.
 
 ### Declarer un model
@@ -660,7 +662,7 @@ instantane des donnees : une creation ou une modification concurrente peut encor
 seul le futur middleware d'authentification le posera apres verification du token. **Tant qu'il
 n'existe pas, toutes les ecritures repondent 401.**
 
-Toute ecriture exige un createur approuve (ou admin) non banni (`Creator::canPublish`), sinon
+Toute ecriture exige un createur approuve (ou admin) non banni (`User::canPublish`), sinon
 `403 CREATOR_REQUIRED` : un createur banni perd aussi la main sur ses events existants. Sur l'event
 d'un autre : `403 EVENT_FORBIDDEN` s'il est publie, `404` sinon (un brouillon ne doit pas se reveler).
 Le corps doit etre en `Content-Type: application/json` (`415` sinon : pas de requete CSRF « simple »).

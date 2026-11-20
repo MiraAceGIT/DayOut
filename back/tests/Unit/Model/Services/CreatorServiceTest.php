@@ -3,12 +3,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Model\Services;
 
-use App\Core\Orm\Connection;
-use App\Model\Dao\Creator\Creator;
 use App\Model\Dto\Creator\CreatorDto;
 use App\Model\Query\CreatorFindQuery;
 use App\Model\Services\CreatorService;
 use PDO;
+use Tests\Support\TestContainer;
 use Tests\TestCase;
 
 final class CreatorServiceTest extends TestCase
@@ -39,7 +38,7 @@ final class CreatorServiceTest extends TestCase
             (2, 3, 'published', '2026-10-01 12:00:00'),
             (3, 4, 'draft', '2026-12-01 12:00:00')");
 
-        $this->service = new CreatorService(new Creator(new Connection($pdo)));
+        $this->service = TestContainer::create($pdo)->get(CreatorService::class);
     }
 
     /**

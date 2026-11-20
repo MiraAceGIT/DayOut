@@ -5,6 +5,9 @@ namespace App\Model\Dao\Creator;
 
 use App\Core\Orm\Query\QueryBuilder;
 use App\Model\Dao\Model;
+use App\Model\Enums\CreatorStatus;
+use App\Model\Enums\EventStatus;
+use App\Model\Enums\Role;
 
 final class Creator extends Model
 {
@@ -36,27 +39,13 @@ final class Creator extends Model
         return $byId;
     }
 
-    public function canPublish(int $userId): bool
-    {
-        return $this->table()
-            ->where('id', $userId)
-            ->where('banned', false)
-            ->where(static function (QueryBuilder $q): void {
-                $q->where('role', 'admin')
-                    ->orWhere(static function (QueryBuilder $creator): void {
-                        $creator->where('role', 'creator')->where('creator_status', 'approved');
-                    });
-            })
-            ->exists();
-    }
-
     /** @return array{0: array<int, array<string, mixed>>, 1: int} */
     public function findManyPublic(?CreatorSearchParams $params = null): array
     {
         $param = $params ?? new CreatorSearchParams();
         $query = $this->publicProfiles()
-            ->where('users.role', 'creator')
-            ->where('users.creator_status', 'approved')
+            ->where('users.role', Role::Creator->value)
+            ->where('users.creator_status', CreatorStatus::Approved->value)
             ->where('users.banned', false);
 
         if ($param->text !== null) {
@@ -74,8 +63,8 @@ final class Creator extends Model
         }
         if ($param->withEventsEndingAfter !== null) {
             $query->whereRaw(
-                "EXISTS (SELECT 1 FROM events AS e WHERE e.creator_id = users.id AND e.status = 'published' AND e.end_at > ?)",
-                [$param->withEventsEndingAfter],
+                'EXISTS (SELECT 1 FROM events AS e WHERE e.creator_id = users.id AND e.status = ? AND e.end_at > ?)',
+                [EventStatus::Published->value, $param->withEventsEndingAfter],
             );
         }
 

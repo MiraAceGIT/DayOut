@@ -5,9 +5,6 @@ namespace Tests\Unit\Model\Services;
 
 use App\Core\ErrorKind;
 use App\Core\Orm\Connection;
-use App\Model\Dao\Category\Category;
-use App\Model\Dao\Creator\Creator;
-use App\Model\Dao\Event\Event;
 use App\Model\Dao\Event\EventSearchParams;
 use App\Model\Dao\PageRequest;
 use App\Model\Dto\Event\EventDto;
@@ -17,6 +14,7 @@ use App\Model\Query\EventFindQuery;
 use App\Model\Services\EventService;
 use DateTimeImmutable;
 use PDO;
+use Tests\Support\TestContainer;
 use Tests\TestCase;
 
 final class EventServiceTest extends TestCase
@@ -53,7 +51,7 @@ final class EventServiceTest extends TestCase
         $pdo->exec('INSERT INTO event_categories (event_id, category_id) VALUES (1, 1), (3, 2)');
 
         $connection    = new Connection($pdo);
-        $this->service = new EventService(new Event($connection), new Category($connection), new Creator($connection));
+        $this->service = TestContainer::create($connection)->get(EventService::class);
     }
 
     /**

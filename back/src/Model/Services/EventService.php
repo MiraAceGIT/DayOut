@@ -9,10 +9,12 @@ use App\Model\Dao\Category\Category;
 use App\Model\Dao\Creator\Creator;
 use App\Model\Dao\Event\Event;
 use App\Model\Dao\Event\EventSearchParams;
+use App\Model\Dao\User\User;
 use App\Model\Dto\Event\EventCreateDto;
 use App\Model\Dto\Event\EventDto;
 use App\Model\Dto\Event\EventUpdateDto;
 use App\Model\Dto\PageDto;
+use App\Model\Enums\EventStatus;
 use App\Model\Exceptions\EventException;
 use App\Model\Mappers\EventMapper;
 use DateTimeImmutable;
@@ -27,6 +29,7 @@ final class EventService
         private readonly Event $events,
         private readonly Category $categories,
         private readonly Creator $creators,
+        private readonly User $users,
     ) {
     }
 
@@ -89,7 +92,7 @@ final class EventService
         if (new DateTimeImmutable($event['end_at']) <= new DateTimeImmutable()) {
             throw ValidationException::field('end_at', 'Must be in the future to publish');
         }
-        $this->transition($id, $event['status'], 'draft', 'published', 'publish', ['published_at' => new DateTimeImmutable()]);
+        $this->transition($id, $event['status'], EventStatus::Draft, EventStatus::Published, 'publish', ['published_at' => new DateTimeImmutable()]);
         Log::audit('event.publish', 'event', $id, 'success', ['user_id' => $userId]);
 
         return $this->findForWrite($id);
@@ -99,7 +102,7 @@ final class EventService
     private function cancel(array $event, int $userId): EventDto
     {
         $id = $event['id'];
-        $this->transition($id, $event['status'], 'published', 'cancelled', 'cancel');
+        $this->transition($id, $event['status'], EventStatus::Published, EventStatus::Cancelled, 'cancel');
         Log::audit('event.cancel', 'event', $id, 'success', ['user_id' => $userId]);
 
         return $this->findForWrite($id);
@@ -117,7 +120,7 @@ final class EventService
 
     private function assertCanManageEvents(int $userId): void
     {
-        if (!$this->creators->canPublish($userId)) {
+        if (!$this->users->canPublish($userId)) {
             throw EventException::creatorRequired();
         }
     }
@@ -137,9 +140,9 @@ final class EventService
     }
 
     /** @param array<string, mixed> $server */
-    private function transition(int $id, string $current, string $from, string $to, string $action, array $server = []): void
+    private function transition(int $id, string $current, EventStatus $from, EventStatus $to, string $action, array $server = []): void
     {
-        if ($current !== $from || $this->events->changeStatus($id, $from, $to, $server) === 0) {
+        if ($current !== $from->value || $this->events->changeStatus($id, $from, $to, $server) === 0) {
             throw EventException::invalidStatus($id, $current, $action);
         }
     }

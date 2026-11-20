@@ -7,13 +7,11 @@ use App\Controller\EventController;
 use App\Core\Http\ExceptionRenderer;
 use App\Core\Orm\Connection;
 use App\Core\Request;
-use App\Model\Dao\Category\Category;
-use App\Model\Dao\Creator\Creator;
-use App\Model\Dao\Event\Event;
 use App\Model\Exceptions\EventException;
 use App\Model\Services\EventService;
 use PDO;
 use PDOStatement;
+use Tests\Support\TestContainer;
 use Tests\TestCase;
 
 final class DetailCountingPdo extends PDO
@@ -64,7 +62,7 @@ final class EventDetailServiceTest extends TestCase
         $this->pdo->exec('INSERT INTO event_categories VALUES (1, 1), (1, 2), (1, 3), (2, 3)');
         $this->pdo->exec("INSERT INTO registrations VALUES (1, 1, 'registered'), (2, 1, 'attended'), (3, 1, 'no_show'), (4, 1, 'cancelled'), (5, 2, 'cancelled')");
         $connection = new Connection($this->pdo);
-        $this->service = new EventService(new Event($connection), new Category($connection), new Creator($connection));
+        $this->service = TestContainer::create($connection)->get(EventService::class);
     }
 
     public function testLoadsEventCategoriesAndCreatorLikeAListItem(): void

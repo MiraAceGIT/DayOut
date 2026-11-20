@@ -9,15 +9,13 @@ use App\Core\Orm\Connection;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\ValidationException;
-use App\Model\Dao\Category\Category;
-use App\Model\Dao\Creator\Creator;
-use App\Model\Dao\Event\Event;
 use App\Model\Dto\Event\EventCreateDto;
 use App\Model\Dto\Event\EventUpdateDto;
 use App\Model\Exceptions\EventException;
 use App\Model\Services\EventService;
 use LogicException;
 use PDO;
+use Tests\Support\TestContainer;
 use Tests\TestCase;
 
 final class EventWriteServiceTest extends TestCase
@@ -62,7 +60,7 @@ final class EventWriteServiceTest extends TestCase
             (13, 2, 'Annule', 'annule', 'd', '2030-01-01 20:00:00', '2030-01-02 02:00:00', 'cancelled', 0, 0, 0)");
 
         $connection = new Connection($pdo);
-        $this->service = new EventService(new Event($connection), new Category($connection), new Creator($connection));
+        $this->service = TestContainer::create($connection)->get(EventService::class);
     }
 
     /** @return array<int, mixed> */

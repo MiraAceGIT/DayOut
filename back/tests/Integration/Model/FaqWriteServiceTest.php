@@ -4,14 +4,13 @@ declare(strict_types=1);
 namespace Tests\Integration\Model;
 
 use App\Core\Orm\Connection;
-use App\Model\Dao\Faq\Faq;
-use App\Model\Dao\Faq\FaqAdmin;
 use App\Model\Dao\Faq\FaqSearchParams;
 use App\Model\Dto\Faq\FaqCreateDto;
 use App\Model\Dto\Faq\FaqUpdateDto;
 use App\Model\Exceptions\FaqException;
 use App\Model\Services\FaqService;
 use PDO;
+use Tests\Support\TestContainer;
 use Tests\Support\TestDatabase;
 use Tests\TestCase;
 
@@ -25,7 +24,7 @@ final class FaqWriteServiceTest extends TestCase
         $this->pdo = TestDatabase::pdo();
         $this->pdo->beginTransaction();
         $connection = new Connection($this->pdo);
-        $this->service = new FaqService(new Faq($connection), new FaqAdmin($connection));
+        $this->service = TestContainer::create($connection)->get(FaqService::class);
     }
 
     public function tearDown(): void

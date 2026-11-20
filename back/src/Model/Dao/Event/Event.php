@@ -5,6 +5,7 @@ namespace App\Model\Dao\Event;
 
 use App\Core\Orm\Query\QueryBuilder;
 use App\Model\Dao\Model;
+use App\Model\Enums\EventStatus;
 
 final class Event extends Model
 {
@@ -113,20 +114,20 @@ final class Event extends Model
     }
 
     /** Changement de statut atomique : 0 si l'event n'est plus dans le statut `$from`. */
-    public function changeStatus(int $id, string $from, string $to, array $server = []): int
+    public function changeStatus(int $id, EventStatus $from, EventStatus $to, array $server = []): int
     {
-        return $this->table()->where('id', $id)->where('status', $from)->update(['status' => $to] + $server);
+        return $this->table()->where('id', $id)->where('status', $from->value)->update(['status' => $to->value] + $server);
     }
 
     public function deleteDraft(int $id): int
     {
-        return $this->table()->where('id', $id)->where('status', 'draft')->delete();
+        return $this->table()->where('id', $id)->where('status', EventStatus::Draft->value)->delete();
     }
 
     private function published(): QueryBuilder
     {
         return $this->query()
-            ->where('status', 'published')
+            ->where('status', EventStatus::Published->value)
             ->whereRaw('NOT EXISTS (SELECT 1 FROM users AS banned_creator WHERE banned_creator.id = events.creator_id AND banned_creator.banned = 1)');
     }
 }

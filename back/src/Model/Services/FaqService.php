@@ -5,8 +5,8 @@ namespace App\Model\Services;
 
 use App\Core\Log\Log;
 use App\Model\Dao\Faq\Faq;
-use App\Model\Dao\Faq\FaqAdmin;
 use App\Model\Dao\Faq\FaqSearchParams;
+use App\Model\Dao\User\User;
 use App\Model\Dto\Faq\FaqCreateDto;
 use App\Model\Dto\Faq\FaqDto;
 use App\Model\Dto\Faq\FaqUpdateDto;
@@ -18,7 +18,7 @@ final class FaqService
 {
     public function __construct(
         private readonly Faq $faq,
-        private readonly FaqAdmin $admins,
+        private readonly User $users,
     ) {
     }
 
@@ -65,7 +65,7 @@ final class FaqService
 
     private function assertCanManageFaq(int $userId): void
     {
-        if (!$this->admins->existsById($userId)) {
+        if (!$this->users->isAdmin($userId)) {
             throw FaqException::adminRequired();
         }
     }

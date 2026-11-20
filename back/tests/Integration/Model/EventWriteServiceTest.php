@@ -6,15 +6,13 @@ namespace Tests\Integration\Model;
 use App\Core\Http\DbErrorMapper;
 use App\Core\Orm\Connection;
 use App\Core\ValidationException;
-use App\Model\Dao\Category\Category;
-use App\Model\Dao\Creator\Creator;
-use App\Model\Dao\Event\Event;
 use App\Model\Dto\Event\EventCreateDto;
 use App\Model\Dto\Event\EventUpdateDto;
 use App\Model\Exceptions\EventException;
 use App\Model\Services\EventService;
 use PDO;
 use PDOException;
+use Tests\Support\TestContainer;
 use Tests\Support\TestDatabase;
 use Tests\TestCase;
 
@@ -31,7 +29,7 @@ final class EventWriteServiceTest extends TestCase
         $this->pdo = TestDatabase::pdo();
         $this->pdo->beginTransaction();
         $connection = new Connection($this->pdo);
-        $this->service = new EventService(new Event($connection), new Category($connection), new Creator($connection));
+        $this->service = TestContainer::create($connection)->get(EventService::class);
     }
 
     public function tearDown(): void

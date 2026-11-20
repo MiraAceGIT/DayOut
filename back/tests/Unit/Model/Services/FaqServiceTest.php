@@ -7,8 +7,6 @@ use App\Controller\FaqController;
 use App\Core\Http\RequireAuth;
 use App\Core\Orm\Connection;
 use App\Core\Request;
-use App\Model\Dao\Faq\Faq;
-use App\Model\Dao\Faq\FaqAdmin;
 use App\Model\Dao\Faq\FaqSearchParams;
 use App\Model\Dao\PageRequest;
 use App\Model\Dto\Faq\FaqCreateDto;
@@ -16,6 +14,7 @@ use App\Model\Dto\Faq\FaqUpdateDto;
 use App\Model\Exceptions\FaqException;
 use App\Model\Services\FaqService;
 use PDO;
+use Tests\Support\TestContainer;
 use Tests\TestCase;
 
 final class FaqServiceTest extends TestCase
@@ -32,7 +31,7 @@ final class FaqServiceTest extends TestCase
         $this->pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, role TEXT, banned INTEGER)');
         $this->pdo->exec("INSERT INTO users VALUES (1, 'admin', 0), (2, 'creator', 0), (3, 'participant', 0), (4, 'admin', 1)");
         $connection = new Connection($this->pdo);
-        $this->service = new FaqService(new Faq($connection), new FaqAdmin($connection));
+        $this->service = TestContainer::create($connection)->get(FaqService::class);
     }
 
     public function testFiltersHiddenQuestionsAndOrdersByPositionThenId(): void
