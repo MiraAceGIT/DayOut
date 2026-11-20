@@ -14,10 +14,10 @@ final class FaqFindQueryTest extends TestCase
         $params = FaqFindQuery::fromQuery(['q' => '   ', 'ids' => ', '])->toParams();
         $this->assertSame(null, $params->text);
         $this->assertSame(null, $params->ids);
-        $this->assertSame('sort_order', $params->sortBy);
-        $this->assertSame('asc', $params->sortDir);
-        $this->assertSame(20, $params->limit);
-        $this->assertSame(0, $params->offset);
+        $this->assertSame('sort_order', $params->page->sortBy);
+        $this->assertSame('asc', $params->page->sortDir);
+        $this->assertSame(20, $params->page->limit);
+        $this->assertSame(0, $params->page->offset);
     }
 
     public function testParsesFiltersAndPagination(): void
@@ -27,10 +27,10 @@ final class FaqFindQueryTest extends TestCase
         ])->toParams();
         $this->assertSame('inscription', $params->text);
         $this->assertSame([3, 1], $params->ids);
-        $this->assertSame('question', $params->sortBy);
-        $this->assertSame('desc', $params->sortDir);
-        $this->assertSame(5, $params->limit);
-        $this->assertSame(10, $params->offset);
+        $this->assertSame('question', $params->page->sortBy);
+        $this->assertSame('desc', $params->page->sortDir);
+        $this->assertSame(5, $params->page->limit);
+        $this->assertSame(10, $params->page->offset);
         $this->assertSame([3, 1], FaqFindQuery::fromQuery(['ids' => ['3', '1']])->toParams()->ids);
     }
 

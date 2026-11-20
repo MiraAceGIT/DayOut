@@ -4,11 +4,42 @@ declare(strict_types=1);
 namespace App\Model\Query;
 
 use App\Core\ValidationException;
+use App\Model\Dao\PageRequest;
 use DateTimeImmutable;
 
 trait ParsesQueryString
 {
     private const MAX_LIST_ITEMS = 50;
+
+    /**
+     * Regles sort_by / sort_dir / limit / offset, communes aux listes paginees.
+     *
+     * @param array<string, string> $sortMap SORT_MAP du DAO : ses cles sont les tris acceptes
+     * @return array<string, string>
+     */
+    private static function pageRules(array $sortMap): array
+    {
+        return [
+            'sort_by'  => 'in:' . implode(',', array_keys($sortMap)),
+            'sort_dir' => 'in:asc,desc',
+            'limit'    => 'int|min:1|max:' . PageRequest::MAX_LIMIT,
+            'offset'   => 'int|min:0|max:' . PageRequest::MAX_OFFSET,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>  $clean   query string deja validee avec pageRules()
+     * @param array<string, string> $sortMap tri par defaut = sa premiere cle
+     */
+    private static function page(array $clean, array $sortMap): PageRequest
+    {
+        return new PageRequest(
+            sortBy:  $clean['sort_by'] ?? array_key_first($sortMap),
+            sortDir: $clean['sort_dir'] ?? 'asc',
+            limit:   $clean['limit'] ?? PageRequest::DEFAULT_LIMIT,
+            offset:  $clean['offset'] ?? 0,
+        );
+    }
 
     /** @return list<int>|null */
     private static function parseIds(string $field, mixed $value): ?array

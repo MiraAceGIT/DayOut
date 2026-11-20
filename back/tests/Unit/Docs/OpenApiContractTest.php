@@ -5,6 +5,7 @@ namespace Tests\Unit\Docs;
 
 use App\Core\Router;
 use App\Docs\OpenApiSpec;
+use App\Model\Dao\PageRequest;
 use App\Model\Dto\Category\CategoryDto;
 use App\Model\Dto\Creator\CreatorDto;
 use App\Model\Dto\Event\EventCreateDto;
@@ -98,7 +99,7 @@ final class OpenApiContractTest extends TestCase
 
     public function testPageSchemasMatchPageDto(): void
     {
-        $keys = array_keys(PageDto::of([], 20, 0, 0)->jsonSerialize());
+        $keys = array_keys(PageDto::of([], new PageRequest(), 0)->jsonSerialize());
         foreach (['EventPage' => 'Event', 'CreatorPage' => 'Creator', 'FaqPage' => 'Faq'] as $page => $item) {
             $schema = $this->spec()['components']['schemas'][$page];
             $this->assertSame($keys, array_keys($schema['properties']), $page);

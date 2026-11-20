@@ -20,6 +20,6 @@ final class CreatorService
     {
         [$rows, $total] = $this->creators->findManyPublic($params);
 
-        return PageDto::of(CreatorMapper::toDtos($rows), $params->limit, $params->offset, $total);
+        return PageDto::of(CreatorMapper::toDtos($rows), $params->page, $total);
     }
 }

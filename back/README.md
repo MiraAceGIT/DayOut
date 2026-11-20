@@ -631,8 +631,11 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 `EventController::findMany()` est l'equivalent de la methode `EvenementController::liste()`
 du ticket. La query string est lue par `EventFindQuery` (`src/Model/Query`), qui valide
 et convertit les filtres en `EventSearchParams`. Le DAO `Event::findManyPublished()` applique
-le filtre `published`, `end_at > from`, les filtres optionnels, le tri (`sort_by` puis `id`)
-et `LIMIT / OFFSET`, et renvoie `[items, total]`. Le service renvoie un `PageDto` (generique, commun a toutes les listes).
+le filtre `published`, `end_at > from` et les filtres optionnels, puis `paginate()` (herite du DAO de base)
+applique le tri (`sort_by` puis `id`) et `LIMIT / OFFSET`, et renvoie `[items, total]`. Tri et fenetre voyagent
+dans un `PageRequest` commun a toutes les listes : les regles `sort_by` / `sort_dir` / `limit` / `offset` viennent
+de `ParsesQueryString::pageRules()`, les tris acceptes sont les cles de `SORT_MAP` du DAO (la premiere est le tri
+par defaut). Le service renvoie un `PageDto` (generique, commun a toutes les listes).
 Les evenements en cours sont inclus jusqu'a leur fin.
 
 Filtres : `start_from` / `start_to` (debut), `q` (titre, lieu, ville), `city`,

@@ -35,7 +35,7 @@ final class EventService
     {
         [$rows, $total] = $this->events->findManyPublished($params);
 
-        return PageDto::of($this->toDtos($rows), $params->limit, $params->offset, $total);
+        return PageDto::of($this->toDtos($rows), $params->page, $total);
     }
 
     public function findOne(int $id): EventDto

@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Core\Controller;
-use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Model\Dto\Event\EventCreateDto;
@@ -27,7 +26,7 @@ final class EventController extends Controller
 
     public function findOne(Request $request): Response
     {
-        $id = self::eventId($request);
+        $id = $this->eventId($request);
 
         return $this->ok($this->events->findOne($id));
     }
@@ -43,7 +42,7 @@ final class EventController extends Controller
     public function update(Request $request): Response
     {
         $userId = $this->userId($request);
-        $id = self::eventId($request);
+        $id = $this->eventId($request);
         $dto = EventUpdateDto::fromArray($request->json());
 
         return $this->ok($this->events->update($id, $dto, $userId));
@@ -52,18 +51,13 @@ final class EventController extends Controller
     public function delete(Request $request): Response
     {
         $userId = $this->userId($request);
-        $this->events->delete(self::eventId($request), $userId);
+        $this->events->delete($this->eventId($request), $userId);
 
         return $this->noContent();
     }
 
-    private static function eventId(Request $request): int
+    private function eventId(Request $request): int
     {
-        $rawId = $request->param('id');
-        $id = filter_var($rawId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        if ($id === false || preg_match('/^[1-9][0-9]*$/D', $rawId) !== 1) {
-            throw HttpException::notFound('Event not found');
-        }
-        return $id;
+        return $this->idParam($request, 'Event not found');
     }
 }

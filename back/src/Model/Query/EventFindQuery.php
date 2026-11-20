@@ -5,14 +5,17 @@ namespace App\Model\Query;
 
 use App\Core\ValidationException;
 use App\Core\Validator;
+use App\Model\Dao\Event\Event;
 use App\Model\Dao\Event\EventSearchParams;
+use App\Model\Dao\PageRequest;
 use DateTimeImmutable;
 
 final readonly class EventFindQuery
 {
     use ParsesQueryString;
 
-    public const RULES = [
+    /** Filtres propres aux events ; tri et pagination viennent de pageRules(). */
+    private const FILTERS = [
         'from'       => 'datetime',
         'start_from' => 'datetime',
         'start_to'   => 'datetime',
@@ -21,10 +24,6 @@ final readonly class EventFindQuery
         'creator_id' => 'int|min:1',
         'is_free'    => 'bool',
         'available'  => 'bool',
-        'sort_by'    => 'in:start_at,created_at,title,price_cents',
-        'sort_dir'   => 'in:asc,desc',
-        'limit'      => 'int|min:1|max:100',
-        'offset'     => 'int|min:0|max:10000',
     ];
 
     /**
@@ -42,17 +41,20 @@ final readonly class EventFindQuery
         public ?int $creatorId = null,
         public ?bool $isFree = null,
         public bool $available = false,
-        public string $sortBy = 'start_at',
-        public string $sortDir = 'asc',
-        public int $limit = 20,
-        public int $offset = 0,
+        public PageRequest $page = new PageRequest(),
     ) {
+    }
+
+    /** @return array<string, string> */
+    public static function rules(): array
+    {
+        return self::FILTERS + self::pageRules(Event::SORT_MAP);
     }
 
     /** @param array<string, mixed> $query */
     public static function fromQuery(array $query): self
     {
-        $clean = Validator::check(array_diff_key($query, ['ids' => 1, 'categories' => 1]), self::RULES);
+        $clean = Validator::check(array_diff_key($query, ['ids' => 1, 'categories' => 1]), self::rules());
 
         if (isset($clean['start_from'], $clean['start_to'])
             && new DateTimeImmutable($clean['start_to']) <= new DateTimeImmutable($clean['start_from'])) {
@@ -70,10 +72,7 @@ final readonly class EventFindQuery
             creatorId:  $clean['creator_id'] ?? null,
             isFree:     $clean['is_free'] ?? null,
             available:  $clean['available'] ?? false,
-            sortBy:     $clean['sort_by'] ?? 'start_at',
-            sortDir:    $clean['sort_dir'] ?? 'asc',
-            limit:      $clean['limit'] ?? 20,
-            offset:     $clean['offset'] ?? 0,
+            page:       self::page($clean, Event::SORT_MAP),
         );
     }
 
@@ -90,10 +89,7 @@ final readonly class EventFindQuery
             creatorId:     $this->creatorId,
             isFree:        $this->isFree,
             onlyAvailable: $this->available,
-            sortBy:        $this->sortBy,
-            sortDir:       $this->sortDir,
-            limit:         $this->limit,
-            offset:        $this->offset,
+            page:          $this->page,
         );
     }
 }

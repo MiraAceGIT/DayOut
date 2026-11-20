@@ -18,10 +18,10 @@ final class CreatorFindQueryTest extends TestCase
         $this->assertSame(null, $params->schoolId);
         $this->assertSame(null, $params->ids);
         $this->assertSame(null, $params->withEventsEndingAfter, 'no event filter unless has_upcoming_events');
-        $this->assertSame('display_name', $params->sortBy);
-        $this->assertSame('asc', $params->sortDir);
-        $this->assertSame(20, $params->limit);
-        $this->assertSame(0, $params->offset);
+        $this->assertSame('display_name', $params->page->sortBy);
+        $this->assertSame('asc', $params->page->sortDir);
+        $this->assertSame(20, $params->page->limit);
+        $this->assertSame(0, $params->page->offset);
     }
 
     public function testParsesAndCastsValues(): void
@@ -35,10 +35,10 @@ final class CreatorFindQueryTest extends TestCase
         $this->assertSame(1, $query->schoolId);
         $this->assertSame([3, 2], $query->ids);
         $this->assertSame(true, $query->hasUpcomingEvents);
-        $this->assertSame('created_at', $query->sortBy);
-        $this->assertSame('desc', $query->sortDir);
-        $this->assertSame(5, $query->limit);
-        $this->assertSame(10, $query->offset);
+        $this->assertSame('created_at', $query->page->sortBy);
+        $this->assertSame('desc', $query->page->sortDir);
+        $this->assertSame(5, $query->page->limit);
+        $this->assertSame(10, $query->page->offset);
     }
 
     public function testUpcomingEventsUseFromOrNow(): void

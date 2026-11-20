@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Model\Dao\Faq\Faq;
 use App\Model\Dao\Faq\FaqAdmin;
 use App\Model\Dao\Faq\FaqSearchParams;
+use App\Model\Dao\PageRequest;
 use App\Model\Dto\Faq\FaqCreateDto;
 use App\Model\Dto\Faq\FaqUpdateDto;
 use App\Model\Exceptions\FaqException;
@@ -75,18 +76,18 @@ final class FaqServiceTest extends TestCase
             (3, 'Inscription', 'Publique', 10, 1),
             (4, 'Autre', 'Sans rapport', 20, 1)");
 
-        $page = $this->service->findMany(new FaqSearchParams(text: 'inscription', ids: [1, 2, 3], limit: 1));
+        $page = $this->service->findMany(new FaqSearchParams(text: 'inscription', ids: [1, 2, 3], page: new PageRequest(limit: 1)));
         $this->assertSame([1], array_column($page->items, 'id'));
         $this->assertSame(2, $page->total);
         $this->assertTrue($page->hasMore);
-        $last = $this->service->findMany(new FaqSearchParams(text: 'inscription', limit: 1, offset: 1));
+        $last = $this->service->findMany(new FaqSearchParams(text: 'inscription', page: new PageRequest(limit: 1, offset: 1)));
         $this->assertSame([3], array_column($last->items, 'id'));
         $this->assertFalse($last->hasMore);
-        $past = $this->service->findMany(new FaqSearchParams(text: 'inscription', offset: 5));
+        $past = $this->service->findMany(new FaqSearchParams(text: 'inscription', page: new PageRequest(offset: 5)));
         $this->assertSame([], $past->items);
         $this->assertSame(2, $past->total);
         $this->assertFalse($past->hasMore);
-        $this->assertSame([3, 1], array_column($this->service->findMany(new FaqSearchParams(text: 'inscription', sortDir: 'desc'))->items, 'id'));
+        $this->assertSame([3, 1], array_column($this->service->findMany(new FaqSearchParams(text: 'inscription', page: new PageRequest(sortDir: 'desc')))->items, 'id'));
         $this->assertSame([1], array_column($this->service->findMany(new FaqSearchParams(text: 'inscription', ids: [1, 2]))->items, 'id'));
     }
 

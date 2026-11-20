@@ -9,6 +9,7 @@ use App\Model\Dao\Category\Category;
 use App\Model\Dao\Creator\Creator;
 use App\Model\Dao\Event\Event;
 use App\Model\Dao\Event\EventSearchParams;
+use App\Model\Dao\PageRequest;
 use App\Model\Dto\Event\EventDto;
 use App\Model\Dto\PageDto;
 use App\Model\Exceptions\EventException;
@@ -73,7 +74,7 @@ final class EventServiceTest extends TestCase
     /** @return PageDto<EventDto> */
     private function page(string $from, int $limit, int $offset): PageDto
     {
-        return $this->service->findMany(new EventSearchParams(endingAfter: new DateTimeImmutable($from), limit: $limit, offset: $offset));
+        return $this->service->findMany(new EventSearchParams(endingAfter: new DateTimeImmutable($from), page: new PageRequest(limit: $limit, offset: $offset)));
     }
 
     public function testListReturnsUpcomingPublishedEventsWithCategories(): void

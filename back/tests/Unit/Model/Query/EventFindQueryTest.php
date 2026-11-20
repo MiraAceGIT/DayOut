@@ -21,10 +21,10 @@ final class EventFindQueryTest extends TestCase
         $this->assertSame(null, $params->categories);
         $this->assertSame(null, $params->isFree);
         $this->assertSame(false, $params->onlyAvailable);
-        $this->assertSame('start_at', $params->sortBy);
-        $this->assertSame('asc', $params->sortDir);
-        $this->assertSame(20, $params->limit);
-        $this->assertSame(0, $params->offset);
+        $this->assertSame('start_at', $params->page->sortBy);
+        $this->assertSame('asc', $params->page->sortDir);
+        $this->assertSame(20, $params->page->limit);
+        $this->assertSame(0, $params->page->offset);
     }
 
     public function testParsesCsvListsAndCastsScalars(): void
@@ -41,9 +41,9 @@ final class EventFindQueryTest extends TestCase
         $this->assertSame(true, $query->isFree);
         $this->assertSame(true, $query->available);
         $this->assertSame(7, $query->creatorId);
-        $this->assertSame('title', $query->sortBy);
-        $this->assertSame('desc', $query->sortDir);
-        $this->assertSame(5, $query->limit);
+        $this->assertSame('title', $query->page->sortBy);
+        $this->assertSame('desc', $query->page->sortDir);
+        $this->assertSame(5, $query->page->limit);
         $this->assertSame('2026-11-07', $query->startFrom?->format('Y-m-d'));
     }
 

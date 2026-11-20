@@ -4,42 +4,42 @@ declare(strict_types=1);
 namespace App\Model\Query;
 
 use App\Core\Validator;
+use App\Model\Dao\Faq\Faq;
 use App\Model\Dao\Faq\FaqSearchParams;
+use App\Model\Dao\PageRequest;
 
 final readonly class FaqFindQuery
 {
     use ParsesQueryString;
 
-    public const RULES = [
-        'q'        => 'string|max:100',
-        'sort_by'  => 'in:sort_order,question,created_at',
-        'sort_dir' => 'in:asc,desc',
-        'limit'    => 'int|min:1|max:100',
-        'offset'   => 'int|min:0|max:10000',
+    /** Filtres propres a la FAQ ; tri et pagination viennent de pageRules(). */
+    private const FILTERS = [
+        'q' => 'string|max:100',
     ];
 
     /** @param list<int>|null $ids */
     public function __construct(
         public ?string $q = null,
         public ?array $ids = null,
-        public string $sortBy = 'sort_order',
-        public string $sortDir = 'asc',
-        public int $limit = 20,
-        public int $offset = 0,
+        public PageRequest $page = new PageRequest(),
     ) {
     }
 
+    /** @return array<string, string> */
+    public static function rules(): array
+    {
+        return self::FILTERS + self::pageRules(Faq::SORT_MAP);
+    }
+
+    /** @param array<string, mixed> $query */
     public static function fromQuery(array $query): self
     {
-        $clean = Validator::check(array_diff_key($query, ['ids' => 1]), self::RULES);
+        $clean = Validator::check(array_diff_key($query, ['ids' => 1]), self::rules());
 
         return new self(
-            q: self::text($clean['q'] ?? null),
-            ids: self::parseIds('ids', $query['ids'] ?? null),
-            sortBy: $clean['sort_by'] ?? 'sort_order',
-            sortDir: $clean['sort_dir'] ?? 'asc',
-            limit: $clean['limit'] ?? 20,
-            offset: $clean['offset'] ?? 0,
+            q:    self::text($clean['q'] ?? null),
+            ids:  self::parseIds('ids', $query['ids'] ?? null),
+            page: self::page($clean, Faq::SORT_MAP),
         );
     }
 
@@ -47,11 +47,8 @@ final readonly class FaqFindQuery
     {
         return new FaqSearchParams(
             text: $this->q,
-            ids: $this->ids,
-            sortBy: $this->sortBy,
-            sortDir: $this->sortDir,
-            limit: $this->limit,
-            offset: $this->offset,
+            ids:  $this->ids,
+            page: $this->page,
         );
     }
 }

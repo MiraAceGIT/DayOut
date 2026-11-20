@@ -27,7 +27,7 @@ final class FaqService
     {
         [$rows, $total] = $this->faq->findManyVisible($params);
 
-        return PageDto::of(FaqMapper::toDtos($rows), $params->limit, $params->offset, $total);
+        return PageDto::of(FaqMapper::toDtos($rows), $params->page, $total);
     }
 
     public function findOne(int $id): FaqDto

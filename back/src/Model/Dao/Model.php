@@ -74,6 +74,29 @@ abstract class Model
         return $this->table()->where(static::PRIMARY_KEY, $id)->delete();
     }
 
+    /**
+     * Total puis page triee ; l'id departage les egalites pour une pagination stable.
+     *
+     * @param array<string, string> $sortMap cle publique => colonne ; la premiere est le tri par defaut
+     * @return array{0: array<int, array<string, mixed>>, 1: int}
+     */
+    protected function paginate(QueryBuilder $query, PageRequest $page, array $sortMap): array
+    {
+        $total = $query->count();
+
+        $column    = $sortMap[$page->sortBy ?? ''] ?? (reset($sortMap) ?: throw new LogicException('Empty sort map'));
+        $direction = $page->sortDir === 'desc' ? 'DESC' : 'ASC';
+
+        $items = $query
+            ->orderBy($column, $direction)
+            ->orderBy(static::TABLE . '.' . static::PRIMARY_KEY, $direction)
+            ->limit($page->limit)
+            ->offset($page->offset)
+            ->get();
+
+        return [$items, $total];
+    }
+
     protected static function containsPattern(string $text): string
     {
         return '%' . strtr($text, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';

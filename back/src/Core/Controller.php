@@ -33,6 +33,20 @@ abstract class Controller
         return Validator::check($request->query(), $rules);
     }
 
+    /**
+     * Identifiant entier strictement positif, sans zero en tete ni debordement ; sinon 404
+     * (`/events/01` n'est pas une autre adresse de `/events/1`).
+     */
+    protected function idParam(Request $request, string $notFoundMessage, string $name = 'id'): int
+    {
+        $raw = $request->param($name);
+        $id  = filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($id === false || preg_match('/^[1-9][0-9]*$/D', $raw) !== 1) {
+            throw HttpException::notFound($notFoundMessage);
+        }
+        return $id;
+    }
+
     protected function userId(Request $request): int
     {
         $userId = $request->attribute(RequireAuth::USER_ID);

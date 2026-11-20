@@ -42,7 +42,8 @@ final class Event extends Model
         'created_at'           => 'datetime',
     ];
 
-    private const SORT_MAP = [
+    /** Cle publique (sort_by) => colonne ; la premiere est le tri par defaut. */
+    public const SORT_MAP = [
         'start_at'    => 'start_at',
         'created_at'  => 'created_at',
         'title'       => 'title',
@@ -98,19 +99,7 @@ final class Event extends Model
             $query->whereRaw('capacity IS NULL OR registered_count < capacity');
         }
 
-        $total = $query->count();
-
-        $orderColumn = self::SORT_MAP[$param->sortBy] ?? self::SORT_MAP['start_at'];
-        $orderDir    = $param->sortDir === 'desc' ? 'DESC' : 'ASC';
-
-        $items = $query
-            ->orderBy($orderColumn, $orderDir)
-            ->orderBy('id', $orderDir)
-            ->limit($param->limit)
-            ->offset($param->offset)
-            ->get();
-
-        return [$items, $total];
+        return $this->paginate($query, $param->page, self::SORT_MAP);
     }
 
     public function findPublishedById(int $id): ?array

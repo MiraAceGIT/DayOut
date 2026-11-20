@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Dao\Event;
 
+use App\Model\Dao\PageRequest;
 use DateTimeImmutable;
 
 final readonly class EventSearchParams
@@ -22,10 +23,7 @@ final readonly class EventSearchParams
         public ?int $creatorId = null,
         public ?bool $isFree = null,
         public bool $onlyAvailable = false,
-        public string $sortBy = 'start_at',
-        public string $sortDir = 'asc',
-        public int $limit = 20,
-        public int $offset = 0,
+        public PageRequest $page = new PageRequest(),
     ) {
     }
 }

@@ -12,7 +12,8 @@ final class Creator extends Model
 
     protected const COLUMNS = ['id', 'first_name', 'last_name', 'avatar_url', 'bio'];
 
-    private const SORT_MAP = [
+    /** Cle publique (sort_by) => colonne ; la premiere est le tri par defaut. */
+    public const SORT_MAP = [
         'display_name' => 'cp.display_name',
         'created_at'   => 'users.created_at',
     ];
@@ -78,19 +79,7 @@ final class Creator extends Model
             );
         }
 
-        $total = $query->count();
-
-        $orderColumn = self::SORT_MAP[$param->sortBy] ?? self::SORT_MAP['display_name'];
-        $orderDir    = $param->sortDir === 'desc' ? 'DESC' : 'ASC';
-
-        $items = $query
-            ->orderBy($orderColumn, $orderDir)
-            ->orderBy('users.id', $orderDir)
-            ->limit($param->limit)
-            ->offset($param->offset)
-            ->get();
-
-        return [$items, $total];
+        return $this->paginate($query, $param->page, self::SORT_MAP);
     }
 
     private function publicProfiles(): QueryBuilder

@@ -13,7 +13,8 @@ final class Faq extends Model
     protected const FILLABLE = ['question', 'answer', 'sort_order', 'active'];
     protected const CASTS = ['id' => 'int', 'sort_order' => 'int', 'active' => 'bool'];
 
-    private const SORT_MAP = [
+    /** Cle publique (sort_by) => colonne ; la premiere est le tri par defaut. */
+    public const SORT_MAP = [
         'sort_order' => 'sort_order',
         'question'   => 'question',
         'created_at' => 'created_at',
@@ -33,17 +34,7 @@ final class Faq extends Model
             $query->whereIn('id', $params->ids);
         }
 
-        $total = $query->count();
-        $orderColumn = self::SORT_MAP[$params->sortBy] ?? self::SORT_MAP['sort_order'];
-        $orderDir = $params->sortDir === 'desc' ? 'DESC' : 'ASC';
-        $items = $query
-            ->orderBy($orderColumn, $orderDir)
-            ->orderBy('id', $orderDir)
-            ->limit($params->limit)
-            ->offset($params->offset)
-            ->get();
-
-        return [$items, $total];
+        return $this->paginate($query, $params->page, self::SORT_MAP);
     }
 
     public function findVisibleById(int $id): ?array
