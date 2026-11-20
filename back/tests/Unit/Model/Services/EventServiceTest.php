@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Model\Services;
 
+use App\Core\ErrorKind;
 use App\Core\Orm\Connection;
 use App\Model\Dao\Category\Category;
 use App\Model\Dao\Creator\Creator;
@@ -10,7 +11,6 @@ use App\Model\Dao\Event\Event;
 use App\Model\Dao\Event\EventSearchParams;
 use App\Model\Dto\Event\EventDto;
 use App\Model\Dto\PageDto;
-use App\Model\Exceptions\ErrorKind;
 use App\Model\Exceptions\EventException;
 use App\Model\Query\EventFindQuery;
 use App\Model\Services\EventService;

@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Model\Dao\Event;
 
-use App\Model\Dao\Model;
 use DateTimeImmutable;
 
 final readonly class EventSearchParams

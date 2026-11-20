@@ -211,7 +211,7 @@ back/
 │   │   ├── Dao/        ← Model.php (base) + un dossier par ressource : Event/Event.php, Event/EventSearchParams.php
 │   │   ├── Query/      ← lecture des query strings : EventFindQuery, CreatorFindQuery ; ParsesQueryString (trait commun)
 │   │   ├── Services/   ← regles metier (appelle les DAO, leve des exceptions metier)
-│   │   ├── Exceptions/ ← BusinessException, ErrorKind, une classe par ressource
+│   │   ├── Exceptions/ ← une classe par ressource (EventException, FaqException), heritant de Core\BusinessException
 │   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
 │   │   └── Mappers/    ← ligne du Model <-> DTO (toDto / toDtos / toRow / toUpdateRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
@@ -269,7 +269,7 @@ back/
 
 - **`HttpException`** (Core) : reservee a la couche HTTP (routeur, `Request`, middlewares)
 - **`ValidationException`** (Core) : levee par `Validator`, mappers et DAO -> 422 avec `details = champ -> message`
-- **`BusinessException`** (Model) : regle metier levee par un service ; une classe par ressource, un cas par factory nommee ; `ErrorKind` fixe le statut (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Invalid` 422)
+- **`BusinessException`** (Core, heritee par `Model/Exceptions`) : regle metier levee par un service ; une classe par ressource, un cas par factory nommee ; `ErrorKind` fixe le statut (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Invalid` 422)
 
 ### Flux d'une requete
 

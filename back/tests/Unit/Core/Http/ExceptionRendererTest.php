@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Core\Http;
 
+use App\Core\BusinessException;
+use App\Core\ErrorKind;
 use App\Core\HttpException;
 use App\Core\Http\ExceptionRenderer;
 use App\Core\ValidationException;
-use App\Model\Exceptions\BusinessException;
-use App\Model\Exceptions\ErrorKind;
 use PDOException;
 use Tests\TestCase;
 

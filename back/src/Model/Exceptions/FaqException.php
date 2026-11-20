@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace App\Model\Exceptions;
 
+use App\Core\BusinessException;
+use App\Core\ErrorKind;
+
 final class FaqException extends BusinessException
 {
     public static function notFound(int $id): self
