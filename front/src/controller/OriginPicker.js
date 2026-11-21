@@ -1,6 +1,6 @@
 import { currentPosition } from "../core/geolocation.js";
 import { COVERAGE_AREA, isInCoverageArea } from "../model/domain/coverageArea.js";
-import { LatestTask } from "./LatestTask.js";
+import { LatestTask } from "../shared/LatestTask.js";
 
 /**
  * Choix du point de depart de la carte : clic sur la carte ou position de l'appareil.

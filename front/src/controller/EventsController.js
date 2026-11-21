@@ -1,4 +1,5 @@
-import { MAX_PAGE_LIMIT, MAX_PAGE_OFFSET } from "../core/apiLimits.js";
+import { MAX_PAGE_OFFSET } from "../core/apiLimits.js";
+import { normalizePageLimit } from "../model/mappers/pageQueryMapper.js";
 import { fetchUpcomingEventPage } from "../model/services/eventService.js";
 import { EventsView } from "../view/events/EventsView.js";
 import { PageLoader } from "./PageLoader.js";
@@ -10,7 +11,7 @@ export class EventsController {
     this.view = view;
     this.loadEvents = loadEvents;
     this.loader = new PageLoader(view);
-    this.limit = Math.min(Math.max(1, limit), MAX_PAGE_LIMIT);
+    this.limit = normalizePageLimit(limit);
     this.offset = 0;
     this.hasMore = true;
     this.started = false;

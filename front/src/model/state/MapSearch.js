@@ -7,7 +7,7 @@ import { suggestEvents } from "../domain/eventSuggestions.js";
 /**
  * @type {Origin}
  */
-export const DEFAULT_ORIGIN = { lat: 48.8455, lng: 2.3275, source: "default" };
+export const DEFAULT_ORIGIN = Object.freeze({ lat: 48.8455, lng: 2.3275, label: "ISEP – Notre-Dame-des-Champs", source: "default" });
 export const DEFAULT_RADIUS_KM = 3;
 
 const FLAGS = new Set(["weekend", "free", "available"]);

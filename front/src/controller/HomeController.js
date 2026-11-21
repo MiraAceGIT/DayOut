@@ -1,17 +1,17 @@
-import { MAX_KEYWORD_LENGTH, MAX_PAGE_LIMIT } from "../core/apiLimits.js";
+import { MAX_PAGE_LIMIT } from "../core/apiLimits.js";
 import { isApiError, messageFor } from "../core/errors.js";
 import { currentPosition } from "../core/geolocation.js";
 import { replaceSearchParam } from "../core/routes.js";
 import { COVERAGE_AREA } from "../model/domain/coverageArea.js";
+import { cleanKeyword } from "../model/domain/keyword.js";
+import { normalizePageLimit } from "../model/mappers/pageQueryMapper.js";
 import { fetchUpcomingEvents } from "../model/services/eventService.js";
 import { MapSearch } from "../model/state/MapSearch.js";
 import { SearchBox } from "../view/components/searchBox/searchBox.js";
 import { HomeView } from "../view/home/HomeView.js";
 import { MapView } from "../view/home/map/MapView.js";
-import { LatestTask } from "./LatestTask.js";
+import { LatestTask } from "../shared/LatestTask.js";
 import { OriginPicker } from "./OriginPicker.js";
-
-const cleanKeyword = (query) => String(query ?? "").trim().slice(0, MAX_KEYWORD_LENGTH);
 
 /**
  * Carte : recherche par mot-cle cote API (seule la plus recente compte), puis rayon, filtres et selection
@@ -33,7 +33,7 @@ export class HomeController {
     this.state = state;
     this.loadEvents = loadEvents;
     // L'API plafonne `limit` : le seuil de troncature doit etre la limite effective, pas celle demandee.
-    this.limit = Math.min(limit, MAX_PAGE_LIMIT);
+    this.limit = normalizePageLimit(limit);
     this.searches = new LatestTask();
     this.origin = new OriginPicker({ map, getPosition, onOrigin: (point) => this.applyOrigin(point) });
     this.keyword = "";

@@ -1,7 +1,7 @@
 import { formatCoordinates } from "../../../shared/format.js";
 
+// Le point par defaut porte son libelle (model/state/MapSearch.js) ; un clic sur la carte n'en a pas.
 const SOURCE_LABELS = {
-  default: "ISEP – Notre-Dame-des-Champs",
   device: "Ta position",
 };
 

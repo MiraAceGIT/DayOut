@@ -1,9 +1,9 @@
-import { h, isSafeUrl } from "../../../shared/dom.js";
-import { frontUrl } from "../../../core/config.js";
+import { h } from "../../../shared/dom.js";
 import { routeUrl } from "../../../core/routes.js";
 import { formatEventWhen } from "../../../shared/format.js";
 import { excerptAround, highlight } from "../../../shared/highlight.js";
 import { categoryClass, colorCategoryOf } from "../category/category.js";
+import { setCover } from "../cover/cover.js";
 import { distanceText, joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/pill.js";
 
@@ -17,13 +17,10 @@ export function renderEventCard(event, { variant = "grid", distanceKm = null, se
   const popup = variant === "popup";
   const detailUrl = new URL(routeUrl("/event"));
   detailUrl.searchParams.set("id", String(event.id));
-  const fallback = frontUrl("assets/img/event-cover-placeholder.svg").href;
-  const image = h("img", {
+  const image = setCover(/** @type {HTMLImageElement} */ (h("img", {
     class: "event-card__image",
-    src: event.coverImageUrl && isSafeUrl(event.coverImageUrl) ? event.coverImageUrl : fallback,
     alt: "", width: 640, height: 360, loading: "lazy", decoding: "async",
-  });
-  image.addEventListener("error", () => { image.src = fallback; }, { once: true });
+  })), event.coverImageUrl);
   // La liste compacte n'affiche pas la description : on la montre si c'est elle qui explique le resultat.
   const descriptionExcerpt = compact && event.description ? excerptAround(event.description, keyword) : null;
 

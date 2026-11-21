@@ -1,6 +1,5 @@
 import { h } from "./dom.js";
-
-const fold = (char) => char.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+import { foldAccents as fold } from "./text.js";
 
 /** Texte sans accents ni casse, avec pour chaque caractere replie l'indice du caractere d'origine. */
 function foldWithOrigin(chars) {

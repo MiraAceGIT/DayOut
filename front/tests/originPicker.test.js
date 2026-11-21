@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { LatestTask } from "../src/controller/LatestTask.js";
+import { LatestTask } from "../src/shared/LatestTask.js";
 import { OriginPicker } from "../src/controller/OriginPicker.js";
 
 const PARIS = { lat: 48.8566, lng: 2.3522 };

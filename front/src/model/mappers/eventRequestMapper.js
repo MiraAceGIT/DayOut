@@ -1,5 +1,5 @@
-import { MAX_KEYWORD_LENGTH } from "../../core/apiLimits.js";
 import { parseEventId } from "../domain/eventId.js";
+import { cleanKeyword } from "../domain/keyword.js";
 import { toPageQuery } from "./pageQueryMapper.js";
 
 /** Criteres de lecture de la liste et de la carte publiques, traduits en parametres de GET /events.
@@ -14,7 +14,7 @@ import { toPageQuery } from "./pageQueryMapper.js";
 export function toEventQuery({ limit, offset = 0, from, keyword = "" } = {}) {
   const query = toPageQuery({ limit, offset });
   if (from) query.set("from", from);
-  const q = keyword.trim().slice(0, MAX_KEYWORD_LENGTH);
+  const q = cleanKeyword(keyword);
   if (q) query.set("q", q);
   return query;
 }

@@ -1,5 +1,5 @@
-import { h, isSafeUrl } from "../../shared/dom.js";
-import { frontUrl } from "../../core/config.js";
+import { h } from "../../shared/dom.js";
+import { setCover } from "../components/cover/cover.js";
 import { presentEventDetail } from "./eventDetailPresenter.js";
 
 export class EventDetailView {
@@ -102,10 +102,7 @@ export class EventDetailView {
     this.root.querySelector("#event-free-entry").toggleAttribute("hidden", !view.showFreeEntry);
     this.root.querySelector("#event-free-reliability").toggleAttribute("hidden", !view.showFreeEntry);
     this.root.querySelector("#event-tags").replaceChildren(...view.tags.map((label) => h("span", {}, label)));
-    const cover = /** @type {HTMLImageElement} */ (this.root.querySelector("#event-cover"));
-    const fallback = frontUrl("assets/img/event-cover-placeholder.svg").href;
-    cover.src = view.coverImageUrl && isSafeUrl(view.coverImageUrl) ? view.coverImageUrl : fallback;
-    cover.onerror = () => { cover.onerror = null; cover.src = fallback; };
+    setCover(/** @type {HTMLImageElement} */ (this.root.querySelector("#event-cover")), view.coverImageUrl);
     this.state.hidden = true;
     this.detail.hidden = false;
     this.status.textContent = "";
