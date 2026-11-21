@@ -1,4 +1,4 @@
-import { api, ApiError } from "../../core/api.js";
+import { api } from "../../core/api.js";
 import { toEvent, toEvents } from "../mappers/eventMapper.js";
 import { toEventPath, toEventQuery } from "../mappers/eventRequestMapper.js";
 import { DEFAULT_PAGE_LIMIT } from "../mappers/pageQueryMapper.js";
@@ -22,14 +22,12 @@ export async function fetchUpcomingEvents(options = {}) {
   return (await fetchUpcomingEventPage(options)).items;
 }
 
-/** Un identifiant invalide ne part pas sur le reseau : meme 404 que l'API.
+/** Un identifiant invalide est refuse par l'API (ApiError 404).
  * @param {number|string} id
  * @param {{ signal?: AbortSignal }} [options]
  */
 export async function fetchEvent(id, { signal } = {}) {
-  const path = toEventPath(id);
-  if (path === null) throw new ApiError("Event not found", { status: 404, code: "NOT_FOUND" });
   /** @type {import("../dto/eventDto.js").EventDto} */
-  const dto = await api.get(path, { signal });
+  const dto = await api.get(toEventPath(id), { signal });
   return toEvent(dto);
 }

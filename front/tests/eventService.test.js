@@ -54,18 +54,20 @@ describe("service evenement", () => {
     assert.equal(fetchMock.mock.callCount(), 0);
   });
 
-  it("valide l'identifiant avant le reseau et conserve les grands identifiants en chaine", async t => {
+  it("laisse l'API valider l'identifiant, encode dans un seul segment du chemin", async t => {
     const paths = [];
     t.mock.method(globalThis, "fetch", async url => {
       paths.push(new URL(url).pathname);
       return Response.json({ data: eventDto() });
     });
-    for (const id of ["", "01", "../events", "1?x=2", 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
-      await assert.rejects(fetchEvent(id), error => error instanceof ApiError && error.status === 404);
-    }
-    assert.equal(paths.length, 0);
-    await fetchEvent("9223372036854775807");
-    assert.deepEqual(paths, ["/events/9223372036854775807"]);
+    for (const id of ["9223372036854775807", "../faq", "1?x=2", 42]) await fetchEvent(id);
+    assert.deepEqual(paths, ["/events/9223372036854775807", "/events/..%2Ffaq", "/events/1%3Fx%3D2", "/events/42"]);
+  });
+
+  it("une reponse 404 de l'API (identifiant invalide ou inconnu) devient une ApiError 404", async t => {
+    t.mock.method(globalThis, "fetch", async () => Response.json(
+      { error: { code: "NOT_FOUND", message: "Event not found" } }, { status: 404 }));
+    await assert.rejects(fetchEvent("abc"), error => error instanceof ApiError && error.status === 404);
   });
 
   it("preserve les erreurs HTTP et leur diagnostic", async t => {

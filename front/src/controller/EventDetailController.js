@@ -1,6 +1,5 @@
 import { isApiError } from "../core/errors.js";
 import { fetchEvent } from "../model/services/eventService.js";
-import { parseEventId } from "../model/domain/eventId.js";
 import { EventDetailView } from "../view/event/EventDetailView.js";
 import { PageLoader } from "./PageLoader.js";
 
@@ -11,16 +10,18 @@ export class EventDetailController {
     this.view = view;
     this.loadEvent = loadEvent;
     this.loader = new PageLoader(view);
+    /** @type {string|null} */
     this.id = null;
     this.started = false;
   }
 
-  /** @param {{ id?: string|null, signal?: AbortSignal }} [options] `id` brut de l'URL ; `signal` : depart de la page */
+  /** @param {{ id?: string|null, signal?: AbortSignal }} [options] `id` de l'URL, valide par l'API (404) ; absent ou vide :
+   * page 404 sans requete. `signal` : depart de la page */
   async start({ id = null, signal } = {}) {
     if (!this.view.isReady || this.started || signal?.aborted) return;
     this.started = true;
     this.loader = new PageLoader(this.view, { signal });
-    this.id = parseEventId(id);
+    this.id = id || null;
     this.view.bind({ onRetry: () => this.load() }, signal);
     if (this.id === null) {
       this.view.showNotFound();

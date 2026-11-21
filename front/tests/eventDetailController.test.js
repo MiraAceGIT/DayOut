@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseEventId } from "../src/model/domain/eventId.js";
 import { toEvent } from "../src/model/mappers/eventMapper.js";
 import { eventDto } from "./fixtures.js";
 
@@ -26,13 +25,18 @@ const detail = () => toEvent({ ...eventDto(), creator: {
   id: 2, display_name: "Garage ISEP", description: null, avatar_url: null, school_name: null,
 } });
 
-describe("validation de l'identifiant d'evenement", () => {
-  it("accepte un entier positif canonique sans perte de precision", () => {
-    for (const id of ["1", "9999", "9007199254740993", "9223372036854775807"]) assert.equal(parseEventId(id), id);
+describe("identifiant d'evenement", () => {
+  it("transmet l'identifiant de l'URL tel quel (grands identifiants sans perte de precision)", async () => {
+    for (const id of ["1", "9223372036854775807", "abc"]) {
+      let requestedId;
+      const controller = new EventDetailController({ view: viewStub(), loadEvent: async (value) => { requestedId = value; return detail(); } });
+      await controller.start({ id });
+      assert.equal(requestedId, id);
+    }
   });
 
-  it("rejette les identifiants absents, malformes ou trop grands sans appeler l'API", async () => {
-    for (const id of [null, "", "abc", "0", "-1", "1.0", "1e2", "01", "+1", " 1", "1 ", "1\n", "9223372036854775808", "9".repeat(100)]) {
+  it("affiche la page 404 sans appeler l'API quand l'identifiant est absent", async () => {
+    for (const id of [null, ""]) {
       const view = viewStub();
       let calls = 0;
       const controller = new EventDetailController({ view, loadEvent: async () => { calls++; return detail(); } });

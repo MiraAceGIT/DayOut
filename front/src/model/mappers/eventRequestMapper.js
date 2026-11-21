@@ -1,4 +1,3 @@
-import { parseEventId } from "../domain/eventId.js";
 import { cleanKeyword } from "../domain/keyword.js";
 import { toPageQuery } from "./pageQueryMapper.js";
 
@@ -19,10 +18,9 @@ export function toEventQuery({ limit, offset = 0, from, keyword = "" } = {}) {
   return query;
 }
 
-/** Chemin de GET /events/{id}, ou null si l'identifiant est invalide (meme 404 que l'API, sans requete).
+/** Chemin de GET /events/{id}. L'API valide l'identifiant (404 s'il est invalide) ; il est seulement encode
+ * pour rester un seul segment du chemin (`../faq` ou `1?x=2` ne visent pas une autre route).
  * @param {number|string} id */
 export function toEventPath(id) {
-  if (typeof id === "number" && !Number.isSafeInteger(id)) return null;
-  const parsed = parseEventId(String(id));
-  return parsed === null ? null : `/events/${parsed}`;
+  return `/events/${encodeURIComponent(String(id))}`;
 }
