@@ -1,5 +1,6 @@
 import { loginUrl } from "../../core/routes.js";
 import { LiveStatus } from "../components/liveStatus/LiveStatus.js";
+import { renderSearchBox } from "../components/searchBox/searchBox.js";
 import { bindTabs } from "../components/tabs/tabs.js";
 import { FilterChips } from "./filters/FilterChips.js";
 import { PointCard } from "./pointCard/PointCard.js";
@@ -10,10 +11,15 @@ import { resultsMessage } from "./homeMessages.js";
 // Le compte est annonce par role=status : on attend la fin de la frappe / du glissement pour ne pas saturer.
 const STATUS_DELAY_MS = 400;
 
+/** Elements cherches dans `root`, le <main> ou le routeur a pose la page carte. */
 export class HomeView {
+  /** @param {ParentNode} [root] */
   constructor(root = document) {
     this.root = root;
-    this.tabs      = [...root.querySelectorAll('#home-tabs [role="tab"]')];
+    // Champ de recherche de l'accueil, synchronise avec celui du header par SearchBox.
+    root.querySelector("#home-search-slot")?.replaceChildren(renderSearchBox({ id: "home-search" }));
+    /** @type {HTMLElement[]} */
+    this.tabs      = [...root.querySelectorAll('#home-tabs [role="tab"]')].map((el) => /** @type {HTMLElement} */ (el));
     this.countEl   = root.querySelector("#home-nearby-count");
     this.errorEl   = root.querySelector("#home-error");
     this.statusEl  = root.querySelector("#home-status");
@@ -45,12 +51,18 @@ export class HomeView {
       && this.statusEl && this.errorEl && this.listEl && this.suggestions.isReady);
   }
 
-  bind({ onRadius, onFilter, onCategory, onSelect, onChangePoint }) {
+  /**
+   * @param {{ onRadius: (km: number) => void, onFilter: (name: string, on: boolean) => void,
+   *   onCategory: (slug: string, on: boolean) => void, onSelect: (id: number) => void, onChangePoint: () => void }} handlers
+   * @param {AbortSignal} [signal] retire les ecouteurs et l'annonce differee au depart de la page
+   */
+  bind({ onRadius, onFilter, onCategory, onSelect, onChangePoint }, signal) {
     this.onSelect = onSelect;
-    bindTabs(this.tabs, { root: this.root });
+    bindTabs(this.tabs, { root: this.root, signal });
     if (this.loginLink) this.loginLink.href = loginUrl();
-    this.point.bind({ onRadius, onChangePoint });
-    this.filters.bind({ onFilter, onCategory });
+    this.point.bind({ onRadius, onChangePoint }, signal);
+    this.filters.bind({ onFilter, onCategory }, signal);
+    signal?.addEventListener("abort", () => this.status.cancel(), { once: true });
   }
 
   setOrigin(point) {

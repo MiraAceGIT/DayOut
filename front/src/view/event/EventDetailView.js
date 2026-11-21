@@ -2,10 +2,12 @@ import { h } from "../../shared/dom.js";
 import { setCover } from "../components/cover/cover.js";
 import { presentEventDetail } from "./eventDetailPresenter.js";
 
+/** Elements cherches dans `root`, le <main> ou le routeur a pose la page ; le titre est celui du document. */
 export class EventDetailView {
-  constructor(root = document) {
+  /** @param {HTMLElement} [root] */
+  constructor(root = document.getElementById("app-root")) {
     this.root = root;
-    this.main = root.querySelector("#app-root");
+    this.main = root;
     this.detail = /** @type {HTMLElement|null} */ (root.querySelector("#event-detail"));
     this.state = /** @type {HTMLElement|null} */ (root.querySelector("#event-state"));
     this.stateTitle = /** @type {HTMLElement|null} */ (root.querySelector("#event-state-title"));
@@ -34,7 +36,7 @@ export class EventDetailView {
     this.error.textContent = "";
     this.retry.hidden = true;
     this.retry.disabled = true;
-    this.root.title = "Événement — DayOut";
+    document.title = "Événement — DayOut";
   }
 
   endLoading() {
@@ -50,7 +52,7 @@ export class EventDetailView {
     this.status.textContent = "Cet événement n’existe pas ou n’est plus disponible.";
     this.error.textContent = "";
     this.retry.hidden = true;
-    this.root.title = "404 — Événement introuvable — DayOut";
+    document.title = "404 — Événement introuvable — DayOut";
     this.stateTitle.focus();
   }
 
@@ -62,7 +64,7 @@ export class EventDetailView {
     this.status.textContent = "";
     this.error.textContent = message;
     this.retry.hidden = false;
-    this.root.title = "Chargement impossible — DayOut";
+    document.title = "Chargement impossible — DayOut";
     this.stateTitle.focus();
   }
 
@@ -107,6 +109,6 @@ export class EventDetailView {
     this.detail.hidden = false;
     this.status.textContent = "";
     this.error.textContent = "";
-    this.root.title = view.documentTitle;
+    document.title = view.documentTitle;
   }
 }

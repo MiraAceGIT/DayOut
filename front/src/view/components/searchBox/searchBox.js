@@ -29,11 +29,17 @@ export function renderSearchBox({ id = INPUT_ID } = {}) {
   );
 }
 
-/** A construire apres boot() ; sans champ, tout est sans effet. Les champs du header et de l'accueil restent synchronises. */
+/** Les champs du header et de l'accueil restent synchronises ; sans champ, tout est sans effet.
+ * Les champs sont relus a chaque appel : l'ordre de creation de la page et de ce SearchBox est indifferent. */
 export class SearchBox {
+  /** @param {ParentNode} [root] tout le document : le champ du header est hors du <main> */
   constructor(root = document) {
-    /** @type {HTMLInputElement[]} */
-    this.inputs = [...root.querySelectorAll(`input.${INPUT_CLASS}`)].map((el) => /** @type {HTMLInputElement} */ (el));
+    this.root = root;
+  }
+
+  /** @returns {HTMLInputElement[]} */
+  get inputs() {
+    return [...this.root.querySelectorAll(`input.${INPUT_CLASS}`)].map((el) => /** @type {HTMLInputElement} */ (el));
   }
 
   setQuery(query) {

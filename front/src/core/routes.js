@@ -22,10 +22,3 @@ export function currentRoute(pathname = location.pathname) {
   const rest = pathname.startsWith(base) ? pathname.slice(base.length) : pathname.slice(1);
   return "/" + rest.replace(/^index\.html$/, "").replace(/\/+$/, "");
 }
-
-export function replaceSearchParam(name, value) {
-  const url = new URL(location.href);
-  if (value.trim()) url.searchParams.set(name, value);
-  else url.searchParams.delete(name);
-  history.replaceState(history.state, "", url);
-}

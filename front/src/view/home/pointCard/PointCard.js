@@ -17,9 +17,10 @@ export class PointCard {
     return Boolean(this.labelEl && this.radiusEl && this.radiusOut);
   }
 
-  bind({ onRadius, onChangePoint }) {
-    this.radiusEl.addEventListener("input", () => onRadius(Number(this.radiusEl.value)));
-    this.changeBtn?.addEventListener("click", () => onChangePoint());
+  /** @param {{ onRadius: (km: number) => void, onChangePoint: () => void }} handlers @param {AbortSignal} [signal] */
+  bind({ onRadius, onChangePoint }, signal) {
+    this.radiusEl.addEventListener("input", () => onRadius(Number(this.radiusEl.value)), { signal });
+    this.changeBtn?.addEventListener("click", () => onChangePoint(), { signal });
   }
 
   setOrigin(point) {

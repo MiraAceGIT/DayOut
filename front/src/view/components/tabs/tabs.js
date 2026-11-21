@@ -1,5 +1,6 @@
 /** Onglets ARIA sur markup existant : activation automatique, fleches, Debut/Fin, tabindex itinerant. */
-export function bindTabs(tabs, { root = document } = {}) {
+/** @param {HTMLElement[]} tabs @param {{ root?: ParentNode, signal?: AbortSignal }} [options] */
+export function bindTabs(tabs, { root = document, signal } = {}) {
   const select = (tab, { focus = false } = {}) => {
     for (const t of tabs) {
       const active = t === tab;
@@ -12,7 +13,7 @@ export function bindTabs(tabs, { root = document } = {}) {
   };
 
   for (const tab of tabs) {
-    tab.addEventListener("click", () => select(tab));
+    tab.addEventListener("click", () => select(tab), { signal });
     tab.addEventListener("keydown", (e) => {
       const i = tabs.indexOf(tab);
       const last = tabs.length - 1;
@@ -20,6 +21,6 @@ export function bindTabs(tabs, { root = document } = {}) {
       if (next === undefined) return;
       e.preventDefault();
       select(tabs[next], { focus: true });
-    });
+    }, { signal });
   }
 }

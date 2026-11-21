@@ -1,7 +1,6 @@
 import { MAX_PAGE_LIMIT } from "../core/apiLimits.js";
 import { isApiError, messageFor } from "../core/errors.js";
 import { currentPosition } from "../core/geolocation.js";
-import { replaceSearchParam } from "../core/routes.js";
 import { COVERAGE_AREA } from "../model/domain/coverageArea.js";
 import { cleanKeyword } from "../model/domain/keyword.js";
 import { normalizePageLimit } from "../model/mappers/pageQueryMapper.js";
@@ -37,11 +36,19 @@ export class HomeController {
     this.searches = new LatestTask();
     this.origin = new OriginPicker({ map, getPosition, onOrigin: (point) => this.applyOrigin(point) });
     this.keyword = "";
+    this.started = false;
+    /** @type {(name: string, value: string) => void} */
+    this.setParam = () => {};
   }
 
-  /** @param {{ query?: string, signal?: AbortSignal }} [options] `signal` : annule quand on quitte la carte. */
-  async start({ query = "", signal } = {}) {
-    if (!this.view.isReady || signal?.aborted) return;
+  /**
+   * @param {{ query?: string, signal?: AbortSignal, setParam?: (name: string, value: string) => void }} [options]
+   * `signal` : annule quand on quitte la carte ; `setParam` : met a jour l'adresse (?q=) par le routeur.
+   */
+  async start({ query = "", signal, setParam = () => {} } = {}) {
+    if (!this.view.isReady || this.started || signal?.aborted) return;
+    this.started = true;
+    this.setParam = setParam;
     this.keyword = cleanKeyword(query);
     const { origin, radiusKm } = this.state.criteria;
 
@@ -51,12 +58,13 @@ export class HomeController {
       onCategory: (slug, on) => this.toggleCategory(slug, on),
       onSelect: (id) => this.select(id, { from: "list" }),
       onChangePoint: () => this.map.promptPick(),
-    });
+    }, signal);
     this.searchBox.bindSubmit((q) => this.search(q), { signal });
     this.map.init({
       origin,
       radiusKm,
       area: COVERAGE_AREA,
+      signal,
       handlers: {
         onPick: (point) => this.origin.pick(point),
         onSelect: (id) => this.select(id, { from: "map" }),
@@ -115,7 +123,7 @@ export class HomeController {
     const keyword = cleanKeyword(query);
     if (keyword === this.keyword && this.state.isReady) return Promise.resolve();
     this.keyword = keyword;
-    replaceSearchParam("q", keyword);
+    this.setParam("q", keyword);
     return this.load();
   }
 

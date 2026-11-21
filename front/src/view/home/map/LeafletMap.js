@@ -28,8 +28,9 @@ export class LeafletMap {
     return Boolean(this.L && this.map);
   }
 
-  /** Renvoie "ready", "unavailable" (Leaflet absent) ou "absent" (pas de conteneur). */
-  init({ origin, radiusKm, area, handlers }) {
+  /** Renvoie "ready", "unavailable" (Leaflet absent) ou "absent" (pas de conteneur).
+   * `signal` retire l'ecouteur clavier pose sur le conteneur au depart de la page. */
+  init({ origin, radiusKm, area, handlers, signal }) {
     if (!this.containerEl) return "absent";
     if (!this.L) {
       this.containerEl.classList.add("map-view__map--unavailable");
@@ -104,7 +105,7 @@ export class LeafletMap {
       if (e.key !== "Enter" || e.target !== this.containerEl) return;
       const c = this.map.getCenter();
       handlers.onPick({ lat: c.lat, lng: c.lng });
-    });
+    }, { signal });
     return "ready";
   }
 

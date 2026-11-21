@@ -6,6 +6,7 @@ import { faqStatus } from "./faqMessages.js";
 
 /** Les elements sont garantis par `isReady`, verifie par le controleur avant tout appel. */
 export class FaqView {
+  /** @param {ParentNode} [root] le <main> ou le routeur a pose la page */
   constructor(root = document) {
     this.list = /** @type {HTMLElement} */ (root.querySelector("#faq-list"));
     this.status = /** @type {HTMLElement} */ (root.querySelector("#faq-status"));

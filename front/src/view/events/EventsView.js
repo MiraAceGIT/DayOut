@@ -1,7 +1,9 @@
 import { renderEventCard } from "../components/eventCard/eventCard.js";
 import { errorStatus, paginationStatus } from "./eventsMessages.js";
 
+/** Elements cherches dans `root`, le <main> ou le routeur a pose la page. */
 export class EventsView {
+  /** @param {ParentNode} [root] */
   constructor(root = document) {
     this.listEl   = root.querySelector("#events-list");
     this.errorEl  = root.querySelector("#events-error");

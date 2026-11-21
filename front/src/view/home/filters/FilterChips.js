@@ -19,13 +19,15 @@ export class FilterChips {
     return Boolean(this.filtersEl && this.categoriesEl);
   }
 
-  bind({ onFilter, onCategory }) {
+  /** @param {{ onFilter: (name: string, on: boolean) => void, onCategory: (slug: string, on: boolean) => void }} handlers
+   * @param {AbortSignal} [signal] */
+  bind({ onFilter, onCategory }, signal) {
     this.onCategory = onCategory;
     this.filtersEl.addEventListener("click", (e) => {
       const chip = e.target.closest("button[data-filter]");
       if (!chip) return;
       onFilter(chip.dataset.filter, toggle(chip));
-    });
+    }, { signal });
   }
 
   renderCategories(categories, active = new Set()) {

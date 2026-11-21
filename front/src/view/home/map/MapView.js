@@ -2,7 +2,9 @@ import { LeafletMap } from "./LeafletMap.js";
 import { MapLegend } from "./MapLegend.js";
 import { MapStatus } from "./MapStatus.js";
 
+/** Facade de la carte pour le controleur : Leaflet, legende et messages, cherches dans `root` (le <main>). */
 export class MapView {
+  /** @param {ParentNode} [root] */
   constructor(root = document) {
     this.leaflet = new LeafletMap(root.querySelector("#home-map"));
     this.legend = new MapLegend(root.querySelector("#home-legend"));

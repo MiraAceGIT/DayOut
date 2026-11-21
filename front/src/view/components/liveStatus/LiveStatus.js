@@ -11,4 +11,9 @@ export class LiveStatus {
     if (delay > 0) this.timer = setTimeout(() => { this.el.textContent = message; }, delay);
     else this.el.textContent = message;
   }
+
+  /** Abandonne une annonce differee (page quittee). */
+  cancel() {
+    clearTimeout(this.timer);
+  }
 }

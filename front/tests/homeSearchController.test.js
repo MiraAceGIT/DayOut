@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, before, describe, it } from "node:test";
+import { describe, it } from "node:test";
 import { event } from "./fixtures.js";
 
 // Le controleur importe la configuration navigateur ; vue, carte et champ de recherche sont injectes.
@@ -24,16 +24,6 @@ function stubs() {
 }
 
 describe("HomeController : recherche par mot-cle", () => {
-  // search() met a jour l'adresse (?q=) via location / history.
-  before(() => {
-    globalThis.location = /** @type {any} */ ({ href: "http://localhost/" });
-    globalThis.history = /** @type {any} */ ({ state: null, replaceState() {} });
-  });
-  after(() => {
-    delete globalThis.location;
-    delete globalThis.history;
-  });
-
   it("n'affiche pas d'erreur quand on quitte la carte pendant le chargement", async () => {
     const { view, map, searchBox } = stubs();
     const page = new AbortController();
@@ -55,11 +45,22 @@ describe("HomeController : recherche par mot-cle", () => {
     const calls = [];
     const loadEvents = async (options) => { calls.push(options.query); return [event({ id: 1 })]; };
     const controller = new HomeController({ view, map, searchBox, loadEvents });
-    await controller.start({ query: "  jazz " });
+    const params = [];
+    await controller.start({ query: "  jazz ", setParam: (name, value) => params.push([name, value]) });
     await searchBox.submit("jazz");
     await searchBox.submit("rock");
     await searchBox.submit("");
     assert.deepEqual(calls, ["jazz", "rock", ""]);
+    assert.deepEqual(params, [["q", "rock"], ["q", ""]], "l'adresse suit la recherche, par le routeur");
+  });
+
+  it("ne demarre qu'une fois", async () => {
+    const { view, map, searchBox } = stubs();
+    let loads = 0;
+    const controller = new HomeController({ view, map, searchBox, loadEvents: async () => { loads += 1; return []; } });
+    await controller.start();
+    await controller.start();
+    assert.equal(loads, 1);
   });
 
   it("ne garde que le resultat de la recherche la plus recente", async () => {

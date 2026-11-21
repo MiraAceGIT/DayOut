@@ -17,11 +17,13 @@ export class FaqController {
     /** @type {FaqEntry[]} */
     this.entries = [];
     this.query = "";
+    this.started = false;
   }
 
   /** @param {{ signal?: AbortSignal }} [options] `signal` : depart de la page */
   async start({ signal } = {}) {
-    if (!this.view.isReady || signal?.aborted) return;
+    if (!this.view.isReady || this.started || signal?.aborted) return;
+    this.started = true;
     this.signal = signal;
     this.loader = new PageLoader(this.view, { signal });
     this.view.bind({ onRetry: () => this.load(), onQuery: (query) => this.filter(query) }, signal);
