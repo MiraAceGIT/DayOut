@@ -351,11 +351,76 @@ INSERT INTO faq_entries (question, answer, sort_order, active) VALUES
 -- Legal pages
 INSERT INTO legal_pages (slug, title, body_md) VALUES
   ('cgu',             'Conditions Generales d''Utilisation',
-   '# CGU DayOut\n\nEn utilisant DayOut, vous acceptez les presentes conditions...'),
+   '# La plateforme **DayOut** est une solution dédiée à la vie étudiante, permettant de découvrir et de participer à des événements inter-écoles. L''accès et l''utilisation de la plateforme impliquent l''acceptation sans réserve des présentes Conditions Générales d''Utilisation.
+
+  ## Article 1 : Objet
+  Les présentes CGU ont pour objet de définir les modalités d''accès et d''utilisation de la plateforme DayOut, ainsi que les droits et obligations des utilisateurs dans le cadre de l''organisation et de la participation aux événements étudiants répertoriés.
+
+  ## Article 2 : Public éligible et Vérification
+  * **Restriction d''accès** : L''utilisation de DayOut est **réservée aux étudiants d''écoles d''ingénieurs**.
+  * **Vérification** : L''inscription et la validation du compte s''effectuent obligatoirement par la vérification d''un e-mail institutionnel fourni par l''école partenaire. Tout compte dont l''e-mail ne respecte pas cette condition sera refusé ou supprimé.
+
+  ## Article 3 : Création de compte et Rôles
+  * **Création** : L''utilisateur s''engage à fournir des informations exactes lors de son inscription via son e-mail d''école.
+  * **Rôles** : La plateforme distingue plusieurs statuts (participants, créateurs d''événements validés, administrateurs). Chaque rôle dispose de droits spécifiques en lecture et en écriture sur l''API.
+
+  ## Article 4 : Responsabilités des créateurs d''événements
+  * Les créateurs d''événements (BDE, associations, services de vie étudiante) sont **seuls responsables** du contenu publié (titres, descriptions, horaires, lieux) et de la bonne exécution des événements qu''ils organisent.
+  * Ils s''engagent à respecter les règles de sécurité et les critères de publication en vigueur sur la plateforme.
+
+  ## Article 5 : Événements payants et Billetterie externe
+  * **Absence de gestion financière** : DayOut agit exclusivement comme une plateforme de mise en relation et d''information. **DayOut ne gère aucun paiement**.
+  * **Billetterie externe** : Pour tout événement payant, les transactions financières s''effectuent obligatoirement par l''intermédiaire d''une billetterie externe tierce. DayOut décline toute responsabilité en cas de litige financier, d''annulation ou de remboursement géré par ces prestataires externes.
+
+  ## Article 6 : QR Code de présence
+  La participation à certains événements peut être validée par un système de **QR code de présence** généré sur la plateforme. Ce dispositif permet de certifier l''assiduité des participants et alimente le calcul de leur score de fiabilité.
+
+  ## Article 7 : Score de fiabilité
+  Pour garantir la sécurité, la confiance et le sérieux de la communauté inter-écoles :
+  * **Calcul** : Un score de fiabilité est attribué à chaque utilisateur. Il évolue dynamiquement en fonction de son comportement, de son assiduité aux événements réservés (validée par QR code) et du suivi des règles.
+  * **Effets** : Un score de fiabilité insuffisant (en deçà du seuil minimal requis) entraîne des restrictions automatiques, telles que l''impossibilité de s''inscrire à de nouveaux événements.
+  * **Correction** : Le score peut être amélioré par une participation active, respectueuse et assidue aux événements futurs ou via les procédures de régularisation prévues.
+
+  ## Article 8 : Modération et Signalements
+  * Les utilisateurs ont la possibilité de signaler tout contenu inapproprié, tout événement illicite ou tout comportement contraire aux valeurs de la communauté.
+  * L''équipe de modération et les administrateurs disposent du droit de supprimer des contenus signalés, de masquer des événements ou de suspendre/bannir les comptes en infraction.
+
+  ## Article 9 : Données personnelles (RGPD)
+  Conformément au Règlement Général sur la Protection des Données (RGPD) :
+  * **Collecte limitée** : La collecte de données est strictement limitée au strict nécessaire, à savoir l''e-mail institutionnel et l''école de rattachement.
+  * **Géolocalisation** : La géolocalisation du navigateur n''est activée qu''avec le consentement exprès de l''utilisateur pour afficher les événements à proximité.
+  * **Suppression de compte** : L''utilisateur dispose d''un droit d''accès, de rectification et de **suppression totale de son compte** et de ses données personnelles à tout moment depuis les paramètres de son profil.
+
+  ## Article 10 : Résiliation
+  * **À l''initiative de l''utilisateur** : L''utilisateur peut cesser d''utiliser DayOut et demander la clôture définitive de son compte à tout moment.
+  * **À l''initiative de la plateforme** : DayOut se réserve le droit de suspendre ou de résilier l''accès d''un utilisateur en cas de violation grave ou répétée des présentes CGU, de tentative de fraude ou de score de fiabilité durablement critique.'),
   ('privacy',         'Politique de confidentialite',
    '# Vie privee\n\nDayOut collecte le minimum de donnees necessaire au service...'),
   ('mentions-legales','Mentions legales',
-   '# Mentions legales\n\nDayOut est un projet etudiant ISEP A1 Dev Web...'),
+   '## 1. Éditeur du site
+  La plateforme **DayOut** est éditée dans un cadre académique et éducatif par une équipe projet étudiante de l''**ISEP** (Institut Supérieur d''Électronique de Paris).
+
+  * **Établissement de rattachement** : ISEP — 10 Rue de Vanves, 92130 Issy-les-Moulineaux / 28 Rue Notre-Dame-des-Champs, 75006 Paris.
+  * **Équipe de développement (Projet étudiant A1)** : PONNOU Yovanne, MAZUR Jakub, CHOULET Anthony, PAILLARD Julia, GOUARAND Marie-Jeanne et GUEDDOU Bilal.
+
+  ## 2. Hébergeur
+  L''hébergement technique de l''application web et de ses bases de données est assuré conformément aux dispositions légales en vigueur [NOM HEB.].
+
+  ## 3. Contact
+  Pour toute question relative au fonctionnement du site, au signalement d''un contenu ou à l''exercice de vos droits concernant vos données personnelles, vous pouvez contacter l''équipe projet :
+  * **Par courrier électronique** : [EMAIL D_O]
+  * **Via la plateforme** : Par le biais du formulaire de contact mis à disposition des utilisateurs.
+
+  ## 4. Propriété intellectuelle
+  L''ensemble des éléments constitutifs de la plateforme **DayOut** (code source, architecture logicielle, textes, structure, éléments graphiques, logos et base de données) est protégé par les dispositions du Code de la propriété intellectuelle.
+
+  Ce projet est réalisé à des fins strictement académiques et éducatives. Toute reproduction, représentation, modification, publication ou adaptation totale ou partielle de ces éléments, quel que soit le moyen ou le procédé utilisé, est interdite sans l''autorisation écrite préalable des auteurs.
+
+  ## 5. Crédits et Services tiers
+  La plateforme **DayOut** s''appuie sur des technologies libres et des services externes pour enrichir l''expérience utilisateur :
+  * **Cartographie** : Les fonds de carte et données géographiques sont fournis par les contributeurs **OpenStreetMap** (sous licence ODbL) et affichés via la bibliothèque **Leaflet**.
+  * **Données météorologiques** : Les prévisions et informations météo affichées pour les événements proviennent d''une **API météo** tierce partenaire.
+  * **Données de transports** : Les informations d''accès et d''itinéraires en transports en commun s''appuient sur une **API transports** ouverte (Île-de-France Mobilités / données publiques de mobilité).'),
   ('cookies',         'Cookies',
    '# Cookies\n\nDayOut utilise uniquement des cookies techniques (session).');
 
