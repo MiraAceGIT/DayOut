@@ -2,22 +2,17 @@ import { categoriesIn } from "../domain/category.js";
 import { searchEvents } from "../domain/event/eventSearch.js";
 import { suggestEvents } from "../domain/event/eventSuggestions.js";
 
-/** @typedef {{ lat: number, lng: number, label?: string, source: string }} Origin `source` : default | map | device */
+/** @typedef {{ lat: number, lng: number, label?: string, source: string }} Origin */
 
-/**
- * @type {Origin}
- */
+/** @type {Origin} */
 export const DEFAULT_ORIGIN = Object.freeze({ lat: 48.8455, lng: 2.3275, label: "ISEP – Notre-Dame-des-Champs", source: "default" });
 export const DEFAULT_RADIUS_KM = 3;
 
 const FLAGS = new Set(["weekend", "free", "available"]);
 
-/**
- * Les criteres sont modifiables avant la fin du chargement ; `results()` n'a de sens qu'une fois `isReady`.
- */
 export class MapSearch {
   constructor({ origin = DEFAULT_ORIGIN, radiusKm = DEFAULT_RADIUS_KM } = {}) {
-    this.status = "loading"; // "loading" | "ready" | "error" : pas de rendu de liste hors "ready"
+    this.status = "loading"; // "loading" | "ready" | "error"
     this.events = [];
     this.keyword = "";
     this.truncated = false;
@@ -36,7 +31,7 @@ export class MapSearch {
     return this.status === "ready";
   }
 
-  /** `limit` demande a l'API : l'atteindre signifie que des evenements a venir peuvent manquer (pas de filtre de date). */
+  // `limit` atteint : des evenements a venir peuvent manquer.
   load(events, { limit, keyword = "" }) {
     this.events = events;
     this.keyword = keyword;

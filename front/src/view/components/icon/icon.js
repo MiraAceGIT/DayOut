@@ -1,5 +1,4 @@
-// Icones Lucide (trace 2 px) construites avec les API DOM SVG : h() cree des elements HTML, pas SVG.
-// Donnees statiques uniquement : aucune donnee utilisateur ne passe ici.
+// Icones Lucide via createElementNS : h() cree des elements HTML, pas SVG.
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const ICONS = {
@@ -32,7 +31,6 @@ function svgEl(tag, attrs) {
   return el;
 }
 
-/** Icone decorative (aria-hidden) : le nom accessible doit venir du texte ou du controle qui la contient. */
 export function icon(name, { size = 20, className = "icon" } = {}) {
   const svg = svgEl("svg", {
     viewBox: "0 0 24 24",

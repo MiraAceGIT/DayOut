@@ -1,7 +1,6 @@
 import { isLatLng } from "../../../shared/geo.js";
 import { ILE_DE_FRANCE_OUTLINE } from "./ileDeFranceOutline.js";
 
-// Rectangle englobant : cadre la carte et ecarte vite les points lointains avant le test du contour.
 export const COVERAGE_AREA = Object.freeze({
   name: "Île-de-France",
   outline: ILE_DE_FRANCE_OUTLINE,

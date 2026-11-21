@@ -1,5 +1,5 @@
 {
-  // Tests (node:test) : memes options que ../jsconfig.json, sans strictNullChecks.
+  // Sans strictNullChecks : les assertions des tests garantissent deja les valeurs.
   "extends": "../jsconfig.json",
   "compilerOptions": {
     "strictNullChecks": false

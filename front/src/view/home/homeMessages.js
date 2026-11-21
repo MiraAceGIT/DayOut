@@ -1,7 +1,6 @@
-// Textes de statut de la carte (annonces role=status) : fonctions pures, testees sans DOM.
 import { pluralize } from "../../shared/format.js";
 
-/** `keyword` / `total` : recherche par mot-cle ; `total` = resultats de l'API avant rayon et filtres. */
+// `total` : resultats de l'API, avant rayon et filtres.
 export function resultsMessage({ items, inCircle, withoutPosition, loadedCap = 0, keyword = "", total = 0 }) {
   if (keyword && total === 0) {
     return `Aucun résultat pour « ${keyword} ». Élargis ta recherche : essaie un mot plus court, une autre orthographe ou le nom d'une catégorie.`;

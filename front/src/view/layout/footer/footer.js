@@ -2,7 +2,7 @@ import { h } from "../../../shared/dom.js";
 import { routeUrl } from "../../../core/routes.js";
 import { renderLogo } from "../../components/logo/logo.js";
 
-// Pages pas encore faites : le routeur affiche "Page introuvable" (pages/not-found.html) en attendant.
+// Pages pas encore faites : "Page introuvable" en attendant.
 const FOOTER_LINKS = [
   { label: "FAQ",              path: "/faq" },
   { label: "CGU",              path: "/cgu" },
@@ -12,7 +12,6 @@ const FOOTER_LINKS = [
   { label: "À propos",         path: "/about" },
 ];
 
-/** Dessine le footer une seule fois (app/boot.js). */
 export function renderFooter() {
   const host = document.querySelector("footer[data-layout]");
   if (!host) return;

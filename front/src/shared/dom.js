@@ -1,11 +1,10 @@
-// Securite : enfants string -> noeuds texte (jamais de HTML) ; innerHTML/outerHTML/srcdoc, handlers `on*`
-// en string et URL non http(s) dans href/src... (javascript:, data:) sont refuses.
+// Securite : jamais de HTML brut, de handler en string ni d'URL non http(s) (javascript:, data:).
 
 const FORBIDDEN_PROPS = new Set(["innerhtml", "outerhtml", "srcdoc"]);
 const URL_ATTRS = new Set(["href", "src", "action", "formaction", "poster", "cite", "xlink:href"]);
 const SAFE_PROTOCOLS = new Set(["http:", "https:"]);
 
-/** new URL() normalise comme le navigateur : `java\tscript:` ou ` javascript:` sont donc bien bloques. */
+// new URL() normalise comme le navigateur : `java\tscript:` est bien bloque.
 export function isSafeUrl(value) {
   try {
     return SAFE_PROTOCOLS.has(new URL(String(value), document.baseURI).protocol);
@@ -60,7 +59,6 @@ function appendChildren(el, children) {
   }
 }
 
-/** props : `class` (string|tableau), `dataset` (objet), `on<Event>` (fonction) ; true -> attribut vide, false/null -> ignore. */
 export function h(tag, props = {}, ...children) {
   const el = document.createElement(tag);
   for (const [name, value] of Object.entries(props ?? {})) setProp(el, name, value);

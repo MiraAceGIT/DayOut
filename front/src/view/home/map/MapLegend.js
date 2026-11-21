@@ -6,7 +6,7 @@ export class MapLegend {
     this.legendEl = legendEl;
   }
 
-  /** Categories sans couleur regroupees sous "Autres" (meme gris, indistinguables). */
+  // Les categories sans couleur ont toutes le meme gris : une seule entree "Autres".
   render(categories) {
     if (!this.legendEl) return;
     const item = (className, label) => h("li", { class: ["map-legend__item", className] }, renderCategoryDot(), label);

@@ -15,15 +15,13 @@ export async function fetchUpcomingEventPage({ limit = DEFAULT_PAGE_LIMIT, offse
   };
 }
 
-/** Compatibilite avec l'accueil : il ne consomme que les evenements de la premiere page.
- * @param {{ limit?: number, query?: string, signal?: AbortSignal }} [options]
+/** @param {{ limit?: number, query?: string, signal?: AbortSignal }} [options]
  */
 export async function fetchUpcomingEvents(options = {}) {
   return (await fetchUpcomingEventPage(options)).items;
 }
 
-/** Un identifiant invalide est refuse par l'API (ApiError 404).
- * @param {number|string} id
+/** @param {number|string} id
  * @param {{ signal?: AbortSignal }} [options]
  */
 export async function fetchEvent(id, { signal } = {}) {

@@ -2,7 +2,6 @@ import { h } from "../../../shared/dom.js";
 import { pluralize } from "../../../shared/format.js";
 import { renderEventCard } from "../../components/event/eventCard/eventCard.js";
 
-/** Les suggestions utilisent le meme rendu de carte que la page liste. */
 export class SuggestionsList {
   constructor({ listEl, statusEl, errorEl }) {
     this.listEl = listEl;

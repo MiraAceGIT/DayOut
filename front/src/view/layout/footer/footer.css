@@ -6,7 +6,6 @@
   --focus-halo: var(--color-brand);
 }
 
-/* De haut en bas et centre : logo + slogan, liens, credits. */
 .site-footer__inner {
   display: flex;
   flex-direction: column;

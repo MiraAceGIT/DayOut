@@ -1,4 +1,3 @@
-/* --cat-color est lu par les pastilles, les carres des cartes, les marqueurs et la legende. */
 .cat--soiree     { --cat-color: var(--color-cat-soiree); }
 .cat--sport      { --cat-color: var(--color-cat-sport); }
 .cat--conference { --cat-color: var(--color-cat-conference); }
@@ -6,7 +5,6 @@
 .cat--culture    { --cat-color: var(--color-cat-culture); }
 .cat--forum      { --cat-color: var(--color-cat-forum); }
 
-/* Point decoratif : le libelle a cote porte l'information, la couleur n'est qu'un repere. */
 .cat-dot {
   flex: none;
   display: inline-block;

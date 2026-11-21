@@ -11,7 +11,7 @@ export function renderCategoryPill(category, { keyword = "" } = {}) {
   );
 }
 
-/** Texte en casse normale : le CSS met en majuscules. */
+// Casse normale : le CSS met en majuscules.
 export function renderPricePill(event) {
   if (event.isPaid === false) {
     return h("span", { class: "pill pill--success" }, "Gratuit");

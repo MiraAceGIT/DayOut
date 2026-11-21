@@ -2,8 +2,6 @@ import { h } from "../../shared/dom.js";
 import { setCover } from "../components/cover/cover.js";
 import { presentEventDetail } from "./eventDetailPresenter.js";
 
-/** Elements cherches dans `root`, le <main> ou le routeur a pose la page ; garantis par `isReady` (ceux de l'etat)
- * et par pages/event/event.html (ceux du detail). Le titre est celui du document. */
 export class EventDetailView {
   /** @param {HTMLElement} [root] */
   constructor(root = /** @type {HTMLElement} */ (document.getElementById("app-root"))) {
@@ -18,7 +16,7 @@ export class EventDetailView {
     this.retry = /** @type {HTMLButtonElement} */ (root.querySelector("#event-retry"));
   }
 
-  /** Element du detail, present dans pages/event/event.html. @param {string} selector @returns {HTMLElement} */
+  /** @param {string} selector @returns {HTMLElement} */
   el(selector) {
     return /** @type {HTMLElement} */ (this.root.querySelector(selector));
   }
@@ -27,7 +25,7 @@ export class EventDetailView {
     return Boolean(this.main && this.detail && this.state && this.stateTitle && this.code && this.status && this.error && this.retry);
   }
 
-  /** @param {{ onRetry: () => void }} handlers @param {AbortSignal} [signal] retire l'ecouteur au depart de la page */
+  /** @param {{ onRetry: () => void }} handlers @param {AbortSignal} [signal] */
   bind({ onRetry }, signal) {
     this.retry.addEventListener("click", onRetry, { signal });
   }

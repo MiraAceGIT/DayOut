@@ -5,7 +5,7 @@ import { routeUrl } from "../../../core/routes.js";
 const LOGO_LIGHT = "assets/img/dayout-logo-light.svg";
 const LOGO_RATIO = 591.8 / 258; // viewBox du SVG
 
-/** `width` en px : 96 minimum (charte). */
+// Charte : 96 px de large minimum.
 export function renderLogo({ width = 110, className = "" } = {}) {
   return h("a", { class: ["logo", className], href: routeUrl("/") },
     h("img", {

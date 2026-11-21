@@ -1,5 +1,3 @@
-// Contrat front <-> back : la spec OpenAPI du back (assemblee par PHP, comme sur /openapi.json) est la reference.
-// Un champ ajoute ou renomme cote back sans etre suivi ici (typedef, toEvent, toEventDto) fait echouer ce test.
 // Sans PHP, le test est ignore, sauf si REQUIRE_CONTRACT=1 (CI) : il echoue alors.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -16,7 +14,6 @@ const DTO_FILE = new URL("../src/model/dto/", import.meta.url);
 function loadSpec() {
   const php = [process.env.PHP, "php", "C:/xampp/php/php.exe"].filter(Boolean)
     .find((bin) => bin === "php" || existsSync(bin));
-  // L'assembleur est autonome : le front n'a pas besoin d'installer les dependances Composer du back.
   const code = 'require "src/Shared/Yaml.php"; require "src/Docs/OpenApiSpec.php"; echo json_encode(App\\Docs\\OpenApiSpec::load("docs/openapi"));';
   try {
     return JSON.parse(execFileSync(php, ["-r", code], { cwd: BACK, encoding: "utf8" }));
@@ -26,20 +23,17 @@ function loadSpec() {
   }
 }
 
-/** Noms des @property du typedef `name` dans src/model/dto/<file>. */
 function typedefProperties(file, name) {
   const source = readFileSync(new URL(file, DTO_FILE), "utf8");
   const block = source.match(new RegExp(`@typedef \\{object\\} ${name}\\b([\\s\\S]*?)\\*/`))?.[1] ?? "";
   return [...block.matchAll(/@property \{[^}]+\} (\w+)/g)].map((m) => m[1]);
 }
 
-/** Une valeur plausible par type de schema : toEvent doit pouvoir la lire sans planter. */
 function sample(schema) {
   if (schema.$ref) return {};
   return { integer: 1, number: 1.5, boolean: true, array: [], object: {} }[schema.type] ?? "x";
 }
 
-/** Appelle `fn(dto)` et renvoie les cles lues sur le DTO. */
 function keysReadBy(fn, dto) {
   const read = new Set();
   fn(new Proxy(dto, { get: (target, key) => (read.add(String(key)), target[key]) }));

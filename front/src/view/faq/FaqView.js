@@ -4,9 +4,8 @@ import { faqStatus } from "./faqMessages.js";
 
 /** @typedef {import("../../model/mappers/faq/faqMapper.js").FaqEntry} FaqEntry */
 
-/** Les elements sont garantis par `isReady`, verifie par le controleur avant tout appel. */
 export class FaqView {
-  /** @param {ParentNode} [root] le <main> ou le routeur a pose la page */
+  /** @param {ParentNode} [root] */
   constructor(root = document) {
     this.list = /** @type {HTMLElement} */ (root.querySelector("#faq-list"));
     this.status = /** @type {HTMLElement} */ (root.querySelector("#faq-status"));
@@ -20,11 +19,9 @@ export class FaqView {
     return Boolean(this.list && this.status && this.error && this.retry && this.searchField && this.search);
   }
 
-  /** @param {{ onRetry: () => void, onQuery: (query: string) => void }} handlers
-   * @param {AbortSignal} [signal] retire les ecouteurs au depart de la page */
+  /** @param {{ onRetry: () => void, onQuery: (query: string) => void }} handlers @param {AbortSignal} [signal] */
   bind({ onRetry, onQuery }, signal) {
     this.retry.addEventListener("click", onRetry, { signal });
-    // Filtre a chaque frappe : les questions sont deja chargees, aucun appel reseau.
     this.search.addEventListener("input", () => onQuery(this.search.value), { signal });
   }
 
@@ -40,8 +37,8 @@ export class FaqView {
     this.list.setAttribute("aria-busy", "false");
   }
 
-  /** @param {FaqEntry[]} entries questions a afficher (deja filtrees)
-   * @param {{ query?: string, total?: number }} [search] saisie du filtre et nombre total de questions
+  /** @param {FaqEntry[]} entries
+   * @param {{ query?: string, total?: number }} [search]
    * @param {AbortSignal} [signal] */
   showEntries(entries, { query = "", total = entries.length } = {}, signal) {
     /** @type {{ button: HTMLElement, panel: HTMLElement } | null} */

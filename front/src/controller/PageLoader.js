@@ -7,11 +7,6 @@ import { isApiError, messageFor } from "../core/errors.js";
  * @property {(message: string) => void} showError
  */
 
-/**
- * Cycle d'un chargement affiche par une view : un seul a la fois, chargement -> succes ou message d'erreur,
- * et plus rien n'est touche une fois la page quittee (`signal` du routeur annule).
- * Un echec d'API est attendu (message a l'utilisateur) ; toute autre erreur est un bug, aussi journalise.
- */
 export class PageLoader {
   /** @param {LoadingView} view @param {{ signal?: AbortSignal }} [options] */
   constructor(view, { signal } = {}) {
@@ -20,14 +15,12 @@ export class PageLoader {
     this.busy = false;
   }
 
-  /** Faux une fois la page quittee : une reponse tardive est ignoree. */
   get isActive() {
     return !this.signal?.aborted;
   }
 
   /**
-   * Sans effet si un chargement est deja en cours ou la page quittee.
-   * `onError` traite lui-meme une erreur attendue (ex. 404) en renvoyant true ; sinon message generique.
+   * `onError` renvoie true quand il a lui-meme traite l'erreur.
    * @template T
    * @param {(signal: AbortSignal | undefined) => Promise<T>} task
    * @param {{ onSuccess: (result: T) => void, onError?: (error: unknown) => boolean }} handlers

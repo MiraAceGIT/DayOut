@@ -1,4 +1,3 @@
-/** Uniquement sur action explicite (spec). Rejette avec { code: "unsupported" | "denied" | "unavailable" | "timeout" }. */
 export function currentPosition({ timeout = 10000 } = {}) {
   return new Promise((resolve, reject) => {
     if (!("geolocation" in navigator)) {

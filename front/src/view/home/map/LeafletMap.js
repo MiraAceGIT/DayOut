@@ -3,14 +3,13 @@ import { categoryClass, colorCategoryOf } from "../../components/category/catego
 import { renderEventPopup } from "../../components/event/eventPopup/eventPopup.js";
 import { icon, pinIcon } from "../../components/icon/icon.js";
 
-// Seul fichier qui touche Leaflet. Leaflet 1.9.4 est charge en <script> classique (UMD + SRI) dans index.html :
-// un import ESM depuis un CDN ne peut pas porter d'attribut integrity. Absent (hors ligne, bloque), la liste reste utilisable.
+// Leaflet est un <script> classique (index.html) : un import ESM depuis un CDN ne peut pas porter d'attribut integrity.
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-// Chaine statique (Leaflet l'insere en HTML) : aucune donnee ne doit y entrer.
+// Inseree en HTML par Leaflet : aucune donnee ne doit y entrer.
 const ATTRIBUTION = '<a href="https://leafletjs.com">Leaflet</a> · © '
   + '<a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a>';
 
-/** Couleur d'un token CSS : le cercle Leaflet (SVG) ne lit pas les variables CSS. */
+// Le SVG de Leaflet ne lit pas les variables CSS.
 function token(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -28,8 +27,6 @@ export class LeafletMap {
     return Boolean(this.L && this.map);
   }
 
-  /** Renvoie "ready", "unavailable" (Leaflet absent) ou "absent" (pas de conteneur).
-   * `signal` retire l'ecouteur clavier pose sur le conteneur au depart de la page. */
   init({ origin, radiusKm, area, handlers, signal }) {
     if (!this.containerEl) return "absent";
     if (!this.L) {
@@ -39,24 +36,23 @@ export class LeafletMap {
     const L = this.L;
     this.handlers = handlers;
 
-    // Marge de 20 % autour de la zone : un cercle de 20 km pose en bordure reste visible en entier,
-    // et on voit les alentours (voiles par le masque) plutot qu'un bord net.
+    // 20 % de marge : un cercle de 20 km pose en bordure reste visible en entier.
     const bounds = L.latLngBounds([area.south, area.west], [area.north, area.east]).pad(0.2);
 
-    // Vue initiale obligatoire avant d'ajouter des couches : sans elle, circle.getBounds() echoue.
+    // Vue initiale avant les couches : sans elle, circle.getBounds() echoue.
     this.map = L.map(this.containerEl, {
       zoomControl: false,
       attributionControl: true,
       maxBounds: bounds,
       maxBoundsViscosity: 1,
-      minZoom: 9, // a 9, l'Ile-de-France tient a peu pres dans la carte : pas de vue France ou monde
+      minZoom: 9, // l'Ile-de-France entiere
     }).setView([origin.lat, origin.lng], 14);
     this.map.attributionControl.setPrefix(false);
     L.tileLayer(TILE_URL, { maxZoom: 19, noWrap: true, attribution: ATTRIBUTION }).addTo(this.map);
     L.control.zoom({ position: "topright", zoomInTitle: "Zoomer", zoomOutTitle: "Dézoomer" }).addTo(this.map);
     this.addLocateControl();
 
-    // role=region : sans role, un aria-label sur une div n'est pas annonce.
+    // Sans role, l'aria-label d'une div n'est pas annonce.
     this.containerEl.setAttribute("role", "region");
     this.containerEl.setAttribute("aria-label",
       "Carte des événements. Flèches pour se déplacer, + et − pour zoomer, Entrée pour placer le point au centre.");
@@ -90,7 +86,7 @@ export class LeafletMap {
     this.markerLayer = L.layerGroup().addTo(this.map);
     this.map.fitBounds(this.circle.getBounds(), { padding: [24, 24] });
 
-    // Un clic qui ferme une bulle (closePopupOnClick) ne doit pas aussi deplacer le point : etat lu au mousedown.
+    // Un clic qui ferme une bulle ne deplace pas le point : la bulle est deja fermee au moment du click.
     let popupOpenAtPress = false;
     this.map.on("mousedown", () => { popupOpenAtPress = this.hasOpenPopup(); });
     this.map.on("click", (e) => {
@@ -100,7 +96,6 @@ export class LeafletMap {
       }
       handlers.onPick({ lat: e.latlng.lat, lng: e.latlng.lng });
     });
-    // Alternative clavier au clic : Entree sur la carte (pas sur un controle) choisit le centre.
     this.containerEl.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.target !== this.containerEl) return;
       const c = this.map.getCenter();
@@ -109,7 +104,7 @@ export class LeafletMap {
     return "ready";
   }
 
-  /** Voile hors zone (le monde troue par le contour), non interactif : le clic remonte a la carte, qui refuse le point. */
+  // Non interactif : le clic hors zone remonte a la carte, qui refuse le point.
   addAreaMask(outline) {
     const L = this.L;
     const brand = token("--color-brand");
@@ -153,11 +148,9 @@ export class LeafletMap {
     this.containerEl?.focus();
   }
 
-  /** On quitte la carte : Leaflet retire ses couches et ses ecouteurs (dont `resize` sur window). */
   destroy() {
     if (!this.map) return;
-    // Quittee pendant un zoom anime, Leaflet 1.9 finit l'animation 250 ms plus tard sur la carte
-    // detruite et plante (_onZoomTransitionEnd) : on marque l'animation terminee.
+    // Leaflet 1.9 plante s'il finit un zoom anime sur une carte detruite (_onZoomTransitionEnd).
     this.map._animatingZoom = false;
     this.map.remove();
     this.map = null;
@@ -194,7 +187,7 @@ export class LeafletMap {
     return false;
   }
 
-  /** clearLayers ferme la bulle : on la rouvre si elle etait ouverte. */
+  // clearLayers ferme la bulle ouverte : on la rouvre.
   showEvents(items, selectedId = null) {
     if (!this.isAvailable) return;
     const wasOpen = this.markers.get(String(selectedId))?.marker.isPopupOpen() ?? false;
@@ -205,14 +198,14 @@ export class LeafletMap {
     for (const item of items) {
       const { event } = item;
       if (!event.position) continue;
-      // Marqueurs hors tabulation : la liste du panneau est le contenu accessible principal.
+      // Hors tabulation : la liste du panneau est le contenu accessible.
       const marker = this.L.marker([event.position.lat, event.position.lng], {
         icon: this.pinFor(item, false),
         keyboard: false,
         title: event.title,
         riseOnHover: true,
       });
-      // Marge haute de 72 px : la bulle ne passe pas sous le bandeau d'aide.
+      // 72 px : la bulle ne passe pas sous le bandeau d'aide.
       marker.bindPopup(() => renderEventPopup(item), {
         maxWidth: 320, autoPanPaddingTopLeft: [24, 72], autoPanPaddingBottomRight: [24, 24],
       });

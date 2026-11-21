@@ -1,4 +1,3 @@
-/* Page detail, d'apres l'ecran 02 des maquettes. */
 .event-state { padding-block: var(--space-7); text-align: center; }
 .event-state__code { font-family: var(--font-heading); font-size: clamp(4rem, 20vw, 7rem); font-weight: 700; line-height: 1; color: var(--color-link); margin-bottom: var(--space-5); }
 .event-state__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); margin-top: var(--space-5); }

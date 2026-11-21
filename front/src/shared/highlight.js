@@ -1,7 +1,7 @@
 import { h } from "./dom.js";
 import { foldAccents as fold } from "./text.js";
 
-/** Texte sans accents ni casse, avec pour chaque caractere replie l'indice du caractere d'origine. */
+// origin[i] : indice, dans le texte d'origine, du caractere replie i.
 function foldWithOrigin(chars) {
   let folded = "";
   const origin = [];
@@ -14,8 +14,6 @@ function foldWithOrigin(chars) {
 }
 
 /**
- * Decoupe `text` en segments ; `match` vaut true pour les occurrences de `keyword`
- * (sans tenir compte de la casse ni des accents).
  * @param {string|null|undefined} text
  * @param {string|null|undefined} keyword
  * @returns {{ text: string, match: boolean }[]}
@@ -42,12 +40,10 @@ export function splitMatches(text, keyword) {
   return segments;
 }
 
-/** Noeuds pour h() : <mark> autour des occurrences, texte brut ailleurs (une saisie `<script>` reste du texte). */
 export function highlight(text, keyword) {
   return splitMatches(text, keyword).map((s) => (s.match ? h("mark", { class: "highlight" }, s.text) : s.text));
 }
 
-/** Extrait de `text` centre sur la premiere occurrence de `keyword` ; null si le texte ne la contient pas. */
 export function excerptAround(text, keyword, { before = 40, length = 140 } = {}) {
   const segments = splitMatches(text, keyword);
   const first = segments.findIndex((s) => s.match);

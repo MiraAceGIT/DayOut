@@ -10,7 +10,6 @@
  */
 
 /**
- * Evenement tel que le front le manipule (construit par model/mappers/event/eventMapper.js depuis EventDto).
  * @typedef {object} Event
  * @property {number} id
  * @property {string} title
@@ -42,7 +41,6 @@
 
 export const LAST_PLACES_THRESHOLD = 5;
 
-/** Capacite null = illimitee ; ne jamais annoncer un nombre negatif en cas de depassement. */
 export function remainingPlaces(capacity, registeredCount) {
   if (capacity === null || capacity === undefined) return null;
   return Math.max(0, Number(capacity) - Number(registeredCount || 0));

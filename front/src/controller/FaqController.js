@@ -20,7 +20,7 @@ export class FaqController {
     this.started = false;
   }
 
-  /** @param {{ signal?: AbortSignal }} [options] `signal` : depart de la page */
+  /** @param {{ signal?: AbortSignal }} [options] */
   async start({ signal } = {}) {
     if (!this.view.isReady || this.started || signal?.aborted) return;
     this.started = true;
@@ -39,8 +39,7 @@ export class FaqController {
     });
   }
 
-  /** Filtre local a chaque saisie ; pendant le chargement, la saisie est gardee pour le premier rendu.
-   * @param {string} query */
+  /** @param {string} query */
   filter(query) {
     this.query = query;
     if (!this.loader.busy) this.render();

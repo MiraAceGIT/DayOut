@@ -7,8 +7,7 @@ import { setCover } from "../../cover/cover.js";
 import { distanceText, joinMeta } from "../eventMeta/eventMeta.js";
 import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../../pill/pill.js";
 
-/** Meme composant pour la grille, les resultats de recherche et les bulles de carte.
- * `keyword` : mot-cle a surligner (titre, lieu, description).
+/**
  * @param {import("../../../../model/domain/event/event.js").Event} event
  * @param {{ variant?: "grid"|"compact"|"popup", distanceKm?: number|null, selected?: boolean, keyword?: string, onSelect?: (id: number) => void }} [options]
  */
@@ -21,7 +20,7 @@ export function renderEventCard(event, { variant = "grid", distanceKm = null, se
     class: "event-card__image",
     alt: "", width: 640, height: 360, loading: "lazy", decoding: "async",
   })), event.coverImageUrl);
-  // La liste compacte n'affiche pas la description : on la montre si c'est elle qui explique le resultat.
+  // Variante compacte : la description n'apparait que si c'est elle qui contient le mot-cle.
   const descriptionExcerpt = compact && event.description ? excerptAround(event.description, keyword) : null;
 
   return h("article", { class: ["event-card", `event-card--${variant}`, categoryClass(colorCategoryOf(event))] },

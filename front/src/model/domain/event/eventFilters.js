@@ -20,7 +20,6 @@ export const startsWithin = ({ start, end }) => (event) => {
   return date >= start && date < end;
 };
 
-/** Chaque entree renvoie un predicat, ou null si le critere est inactif. */
 export const USER_FILTERS = [
   ({ free }) => (free ? isFree : null),
   ({ available }) => (available ? hasPlacesLeft : null),

@@ -2,13 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { event } from "./fixtures.js";
 
-// Le controleur importe la configuration navigateur ; vue, carte et champ de recherche sont injectes.
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});
 const { HomeController } = await import("../src/controller/HomeController.js");
 const { ApiError } = await import("../src/core/api.js");
 delete globalThis.window;
 
-/** Doubles de test : seules les methodes appelees par le controleur existent. */
 /** @returns {{ view: any, map: any, searchBox: any }} */
 function stubs() {
   const view = {

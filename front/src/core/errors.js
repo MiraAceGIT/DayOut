@@ -1,5 +1,5 @@
 /**
- * Par le `name` et non instanceof : un api.js charge sous deux URL (cache-busting) donnerait deux classes ApiError.
+ * Par `name` et non instanceof : api.js charge sous deux URL donnerait deux classes ApiError.
  * @param {unknown} err
  * @returns {err is import("./api.js").ApiError}
  */

@@ -56,9 +56,7 @@ export function formatEventWhen(startAt, endAt, { withEnd = false, withYear = fa
   return text;
 }
 
-/** Libelle partage par les cartes et le detail ; le calcul reste dans model/domain/event/event.js.
- * @param {number|null} remaining
- */
+/** @param {number|null} remaining */
 export function formatRemainingPlaces(remaining) {
   if (remaining === null) return "Places illimitées";
   if (remaining === 0) return "Complet";
@@ -90,7 +88,7 @@ export function formatPrice(cents, {
       maximumFractionDigits: 2,
     });
   } catch {
-    // Code devise invalide (RangeError) : affichage brut plutot que de casser le rendu.
+    // Code devise invalide.
     return `${amount.toLocaleString(locale, { minimumFractionDigits: digits })} ${currency}`;
   }
 }

@@ -4,7 +4,7 @@ import { icon } from "../../components/icon/icon.js";
 import { renderLogo } from "../../components/logo/logo.js";
 import { renderSearchBox } from "../../components/searchBox/searchBox.js";
 
-// Routes de app/appRoutes.js ; les pages pas encore faites affichent "Page introuvable" (pages/not-found.html).
+// Pages pas encore faites : "Page introuvable" en attendant.
 const NAV_ITEMS = [
   { label: "Carte",          path: "/" },
   { label: "Pour toi",       path: "/for-you" },
@@ -14,13 +14,11 @@ const NAV_ITEMS = [
 
 const MENU_ID = "site-menu";
 
-/** Dessine le header une seule fois ; renvoie la fonction qui marque le lien de la page affichee. */
 export function renderHeader() {
   const host = document.querySelector("header[data-layout]");
   if (!host) return () => {};
 
   const links = NAV_ITEMS.map((item) => h("a", { class: "site-nav__link", href: routeUrl(item.path) }, item.label));
-  // Mobile : le burger ouvre / ferme le menu (recherche + liens) ; un clic sur un lien le referme.
   const burger = h("button", {
     type: "button",
     class: "site-header__burger",
@@ -39,7 +37,7 @@ export function renderHeader() {
     renderSearchBox(),
     h("nav", { class: "site-nav", "aria-label": "Navigation principale" }, links),
   );
-  // TODO : ouvrir la connexion quand la page existera (pour l'instant, le bouton ne fait rien).
+  // TODO : ouvrir la connexion quand la page existera.
   const login = h("button", { type: "button", class: "button button--on-dark button--small site-header__login" }, "Connexion");
 
   host.classList.add("site-header");

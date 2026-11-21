@@ -10,7 +10,6 @@
   min-width: 0;
 }
 
-/* Bandeau a la couleur de la categorie ; neutre (surface 2) si l'evenement n'en a pas de la charte. */
 .event-card::before {
   content: "";
   height: 8px;
@@ -59,7 +58,6 @@
 
 .event-card__status { margin-top: auto; padding-top: var(--space-2); }
 
-/* Meme base visuelle, disposition compacte pour les resultats de la carte. */
 .event-card--compact { flex-direction: row; align-items: start; gap: var(--space-3); padding: var(--space-4); border-width: 2px; overflow: visible; }
 .event-card--compact::before { display: none; }
 .event-card--compact .event-card__image { flex: none; width: 3.5rem; height: 3.5rem; aspect-ratio: 1; border-radius: var(--radius-field); }

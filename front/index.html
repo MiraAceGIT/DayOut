@@ -4,14 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="DayOut : trouve les événements étudiants inter-écoles autour de toi, sur la carte.">
-  <!-- Litteral = --color-brand (tokens.css) : les variables CSS ne sont pas lues ici. -->
   <meta name="theme-color" content="#241238">
   <title>DayOut — Que faire autour de toi ?</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fredoka:wght@600;700&display=swap">
-  <!-- Leaflet 1.9.4 epingle + SRI ; avant main.css pour que la charte surcharge ses styles. -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="assets/css/main.css">
@@ -19,7 +17,6 @@
 <body>
   <a class="skip-link" href="#app-root">Aller au contenu</a>
 
-  <!-- Header et footer : une seule fois pour toute l'app. Le routeur (src/app/router.js) ne change que #app-root. -->
   <header class="site-header" data-layout></header>
 
   <main id="app-root" tabindex="-1">
@@ -28,7 +25,6 @@
 
   <footer class="site-footer" data-layout></footer>
 
-  <!-- Classiques, avant les modules : config locale optionnelle (ignoree par git) puis Leaflet (global L, SRI). -->
   <script src="src/config.local.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

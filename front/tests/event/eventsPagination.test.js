@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { creatorDto, event, eventDto } from "../fixtures.js";
 
-// Le controleur importe la configuration navigateur ; la vue sera injectee.
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});
 const { EventsController } = await import("../../src/controller/event/EventsController.js");
 const { fetchUpcomingEventPage, fetchUpcomingEvents, fetchEvent } = await import("../../src/model/services/eventService.js");

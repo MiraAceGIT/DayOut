@@ -3,7 +3,6 @@
   min-height: var(--header-min-height);
   background: var(--color-brand);
   color: var(--color-on-brand);
-  /* Zone sombre : anneau de focus blanc. */
   --focus-color: var(--color-on-brand);
   --focus-halo: var(--color-brand);
 }
@@ -22,7 +21,6 @@
 .site-nav           { grid-area: nav; justify-self: end; }
 .site-header__login { grid-area: login; }
 
-/* Ordinateur : le menu ne fait que regrouper recherche + liens, qui restent dans la grille. */
 .site-header__menu { display: contents; }
 
 /* Une seule ligne : c'est la recherche qui retrecit. */
@@ -47,7 +45,7 @@
   text-decoration-thickness: 3px;
 }
 
-/* Burger (mobile seulement, voir plus bas) : cible tactile de 44 px. */
+/* Cible tactile de 44 px. */
 .site-header__burger {
   display: none;
   align-items: center;
@@ -61,7 +59,6 @@
   cursor: pointer;
 }
 
-/* En dessous de 1024 px, recherche et liens ne tiennent plus : ils passent dans le menu du burger. */
 @media (max-width: 1024px) {
   .site-header__inner {
     grid-template-columns: auto 1fr auto auto;
@@ -71,7 +68,6 @@
 
   .site-header__burger { display: inline-flex; grid-area: burger; }
 
-  /* Menu sous la ligne du logo, cache tant que le burger n'est pas ouvert (aria-expanded). */
   .site-header__menu { display: none; grid-column: 1 / -1; }
   .site-header__burger[aria-expanded="true"] + .site-header__menu {
     display: flex;

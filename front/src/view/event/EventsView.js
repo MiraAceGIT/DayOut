@@ -1,7 +1,6 @@
 import { renderEventCard } from "../components/event/eventCard/eventCard.js";
 import { errorStatus, paginationStatus } from "./eventsMessages.js";
 
-/** Elements cherches dans `root`, le <main> ou le routeur a pose la page ; garantis par `isReady`, verifie par le controleur. */
 export class EventsView {
   /** @param {ParentNode} [root] */
   constructor(root = document) {
@@ -16,7 +15,7 @@ export class EventsView {
     return Boolean(this.listEl && this.errorEl && this.statusEl && this.moreBtn);
   }
 
-  /** @param {{ onLoadMore: () => void }} handlers @param {AbortSignal} [signal] retire l'ecouteur au depart de la page */
+  /** @param {{ onLoadMore: () => void }} handlers @param {AbortSignal} [signal] */
   bind({ onLoadMore }, signal) {
     this.moreBtn.addEventListener("click", onLoadMore, { signal });
   }
@@ -49,7 +48,7 @@ export class EventsView {
   }
 
   showError(message) {
-    // Une erreur sur une page suivante ne doit pas effacer les cartes deja chargees.
+    // Les cartes deja chargees restent affichees.
     this.setStatus(errorStatus(this.count));
     this.errorEl.textContent = message;
     this.moreBtn.hidden = false;

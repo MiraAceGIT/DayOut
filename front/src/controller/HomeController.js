@@ -12,10 +12,6 @@ import { MapView } from "../view/home/map/MapView.js";
 import { LatestTask } from "../shared/LatestTask.js";
 import { OriginPicker } from "./OriginPicker.js";
 
-/**
- * Carte : recherche par mot-cle cote API (seule la plus recente compte), puis rayon, filtres et selection
- * en local (MapSearch) ; le choix du point de depart est delegue a OriginPicker.
- */
 export class HomeController {
   constructor({
     view = new HomeView(),
@@ -31,7 +27,6 @@ export class HomeController {
     this.searchBox = searchBox;
     this.state = state;
     this.loadEvents = loadEvents;
-    // L'API plafonne `limit` : le seuil de troncature doit etre la limite effective, pas celle demandee.
     this.limit = normalizePageLimit(limit);
     this.searches = new LatestTask();
     this.origin = new OriginPicker({ map, getPosition, onOrigin: (point) => this.applyOrigin(point) });
@@ -41,10 +36,7 @@ export class HomeController {
     this.setParam = () => {};
   }
 
-  /**
-   * @param {{ query?: string, signal?: AbortSignal, setParam?: (name: string, value: string) => void }} [options]
-   * `signal` : annule quand on quitte la carte ; `setParam` : met a jour l'adresse (?q=) par le routeur.
-   */
+  /** @param {{ query?: string, signal?: AbortSignal, setParam?: (name: string, value: string) => void }} [options] */
   async start({ query = "", signal, setParam = () => {} } = {}) {
     if (!this.view.isReady || this.started || signal?.aborted) return;
     this.started = true;
@@ -71,7 +63,6 @@ export class HomeController {
         onLocate: () => this.origin.locate(),
       },
     });
-    // On quitte la carte : Leaflet est detruit, une localisation ou une recherche en cours est ignoree.
     signal?.addEventListener("abort", () => {
       this.origin.cancel();
       this.searches.cancel();
@@ -84,7 +75,6 @@ export class HomeController {
     await this.load();
   }
 
-  /** Recherche par mot-cle cote API (vide = tous les evenements a venir) ; rayon et filtres s'appliquent ensuite en local. */
   async load() {
     const search = this.searches.start();
     const keyword = this.keyword;
@@ -99,9 +89,7 @@ export class HomeController {
       this.map.renderLegend(categories);
       this.render();
     } catch (err) {
-      // Recherche remplacee, ou carte quittee (requete annulee) : la vue n'est plus a mettre a jour.
       if (!search.isCurrent()) return;
-      // ApiError = echec attendu ; toute autre erreur est un bug.
       if (!isApiError(err)) console.error(err);
       this.state.fail();
       this.view.showError(messageFor(err));
@@ -110,7 +98,6 @@ export class HomeController {
     }
   }
 
-  /** Les criteres sont toujours memorises ; la liste n'est dessinee qu'une fois les donnees chargees. */
   render() {
     if (!this.state.isReady) return;
     const result = this.state.results();
@@ -150,7 +137,6 @@ export class HomeController {
     this.map.select(id, { openPopup: true });
   }
 
-  /** Point accepte par OriginPicker (dans la zone couverte). */
   applyOrigin(point) {
     const origin = this.state.setOrigin(point);
     this.view.setOrigin(origin);

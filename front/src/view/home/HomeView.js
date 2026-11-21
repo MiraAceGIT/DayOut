@@ -8,15 +8,13 @@ import { ResultsList } from "./resultsList/ResultsList.js";
 import { SuggestionsList } from "./suggestions/SuggestionsList.js";
 import { resultsMessage } from "./homeMessages.js";
 
-// Le compte est annonce par role=status : on attend la fin de la frappe / du glissement pour ne pas saturer.
+// Annonce role=status differee jusqu'a la fin du glissement : ne sature pas le lecteur d'ecran.
 const STATUS_DELAY_MS = 400;
 
-/** Elements cherches dans `root`, le <main> ou le routeur a pose la page carte ; garantis par `isReady`, verifie par le controleur. */
 export class HomeView {
   /** @param {ParentNode} [root] */
   constructor(root = document) {
     this.root = root;
-    // Champ de recherche de l'accueil, synchronise avec celui du header par SearchBox.
     root.querySelector("#home-search-slot")?.replaceChildren(renderSearchBox({ id: "home-search" }));
     /** @type {HTMLElement[]} */
     this.tabs      = [...root.querySelectorAll('#home-tabs [role="tab"]')].map((el) => /** @type {HTMLElement} */ (el));
@@ -54,7 +52,7 @@ export class HomeView {
   /**
    * @param {{ onRadius: (km: number) => void, onFilter: (name: string, on: boolean) => void,
    *   onCategory: (slug: string, on: boolean) => void, onSelect: (id: number) => void, onChangePoint: () => void }} handlers
-   * @param {AbortSignal} [signal] retire les ecouteurs et l'annonce differee au depart de la page
+   * @param {AbortSignal} [signal]
    */
   bind({ onRadius, onFilter, onCategory, onSelect, onChangePoint }, signal) {
     this.onSelect = onSelect;

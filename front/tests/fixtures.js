@@ -1,4 +1,3 @@
-// Donnees partagees par les tests : un EventDto tel que le renvoie l'API, et son evenement du front.
 import { toEvent } from "../src/model/mappers/event/eventMapper.js";
 
 /** @returns {import("../src/model/dto/creatorDto.js").CreatorDto} */
@@ -6,8 +5,7 @@ export const creatorDto = (overrides = {}) => ({
   id: 2, display_name: "Garage ISEP", description: null, avatar_url: null, school_name: "ISEP", ...overrides,
 });
 
-/** EventDto complet (GET /events/1), surcharges par `overrides`.
- * @returns {import("../src/model/dto/eventDto.js").EventDto} */
+/** @returns {import("../src/model/dto/eventDto.js").EventDto} */
 export function eventDto(overrides = {}) {
   return {
     id: 1,
@@ -39,5 +37,5 @@ export function eventDto(overrides = {}) {
 
 export const event = (overrides = {}) => toEvent(eventDto(overrides));
 
-/** Espaces insecables (fr-FR : "15 €", "0,6 km") -> espace simple : assertions independantes d'ICU. */
+// Espaces insecables du format fr-FR -> espace simple : assertions independantes d'ICU.
 export const spaces = (text) => text.replace(/\s/g, " ");

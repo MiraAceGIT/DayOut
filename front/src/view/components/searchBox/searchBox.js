@@ -3,11 +3,9 @@ import { routeUrl } from "../../../core/routes.js";
 import { MAX_KEYWORD_LENGTH } from "../../../core/apiLimits.js";
 import { icon } from "../icon/icon.js";
 
-// Champ du header ; celui de l'accueil a un autre id (renderSearchBox({ id })).
 const INPUT_ID = "site-search";
 const INPUT_CLASS = "site-search__input";
 
-/** Formulaire GET vers l'accueil : sans JS ou depuis une autre page, la recherche arrive en `?q=`. */
 export function renderSearchBox({ id = INPUT_ID } = {}) {
   return h("form", {
     class: "site-search",
@@ -29,8 +27,7 @@ export function renderSearchBox({ id = INPUT_ID } = {}) {
   );
 }
 
-/** Les champs du header et de l'accueil restent synchronises ; sans champ, tout est sans effet.
- * Les champs sont relus a chaque appel : l'ordre de creation de la page et de ce SearchBox est indifferent. */
+// Champs du header et de l'accueil, relus a chaque appel : l'ordre de creation est indifferent.
 export class SearchBox {
   /** @param {ParentNode} [root] tout le document : le champ du header est hors du <main> */
   constructor(root = document) {
@@ -46,8 +43,7 @@ export class SearchBox {
     for (const input of this.inputs) input.value = query;
   }
 
-  /** Recherche a l'envoi (Entree), ou des que le champ est vide (croix du champ search) : pas un appel par frappe.
-   * `signal` retire ces ecouteurs quand on quitte la carte (le header reste affiche).
+  /**
    * @param {(query: string) => void} onQuery
    * @param {{ signal?: AbortSignal }} [options] */
   bindSubmit(onQuery, { signal } = {}) {

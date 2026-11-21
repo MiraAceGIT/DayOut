@@ -1,4 +1,4 @@
-// Format JSON de l'API (snake_case), miroir de back/src/Model/Dto/Faq/FaqDto.php.
+// Miroir de back/src/Model/Dto/Faq/FaqDto.php.
 
 /**
  * @typedef {object} FaqDto

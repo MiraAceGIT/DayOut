@@ -1,4 +1,3 @@
-/** Onglets ARIA sur markup existant : activation automatique, fleches, Debut/Fin, tabindex itinerant. */
 /** @param {HTMLElement[]} tabs @param {{ root?: ParentNode, signal?: AbortSignal }} [options] */
 export function bindTabs(tabs, { root = document, signal } = {}) {
   const select = (tab, { focus = false } = {}) => {

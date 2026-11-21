@@ -19,18 +19,17 @@ export class EventsController {
     this.from = undefined;
   }
 
-  /** @param {{ signal?: AbortSignal }} [options] `signal` : depart de la page */
+  /** @param {{ signal?: AbortSignal }} [options] */
   async start({ signal } = {}) {
     if (!this.view.isReady || this.started || signal?.aborted) return;
     this.started = true;
     this.loader = new PageLoader(this.view, { signal });
-    // Instant de reference fixe : un evenement qui se termine entre deux clics ne decale pas les pages.
+    // Instant fixe : un evenement qui se termine entre deux pages ne decale pas l'offset.
     this.from = new Date().toISOString();
     this.view.bind({ onLoadMore: () => this.loadMore() }, signal);
     await this.loadMore();
   }
 
-  /** Une erreur garde les cartes deja affichees ; le meme offset est redemande au clic suivant. */
   async loadMore() {
     if (!this.hasMore) return;
     await this.loader.run((signal) => this.loadEvents({ limit: this.limit, offset: this.offset, from: this.from, signal }), {

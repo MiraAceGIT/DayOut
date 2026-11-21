@@ -1,6 +1,4 @@
-/* Charte graphique DayOut. Repartition d'un ecran : 70 % neutres, 20 % violet nuit, 10 % orange + categories. */
 :root {
-  /* Neutres */
   --color-bg:           #f7f5fa;
   --color-surface:      #ffffff;        /* cartes */
   --color-surface-2:    #efebf5;        /* filtres, chips, bandeaux */

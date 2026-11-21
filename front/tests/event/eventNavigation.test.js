@@ -15,8 +15,6 @@ class Link {
 }
 
 /**
- * Navigateur minimal autour du routeur : adresse, historique, evenements du document et de window.
- * `apiFetch` repond aux appels de l'API ; les pages HTML sont toutes un <main> vide.
  * @param {import("node:test").TestContext} t
  * @param {string} start
  * @param {(url: URL) => Response | undefined} [apiFetch]
@@ -80,7 +78,6 @@ it("un changement d'id recharge le bon evenement, par lien et par Precedent/Suiv
 
   startRouter({
     routes: [{ path: "/event", file: "pages/event/event.html", mount: ({ params }) => {
-      // Meme lecture que la page detail : le service recoit l'id de l'URL courante.
       loads.push(fetchEvent(params.get("id") ?? "").then(event => displayedIds.push(event.id)));
     } }],
     notFound: { file: "pages/not-found.html" }, root: browser.root, onChange() {},
@@ -122,17 +119,14 @@ it("setParam garde le routeur d'accord avec l'adresse : un lien vers l'adresse d
   await setImmediate();
   assert.equal(mounts.length, 1);
 
-  // Recherche "jazz" sur la carte : l'adresse change sans recharger la page.
   setParam("q", "jazz");
   assert.equal(browser.address.href, "https://dayout.example/?q=jazz");
 
-  // Lien "Carte" (adresse sans q) : ce n'est plus la page affichee, elle est donc reaffichee sans recherche.
   browser.click("https://dayout.example/");
   await setImmediate();
   assert.equal(mounts.length, 2);
   assert.equal(mounts[1].get("q"), null);
 
-  // Une page quittee ne touche plus l'adresse.
   const staleSetParam = setParam;
   browser.click("https://dayout.example/?q=rock");
   await setImmediate();

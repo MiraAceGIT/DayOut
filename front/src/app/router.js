@@ -4,13 +4,11 @@ import { h } from "../shared/dom.js";
 import { formNavigation, linkNavigation, withParam } from "./navigation.js";
 
 /**
- * Ce que recoit le `mount` d'une page (app/appRoutes.js).
  * @typedef {object} PageContext
- * @property {HTMLElement} root     <main id="app-root"> ou la page est posee : les views y cherchent leurs elements
- * @property {AbortSignal} signal   annule quand on quitte la page
- * @property {URLSearchParams} params query string de l'adresse
- * @property {(name: string, value: string) => void} setParam remplace un parametre de l'adresse sans recharger
- *   la page (valeur vide = retire) ; sans effet une fois la page quittee
+ * @property {HTMLElement} root
+ * @property {AbortSignal} signal
+ * @property {URLSearchParams} params
+ * @property {(name: string, value: string) => void} setParam
  */
 
 /**
@@ -21,16 +19,11 @@ import { formNavigation, linkNavigation, withParam } from "./navigation.js";
  */
 
 /**
- * Routeur : l'adresse `/events` charge pages/event/events.html et copie le contenu de son <main id="app-root">
- * dans celui de index.html. Header et footer ne bougent pas.
- * Seul le routeur change l'adresse : une page qui veut la modifier passe par `setParam`, pour que le
- * routeur sache toujours ce qui est affiche.
  * @param {{ routes: Route[], notFound: Route, root: HTMLElement|null, onChange: (path: string) => void }} options
  */
 export function startRouter({ routes, notFound, root: rootOrNull, onChange }) {
   if (!rootOrNull) return;
   const root = rootOrNull;
-  /** Adresse (route + query string) de la page affichee. */
   let shownLocation = null;
   /** @type {AbortController|null} */
   let leave = null;
@@ -49,7 +42,7 @@ export function startRouter({ routes, notFound, root: rootOrNull, onChange }) {
     onChange(path);
 
     const page = await loadPage(route.file, signal);
-    if (signal.aborted) return; // une autre page a ete demandee entre-temps
+    if (signal.aborted) return;
     root.className = page.className;
     root.replaceChildren(...page.children);
     document.title = page.title;
@@ -66,7 +59,7 @@ export function startRouter({ routes, notFound, root: rootOrNull, onChange }) {
 
     if (!initial) {
       window.scrollTo(0, 0);
-      root.focus(); // lecteur d'ecran : on arrive sur le nouveau contenu
+      root.focus(); // annonce la nouvelle page aux lecteurs d'ecran
     }
   }
 
@@ -76,7 +69,6 @@ export function startRouter({ routes, notFound, root: rootOrNull, onChange }) {
     show(false);
   }
 
-  // Clic sur un lien de l'app (/events...) : on change l'adresse et la page sans recharger (voir navigation.js).
   document.addEventListener("click", (e) => {
     const link = e.target instanceof Element ? e.target.closest("a[href]") : null;
     if (!(link instanceof HTMLAnchorElement)) return;
@@ -85,8 +77,6 @@ export function startRouter({ routes, notFound, root: rootOrNull, onChange }) {
     e.preventDefault();
     navigate(url);
   });
-  // Formulaire GET vers une page de l'app (recherche du header hors de la carte) : meme chose.
-  // Sur la carte, la recherche est deja traitee (preventDefault) par HomeController.
   document.addEventListener("submit", (e) => {
     const form = e.target;
     if (!(form instanceof HTMLFormElement) || e.defaultPrevented) return;
@@ -98,13 +88,11 @@ export function startRouter({ routes, notFound, root: rootOrNull, onChange }) {
     e.preventDefault();
     navigate(url);
   });
-  // Precedent / Suivant du navigateur.
   window.addEventListener("popstate", () => show(false));
   show(true);
 }
 
-/** Lance le JS de la page ; une erreur (synchrone ou dans sa promesse) est journalisee, pas perdue.
- * @param {Route} route @param {PageContext} page */
+/** @param {Route} route @param {PageContext} page */
 function mount(route, page) {
   const report = (err) => {
     if (!page.signal.aborted) console.error(`Page ${route.file} : erreur au demarrage`, err);
@@ -116,12 +104,11 @@ function mount(route, page) {
   }
 }
 
-/** Lit le <main id="app-root"> d'une page de pages/ (document HTML complet, sans header ni footer). */
 async function loadPage(file, signal) {
   try {
     const res = await fetch(frontUrl(file), { signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // Nos propres fichiers statiques : leurs <script> ne sont pas executes par DOMParser.
+    // DOMParser n'execute pas les <script> de la page.
     const doc = new DOMParser().parseFromString(await res.text(), "text/html");
     const main = doc.getElementById("app-root");
     if (!main) throw new Error("pas de <main id=\"app-root\">");

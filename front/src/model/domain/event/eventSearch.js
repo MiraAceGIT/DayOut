@@ -3,8 +3,7 @@ import { isUpcoming } from "./event.js";
 import { matchesCriteria } from "./eventFilters.js";
 
 /** @typedef {import("./event.js").Event} Event */
-/** Resultat de recherche : l'evenement et sa distance au point choisi (null si l'un des deux est sans position).
- * @typedef {{ event: Event, distanceKm: number|null }} SearchItem */
+/** @typedef {{ event: Event, distanceKm: number|null }} SearchItem */
 
 /** @returns {(event: Event) => SearchItem} */
 export function measureFrom(origin) {
@@ -14,7 +13,7 @@ export function measureFrom(origin) {
   });
 }
 
-/** Un evenement sans position reste dans la liste : on ne sait pas s'il est dans le cercle. */
+// Sans position, on ne sait pas s'il est dans le cercle : il reste dans la liste.
 export function withinRadius(radiusKm) {
   return ({ distanceKm: km }) => km === null || !(km > radiusKm);
 }

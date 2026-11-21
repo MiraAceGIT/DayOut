@@ -1,10 +1,8 @@
-// Textes de la page detail, calcules depuis l'event normalise : fonction pure, testee sans DOM.
-// EventDetailView ne fait que les poser dans la page.
 import { formatEventWhen, formatPrice, formatRemainingPlaces, pluralize } from "../../shared/format.js";
 
 /** @typedef {import("../../model/domain/event/event.js").Event} Event */
 
-/** "Garage ISEP" -> "GI" : deux premieres initiales, pour l'avatar sans image. @param {string} name */
+/** @param {string} name */
 export function initials(name) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join("").toUpperCase();
 }
@@ -41,14 +39,13 @@ export function presentEventDetail(event) {
     ].join(" · "),
     price: formatPrice(event.priceCents, { isPaid: event.isPaid, currency: event.currency }),
     registrations: `${pluralize(event.registeredCount, "inscrit")}${unlimited ? " · Capacité illimitée" : ` sur ${pluralize(event.capacity, "place")}`}`,
-    /** null : capacite illimitee, pas de barre de remplissage */
     capacity: event.capacity === null ? null : {
       max: event.capacity,
       value: event.registeredCount,
       label: `${event.registeredCount} / ${event.capacity}`,
     },
     registerLabel: event.availability === "full" ? "Complet" : "Je m’inscris",
-    // La maquette reserve le QR code DayOut et les quotas de fiabilite aux inscriptions gratuites.
+    // Maquette : QR code et quotas de fiabilite reserves aux inscriptions gratuites.
     showFreeEntry: !event.isPaid,
     tags: [...event.categories.map((category) => category.label), event.isPaid ? "Payant" : "Gratuit"],
     coverImageUrl: event.coverImageUrl,

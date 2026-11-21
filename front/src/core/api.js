@@ -110,7 +110,6 @@ async function apiFetch(path, {
   const options = {
     method,
     headers: finalHeaders,
-    // Front (:5500) et API (:8000) sont deux origines : on envoie les cookies (future session).
     credentials: "include",
     ...(hasBody ? { body: JSON.stringify(body) } : {}),
     ...(finalSignal ? { signal: finalSignal } : {}),
@@ -120,7 +119,6 @@ async function apiFetch(path, {
   try {
     res = await fetch(API_BASE_URL + path, options);
   } catch (cause) {
-    // fetch() ne rejette pas sur un status HTTP d'erreur : seulement reseau / CORS / abort / timeout.
     throw transportError(cause, finalSignal);
   }
 
