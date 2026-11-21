@@ -1,10 +1,10 @@
 import { api } from "../../core/api.js";
 import { MAX_PAGE_LIMIT } from "../../core/apiLimits.js";
-import { toFaqEntries } from "../mappers/faqMapper.js";
-import { toFaqQuery } from "../mappers/faqRequestMapper.js";
+import { toFaqEntries } from "../mappers/faq/faqMapper.js";
+import { toFaqQuery } from "../mappers/faq/faqRequestMapper.js";
 
 /** @typedef {import("../dto/faqDto.js").FaqPageDto} FaqPageDto */
-/** @typedef {import("../mappers/faqMapper.js").FaqEntry} FaqEntry */
+/** @typedef {import("../mappers/faq/faqMapper.js").FaqEntry} FaqEntry */
 
 /** Toutes les questions actives, page par page, dans l'ordre d'affichage.
  * @param {{ signal?: AbortSignal }} [options]

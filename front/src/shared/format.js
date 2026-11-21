@@ -56,7 +56,7 @@ export function formatEventWhen(startAt, endAt, { withEnd = false, withYear = fa
   return text;
 }
 
-/** Libelle partage par les cartes et le detail ; le calcul reste dans model/domain/event.js.
+/** Libelle partage par les cartes et le detail ; le calcul reste dans model/domain/event/event.js.
  * @param {number|null} remaining
  */
 export function formatRemainingPlaces(remaining) {

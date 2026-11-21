@@ -1,5 +1,5 @@
 import { currentPosition } from "../core/geolocation.js";
-import { COVERAGE_AREA, isInCoverageArea } from "../model/domain/coverageArea.js";
+import { COVERAGE_AREA, isInCoverageArea } from "../model/domain/coverageArea/coverageArea.js";
 import { LatestTask } from "../shared/LatestTask.js";
 
 /**

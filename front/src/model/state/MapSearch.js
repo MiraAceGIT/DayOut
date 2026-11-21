@@ -1,6 +1,6 @@
 import { categoriesIn } from "../domain/category.js";
-import { searchEvents } from "../domain/eventSearch.js";
-import { suggestEvents } from "../domain/eventSuggestions.js";
+import { searchEvents } from "../domain/event/eventSearch.js";
+import { suggestEvents } from "../domain/event/eventSuggestions.js";
 
 /** @typedef {{ lat: number, lng: number, label?: string, source: string }} Origin `source` : default | map | device */
 

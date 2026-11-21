@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { toCategory } from "../src/model/mappers/categoryMapper.js";
-import { toEvent, toEventDto } from "../src/model/mappers/eventMapper.js";
+import { toEvent, toEventDto } from "../src/model/mappers/event/eventMapper.js";
 import { toCreator } from "../src/model/mappers/creatorMapper.js";
 
 const BACK = fileURLToPath(new URL("../../back/", import.meta.url));

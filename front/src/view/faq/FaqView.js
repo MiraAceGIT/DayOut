@@ -2,7 +2,7 @@ import { h } from "../../shared/dom.js";
 import { highlight } from "../../shared/highlight.js";
 import { faqStatus } from "./faqMessages.js";
 
-/** @typedef {import("../../model/mappers/faqMapper.js").FaqEntry} FaqEntry */
+/** @typedef {import("../../model/mappers/faq/faqMapper.js").FaqEntry} FaqEntry */
 
 /** Les elements sont garantis par `isReady`, verifie par le controleur avant tout appel. */
 export class FaqView {

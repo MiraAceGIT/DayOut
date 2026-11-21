@@ -2,7 +2,7 @@
 // EventDetailView ne fait que les poser dans la page.
 import { formatEventWhen, formatPrice, formatRemainingPlaces, pluralize } from "../../shared/format.js";
 
-/** @typedef {import("../../model/domain/event.js").Event} Event */
+/** @typedef {import("../../model/domain/event/event.js").Event} Event */
 
 /** "Garage ISEP" -> "GI" : deux premieres initiales, pour l'avatar sans image. @param {string} name */
 export function initials(name) {

@@ -1,6 +1,6 @@
 import { mountHome } from "../pages/home.js";
-import { mountEvents } from "../pages/events.js";
-import { mountEvent } from "../pages/event.js";
+import { mountEvents } from "../pages/event/events.js";
+import { mountEvent } from "../pages/event/event.js";
 import { mountFaq } from "../pages/faq.js";
 
 /**
@@ -14,8 +14,8 @@ import { mountFaq } from "../pages/faq.js";
 export const ROUTES = [
   { path: "/faq", file: "pages/faq.html", mount: mountFaq },
   { path: "/",       file: "pages/home.html",   mount: mountHome },  // page par defaut (adresse du site seule)
-  { path: "/events",    file: "pages/events.html", mount: mountEvents },
-  { path: "/event",     file: "pages/event.html",  mount: mountEvent },   // detail : /event?id=42
+  { path: "/events",    file: "pages/event/events.html", mount: mountEvents },
+  { path: "/event",     file: "pages/event/event.html",  mount: mountEvent },   // detail : /event?id=42
 ];
 
 /** Page affichee pour toute adresse absente de ROUTES (inconnue ou pas encore faite). */

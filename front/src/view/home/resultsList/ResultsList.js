@@ -1,4 +1,4 @@
-import { renderEventRow } from "../../components/eventRow/eventRow.js";
+import { renderEventRow } from "../../components/event/eventRow/eventRow.js";
 
 export class ResultsList {
   constructor(listEl) {
@@ -9,7 +9,7 @@ export class ResultsList {
     this.listEl.setAttribute("aria-busy", String(busy));
   }
 
-  /** @param {import("../../../model/domain/eventSearch.js").SearchItem[]} items
+  /** @param {import("../../../model/domain/event/eventSearch.js").SearchItem[]} items
    * @param {{ selectedId?: number|null, keyword?: string, onSelect?: (id: number) => void }} [options] */
   render(items, { selectedId = null, keyword = "", onSelect } = {}) {
     this.listEl.replaceChildren(...items.map((item) => renderEventRow(item, {

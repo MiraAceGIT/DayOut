@@ -1,7 +1,7 @@
 import { MAX_PAGE_LIMIT } from "../core/apiLimits.js";
 import { isApiError, messageFor } from "../core/errors.js";
 import { currentPosition } from "../core/geolocation.js";
-import { COVERAGE_AREA } from "../model/domain/coverageArea.js";
+import { COVERAGE_AREA } from "../model/domain/coverageArea/coverageArea.js";
 import { cleanKeyword } from "../model/domain/keyword.js";
 import { normalizePageLimit } from "../model/mappers/pageQueryMapper.js";
 import { fetchUpcomingEvents } from "../model/services/eventService.js";

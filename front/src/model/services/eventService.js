@@ -1,6 +1,6 @@
 import { api } from "../../core/api.js";
-import { toEvent, toEvents } from "../mappers/eventMapper.js";
-import { toEventPath, toEventQuery } from "../mappers/eventRequestMapper.js";
+import { toEvent, toEvents } from "../mappers/event/eventMapper.js";
+import { toEventPath, toEventQuery } from "../mappers/event/eventRequestMapper.js";
 import { DEFAULT_PAGE_LIMIT } from "../mappers/pageQueryMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */

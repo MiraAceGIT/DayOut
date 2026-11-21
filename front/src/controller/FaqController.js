@@ -3,7 +3,7 @@ import { fetchFaq } from "../model/services/faqService.js";
 import { FaqView } from "../view/faq/FaqView.js";
 import { PageLoader } from "./PageLoader.js";
 
-/** @typedef {import("../model/mappers/faqMapper.js").FaqEntry} FaqEntry */
+/** @typedef {import("../model/mappers/faq/faqMapper.js").FaqEntry} FaqEntry */
 
 export class FaqController {
   /** @param {{ view?: Pick<FaqView, "isReady" | "bind" | "showLoading" | "endLoading" | "showEntries" | "showError">,

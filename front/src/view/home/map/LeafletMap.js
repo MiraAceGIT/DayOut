@@ -1,6 +1,6 @@
 import { h } from "../../../shared/dom.js";
 import { categoryClass, colorCategoryOf } from "../../components/category/category.js";
-import { renderEventPopup } from "../../components/eventPopup/eventPopup.js";
+import { renderEventPopup } from "../../components/event/eventPopup/eventPopup.js";
 import { icon, pinIcon } from "../../components/icon/icon.js";
 
 // Seul fichier qui touche Leaflet. Leaflet 1.9.4 est charge en <script> classique (UMD + SRI) dans index.html :

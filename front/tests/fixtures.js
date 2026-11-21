@@ -1,5 +1,5 @@
 // Donnees partagees par les tests : un EventDto tel que le renvoie l'API, et son evenement du front.
-import { toEvent } from "../src/model/mappers/eventMapper.js";
+import { toEvent } from "../src/model/mappers/event/eventMapper.js";
 
 /** @returns {import("../src/model/dto/creatorDto.js").CreatorDto} */
 export const creatorDto = (overrides = {}) => ({

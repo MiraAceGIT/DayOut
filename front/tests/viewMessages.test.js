@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { toEvent } from "../src/model/mappers/eventMapper.js";
+import { toEvent } from "../src/model/mappers/event/eventMapper.js";
 import { initials, presentEventDetail } from "../src/view/event/eventDetailPresenter.js";
-import { errorStatus, paginationStatus } from "../src/view/events/eventsMessages.js";
+import { errorStatus, paginationStatus } from "../src/view/event/eventsMessages.js";
 import { faqStatus } from "../src/view/faq/faqMessages.js";
 import { creatorDto, eventDto } from "./fixtures.js";
 

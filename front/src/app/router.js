@@ -21,7 +21,7 @@ import { formNavigation, linkNavigation, withParam } from "./navigation.js";
  */
 
 /**
- * Routeur : l'adresse `/events` charge pages/events.html et copie le contenu de son <main id="app-root">
+ * Routeur : l'adresse `/events` charge pages/event/events.html et copie le contenu de son <main id="app-root">
  * dans celui de index.html. Header et footer ne bougent pas.
  * Seul le routeur change l'adresse : une page qui veut la modifier passe par `setParam`, pour que le
  * routeur sache toujours ce qui est affiche.

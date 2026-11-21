@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 globalThis.window = /** @type {Window & typeof globalThis} */ ({});
 const { FaqController } = await import("../src/controller/FaqController.js");
 const { fetchFaq } = await import("../src/model/services/faqService.js");
-const { toFaqEntry, toFaqDto } = await import("../src/model/mappers/faqMapper.js");
+const { toFaqEntry, toFaqDto } = await import("../src/model/mappers/faq/faqMapper.js");
 const { searchFaq } = await import("../src/model/domain/faqSearch.js");
 delete globalThis.window;
 
