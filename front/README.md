@@ -19,8 +19,8 @@ pas de build, pas de npm : modules ES natifs servis tels quels.
 **V1 publique en lecture seule** — Trois pages implementees :
 
 - `index.html` : carte interactive "Que faire autour de toi ?" (plein ecran)
-- `/events` (`pages/events.html`) : liste des evenements a venir (cartes + footer)
-- `/event?id=1` (`pages/event.html`) : detail dynamique et ecran 404 pour un evenement inaccessible
+- `/events` (`pages/event/events.html`) : liste des evenements a venir (cartes + footer)
+- `/event?id=1` (`pages/event/event.html`) : detail dynamique et ecran 404 pour un evenement inaccessible
 
 L'auth (login, pages protegees), les inscriptions et l'admin sont en cours
 (infrastructure deja en place : `app/boot.js` installe un handler `401`, `loginUrl()` genere l'URL de connexion).
@@ -147,8 +147,8 @@ Ouvrir `index.html` directement par `file://` **ne marchera pas**.
 ### Pages disponibles
 
 - **`/`** (`index.html`) : carte "Que faire autour de toi ?" (accueil plein ecran)
-- **`/events`** (`pages/events.html`) : liste des evenements a venir (cartes + footer)
-- **`/event?id=1`** (`pages/event.html`) : detail dynamique via `GET /events/1`, d'apres l'ecran 02 des maquettes. Le header et le footer utilisent le gabarit partage ; les blocs meteo/transports/mini-carte/discussion restent reserves et les actions desactivees.
+- **`/events`** (`pages/event/events.html`) : liste des evenements a venir (cartes + footer)
+- **`/event?id=1`** (`pages/event/event.html`) : detail dynamique via `GET /events/1`, d'apres l'ecran 02 des maquettes. Le header et le footer utilisent le gabarit partage ; les blocs meteo/transports/mini-carte/discussion restent reserves et les actions desactivees.
 
 ---
 
@@ -159,8 +159,9 @@ Ouvrir `index.html` directement par `file://` **ne marchera pas**.
 ```
 front/
 ├── index.html                    ← carte "Que faire autour de toi ?" (plein ecran, sans footer)
-├── pages/
-│   └── events.html               ← liste des evenements (cartes + footer)
+├── pages/                        ← HTML des pages (seul le <main> est affiche, par le routeur)
+│   ├── home.html, faq.html, not-found.html
+│   └── event/                    ← events.html (liste), event.html (detail)
 ├── assets/
 │   ├── img/dayout-logo-light.svg ← logo (blanc + orange, pour fond violet nuit)
 │   └── css/                      ← CSS global (sans JS proprietaire)
@@ -174,32 +175,41 @@ front/
 │   ├── config.local.example.js   ← modele de surcharge locale
 │   ├── config.local.js           ← surcharge locale optionnelle (ignore git)
 │   ├── core/                     ← infrastructure : config, api, apiLimits (plafonds de l'API), errors, geolocation, routes
-│   ├── app/                      ← boot.js (header + footer + handler 401), router.js, appRoutes.js (liste des pages)
-│   ├── shared/                   ← utilitaires purs sans dependance : dom (h), format, geo, highlight, text (normalize)
+│   ├── app/                      ← boot.js (header + footer + handler 401), router.js, navigation.js (decisions du routeur, pures), appRoutes.js (liste des pages)
+│   ├── shared/                   ← utilitaires purs sans dependance : dom (h), format, geo, highlight, text (normalize), LatestTask (derniere tache)
 │   ├── model/                    ← M : sans DOM
 │   │   ├── dto/                  ← typedefs JSDoc du JSON API (snake_case), un fichier par ressource
 │   │   ├── mappers/              ← DTO <-> modele (camelCase), seuls a lire les noms JSON ;
-│   │   │                           requetes : pageQueryMapper (limit/offset), eventRequestMapper, faqRequestMapper
+│   │   │   ├── event/            ← eventMapper, eventRequestMapper (requetes GET /events)
+│   │   │   ├── faq/              ← faqMapper, faqRequestMapper (requetes GET /faq)
+│   │   │   └── categoryMapper, creatorMapper, pageQueryMapper (limit/offset)
 │   │   ├── services/             ← appels API REST via core/api.js, retournent des modeles ; ne construisent aucune URL
 │   │   ├── domain/               ← regles metier pures (ni reseau, ni DOM, ni etat)
+│   │   │   ├── event/            ← event (type Event, places), eventFilters, eventSearch, eventSuggestions
+│   │   │   ├── coverageArea/     ← coverageArea, ileDeFranceOutline (contour)
+│   │   │   └── category, faqSearch, keyword
 │   │   └── state/                ← etat d'une page (ex. MapSearch : criteres, chargement, selection)
 │   ├── view/                     ← V : construisent et mettent a jour le DOM
-│   │   ├── layout/header/        ← renderHeader(), SearchBox
+│   │   ├── layout/header/        ← renderHeader()
 │   │   ├── layout/footer/        ← renderFooter()
-│   │   ├── components/           ← category, logo, icon, pill, eventMeta, eventCard, eventRow, eventPopup, tabs, liveStatus
+│   │   ├── components/           ← category, cover, logo, icon, pill, tabs, liveStatus, searchBox ;
+│   │   │   └── event/            ← eventCard, eventMeta, eventRow, eventPopup
 │   │   ├── home/                 ← HomeView, homeMessages, PointCard, FilterChips, ResultsList, MapView (LeafletMap + MapLegend + MapStatus)
-│   │   ├── events/               ← EventsView, eventsMessages
-│   │   ├── event/                ← EventDetailView, eventDetailPresenter
+│   │   ├── event/                ← liste (EventsView, eventsMessages) et detail (EventDetailView, eventDetailPresenter)
 │   │   └── faq/                  ← FaqView, faqMessages
-│   ├── controller/               ← C : mediateurs minces (Home, Events, EventDetail, Faq) ;
-│   │                               PageLoader (cycle de chargement), LatestTask (derniere requete), OriginPicker (point de depart)
-│   ├── pages/                    ← points d'entree minces (un par page HTML), appeles par le routeur
+│   ├── controller/               ← C : mediateurs minces (Home, Faq ; event/ : Events, EventDetail) ;
+│   │                               PageLoader (cycle de chargement), OriginPicker (point de depart)
+│   ├── pages/                    ← points d'entree minces (un par page HTML), appeles par le routeur ; event/ : event, events
 │   └── types/globals.d.ts        ← declarations globales (DAYOUT_CONFIG, Leaflet)
-├── tests/                        ← node:test, aucune dependance npm
+├── tests/                        ← node:test, aucune dependance npm ; event/ : tests de la ressource event
 ├── tools/typecheck.sh            ← installe TypeScript dans .cache/ et verifie les JSDoc
-├── jsconfig.json                 ← verification JSDoc (VS Code + tsc en CI)
+├── jsconfig.json                 ← verification JSDoc de src/ (VS Code + tsc en CI) ; tests/jsconfig.json pour les tests
 └── README.md
 ```
+
+**Un dossier par ressource** : dans un dossier, des qu'une ressource a plus d'un fichier, ils vont dans un
+sous-dossier a son nom (`model/mappers/event/`, `controller/event/`, `view/components/event/`, `tests/event/`...).
+Une ressource a un seul fichier reste a plat (`model/services/eventService.js`, `model/domain/keyword.js`).
 
 ### Architecture MVC
 
@@ -208,21 +218,28 @@ transverses (points d'entree, demarrage, infrastructure, utilitaires).
 
 - **model/** : tout ce qui est sans DOM.
   - **dto/** : forme exacte du JSON echange avec l'API, convention du back (snake_case), miroir de `back/src/Model/Dto`. Typedefs JSDoc uniquement, aucun code.
-  - **mappers/** : seuls a connaitre les noms du JSON. `toEvent(dto)` construit l'objet du front (camelCase, `position: {lat, lng}`, places restantes calculees). `toEventDto(event)` fait l'inverse pour un envoi.
+  - **mappers/** : seuls a connaitre les noms du JSON. `toEvent(dto)` construit l'objet du front (type `Event` de `model/domain/event/event.js` : camelCase, `position: {lat, lng}`, places restantes calculees). `toEventDto(event)` fait l'inverse : il sert au test de contrat (le front connait tous les champs) et servira aux formulaires.
   - **services/** : acces a l'API REST (via `core/api.js`). Equivalent client de `back/src/Model/Dao`. Un service par **ressource appelee** (`/events` -> `eventService.js`), pas par modele.
   - **domain/** : regles metier pures (a venir, places restantes, filtres, zone couverte). Aucun DOM, aucun texte affiche, aucune couleur, aucun nom du JSON, aucun appel reseau, aucun etat.
   - **state/** : etat d'une page (`MapSearch` : evenements charges, criteres, selection), s'appuie sur `domain/`.
 - **view/** : construisent et mettent a jour le DOM (`h()`, `textContent`) et portent **tous** les textes et choix d'affichage. Aucun appel API, aucune regle metier. Une view de page est seule a connaitre ses ids et les passe a des sous-vues sans id, reutilisables. Les textes calcules (statuts, page detail) sont des **fonctions pures a cote de la view** (`xxxMessages.js`, `eventDetailPresenter.js`), testees sans DOM.
-- **controller/** : mediateurs minces (relaient les evenements des views vers le model, redessinent). Ne touchent **jamais** le DOM, ne contiennent ni texte affiche ni regle metier. Dependances injectables par le constructeur (tests). Tous demarrent par `start({ signal, ...params })` ; un chargement passe par `PageLoader` (un a la fois, message d'erreur, rien apres le depart de la page).
-- **pages/** : points d'entree minces, un par page HTML. Le routeur appelle `mount({ signal, params })` : `signal` est annule quand on quitte la page, `params` est la query string. Le header, le footer et le handler 401 sont poses une fois par `app/boot.js`.
+- **controller/** : mediateurs minces (relaient les evenements des views vers le model, redessinent). Ne touchent **jamais** le DOM ni l'adresse, ne contiennent ni texte affiche ni regle metier. Dependances injectables par le constructeur (tests). Tous demarrent **une seule fois** par `start({ signal, ...params })` (garde `started`) ; un chargement passe par `PageLoader` (un a la fois, message d'erreur, rien apres le depart de la page). Les views recoivent ce `signal` dans `bind(handlers, signal)` : leurs ecouteurs et annonces differees s'arretent au depart de la page.
+- **pages/** : points d'entree minces, un par page HTML. Le routeur appelle `mount({ root, signal, params, setParam })` (typedef `PageContext` de `app/router.js`) :
+  - `root` : le `<main id="app-root">` ou la page est posee ; la page construit ses views avec (`new EventsView(root)`), elles n'y cherchent que leurs elements ;
+  - `signal` : annule quand on quitte la page ;
+  - `params` : la query string ;
+  - `setParam(name, value)` : remplace un parametre de l'adresse sans recharger (ex. `?q=` de la carte). **Seul le routeur modifie l'adresse** : sinon il ne saurait plus quelle page est affichee (un lien vers l'adresse d'avant ne ferait rien).
+
+  Une erreur de `mount` est journalisee dans la console. Le header, le footer et le handler 401 sont poses une fois par `app/boot.js`.
 - **Fonctions** pour ce qui est sans etat (models, composants) ; **petite classe** pour ce qui garde des references (view et ses elements, etat de page, controleur).
 
 ### Regle de dependances
 
 ```
 app/             -> pages/ (appRoutes.js), core/, shared/dom.js, view/layout/
-pages/           -> controller/, view/components/ (champ de recherche de l'accueil)
-controller/      -> model/services/, model/state/, model/domain/, view/, core/ (sauf api.js)
+pages/           -> controller/, view/ (views de la page, construites avec `root`)
+controller/      -> model/services/, model/state/, model/domain/, model/mappers/pageQueryMapper.js (normalizePageLimit),
+                    view/, core/ (sauf api.js), shared/LatestTask.js
 model/services/  -> core/api.js, model/mappers/, model/dto/ (types)
 model/mappers/   -> model/domain/ (regles de calcul), model/dto/ (types), core/apiLimits.js
 model/state/     -> model/domain/
@@ -244,10 +261,10 @@ shared/          -> shared/ uniquement (utilitaires purs)
 
 ### Page carte (`index.html`)
 
-- Les evenements sont charges **une fois** (`limit=100`, plafond du back) puis filtres **cote client** (`model/domain/eventSearch.js`) :
+- Les evenements sont charges **une fois** (`limit=100`, plafond du back) puis filtres **cote client** (`model/domain/event/eventSearch.js`) :
   - distance haversine au point choisi
   - rayon 1-20 km
-  - criteres de `model/domain/eventFilters.js` : "Ce week-end" (samedi 0 h -> lundi 0 h), "Gratuit", "Places disponibles", categories (OU), recherche du header (titre, lieu, ville ; sans accents ni casse)
+  - criteres de `model/domain/event/eventFilters.js` : "Ce week-end" (samedi 0 h -> lundi 0 h), "Gratuit", "Places disponibles", categories (OU), recherche du header (titre, lieu, ville ; sans accents ni casse)
 - Un evenement **sans coordonnees** reste dans la liste ("position inconnue"), n'est pas dessine et ne compte pas dans "N evenements dans ce cercle" (le statut ajoute "· N sans position sur la carte")
 - La **liste** est le contenu accessible principal ; la carte est un complement : marqueurs **hors tabulation**, carte focusable (fleches, +/−, **Entree** = placer le point au centre). Le statut `role="status"` annonce le compte.
 - Evenements termines exclus cote client (`isUpcoming` : fin ou debut passe). Si la reponse atteint le plafond de 100, le statut precise "au moins 100 evenements charges, liste peut-etre incomplete".
@@ -259,7 +276,7 @@ shared/          -> shared/ uniquement (utilitaires purs)
 - **Leaflet 1.9.4** en `<script>` classique UMD + `<link>` CSS depuis unpkg, versions epinglees avec `integrity` (SRI). `LeafletMap` lit `window.L` ; s'il manque (hors ligne, bloque), un message s'affiche et la liste reste utilisable.
 - **Categories** : `view/components/category/category.js` rattache les slugs charte (`soiree`, `sport`, `conference`, `culture`, `tech`, `forum-entreprises`) a leur couleur ; les autres slugs (`concert`, `gaming`, `bde`, `exterieur`, `gastronomie`) sont gris et regroupes sous "Autres" dans la legende. Couleur d'un evenement = sa premiere categorie de la charte, sinon sa premiere categorie.
 
-### Page liste (`pages/events.html`)
+### Page liste (`pages/event/events.html`)
 
 - Cartes complete par evenement (image, titre, date formatee, lieu, prix, places, categories)
 - Chargement dynamique par pages de 20 via `GET /events?limit=20&offset=...&from=...` ; bouton "Voir plus" masque quand `has_more` vaut `false`.
@@ -275,7 +292,9 @@ shared/          -> shared/ uniquement (utilitaires purs)
 | `logo`        | `renderLogo()`, seul endroit qui connait le fichier du logo         |
 | `icon`        | `icon(name)`, `pinIcon()` : SVG Lucide via `createElementNS`         |
 | `pill`        | `renderCategoryPill`, `renderPricePill`, `renderPlacesPill` (+ `.pill`) |
-| `eventMeta`   | `joinMeta`, `placeOf`, `distanceText` (lignes de details)            |
+| `eventMeta`   | `joinMeta`, `distanceText` (lignes de details)                       |
+| `cover`       | `setCover(img, url)` : couverture de l'API si son URL est sure, sinon illustration par defaut (aussi si l'image ne charge pas) |
+| `searchBox`   | `renderSearchBox()` (header, accueil) et `SearchBox` (champs synchronises, relus a chaque appel) |
 | `eventCard`   | rendu commun `.event-card` : variantes `grid`, `compact`, `popup` ; image avec remplacement, titre, categories, date, lieu, prix, places et lien detail |
 | `eventRow`    | adaptateur `<li>` vers `eventCard` compact (selection synchronisee)   |
 | `eventPopup`  | adaptateur vers `eventCard` popup avec action d'inscription           |
@@ -287,7 +306,7 @@ Pour afficher des cartes sur une autre page (recherche ou suggestions), reutilis
 le HTML ou creer une autre classe de carte. Les trois variantes conservent `.event-card` :
 
 Le partial `carte_evenement.php` mentionne dans le ticket correspond ici a
-`src/view/components/eventCard/eventCard.js` : le front HTML/JS consomme l'API PHP
+`src/view/components/event/eventCard/eventCard.js` : le front HTML/JS consomme l'API PHP
 et partage `renderEventCard()` pour tous les contextes.
 
 | Contexte | Chemin de rendu vers le composant commun |
@@ -301,14 +320,14 @@ La selection des suggestions est une fonction pure `suggestEvents()` dans le mod
 `SuggestionsList` ne gere que le rendu, avec un etat vide et une erreur distincts.
 
 ```js
-import { renderEventCard } from "./components/eventCard/eventCard.js";
+import { renderEventCard } from "../components/event/eventCard/eventCard.js"; // depuis src/view/<page>/
 
 // Vue de page : la grille utilise le rendu complet par defaut.
 listEl.replaceChildren(...events.map((event) => renderEventCard(event)));
 ```
 
 L'image absente, invalide ou inaccessible est remplacee par un visuel local neutre.
-Les titres pointent vers `pages/event.html?id=...`, qui charge l'evenement correspondant depuis l'API.
+Les titres pointent vers `/event?id=...`, qui charge l'evenement correspondant depuis l'API.
 
 Le service `fetchEvent(id)` et le mapper `toEventDetail()` assurent ce branchement :
 ils lisent `GET /events/{id}` et ajoutent le profil public `creator` normalise
@@ -317,18 +336,17 @@ reste distinct et conserve uniquement les champs d'`EventDto`.
 
 ### Detail et etats d'erreur
 
-`EventDetailController` valide l'identifiant avant l'appel API. Une valeur absente,
-dupliquee, non decimale, nulle, negative, avec zero initial ou superieure a l'entier
-PHP 64 bits affiche l'ecran 404 sans requete. L'identifiant reste une chaine pour
-eviter la perte de precision JavaScript. Une reponse API 404 affiche exactement le
-meme ecran pour un evenement inexistant, brouillon, annule ou archive.
+Un identifiant absent, vide ou duplique (`?id=1&id=2`) affiche l'ecran 404 sans requete.
+Sinon, l'identifiant de l'URL part tel quel a l'API (encode dans le chemin, garde en chaine pour
+eviter la perte de precision JavaScript) : c'est elle qui le valide. Sa reponse 404 affiche le meme
+ecran pour un identifiant invalide et pour un evenement inexistant, brouillon, annule ou archive.
 
 `EventDetailView` cache les informations pendant le chargement et lors d'une erreur.
 L'ecran 404 comporte un retour vers la liste, un titre de document explicite et un
 focus sur son titre. Une panne reseau ou serveur affiche une erreur distincte avec
 "Reessayer". Les donnees sont inserees avec `textContent` et les utilitaires DOM.
 
-Exemples : `pages/event.html?id=abc` et `pages/event.html?id=9999`. Le second cas
+Exemples : `/event?id=abc` et `/event?id=9999`. Le second cas
 necessite une API joignable pour confirmer que l'evenement n'existe pas.
 Le front est servi comme fichiers statiques : le document HTML conserve le statut
 HTTP 200 et affiche l'ecran 404 en JavaScript ; l'API renvoie bien le statut HTTP 404.
@@ -339,12 +357,13 @@ HTTP 200 et affiche l'ecran 404 en JavaScript ; l'API renvoie bien le statut HTT
 
 ### Fichiers
 
-- **`Event.js`** : `remainingPlaces`, `availabilityOf`, `LAST_PLACES_THRESHOLD`, `isUpcoming`
+- **`event.js`** : typedef `Event` (l'evenement du front), `remainingPlaces`, `availabilityOf`, `LAST_PLACES_THRESHOLD`, `isUpcoming`
+- **`keyword.js`** : `cleanKeyword` — mot-cle `q` envoye a l'API (sans espaces autour, coupe a 100 caracteres), seul endroit de cette regle
 - **`category.js`** : `categoriesIn` (aucune notion de couleur, que des slugs)
 - **`coverageArea.js`** : `COVERAGE_AREA` (Ile-de-France), `isInCoverageArea` (contour exact)
 - **`ileDeFranceOutline.js`** : contour de la region (genere, resolution ~300 m)
 - **`eventFilters.js`** : un predicat par critere (gratuit, places, categories, week-end, texte), `USER_FILTERS`, `matchesCriteria`, `weekendRange`
-- **`eventSearch.js`** : `searchEvents` — a venir + criteres + distance/rayon + tri + comptes
+- **`eventSearch.js`** : `searchEvents` — a venir + criteres + distance/rayon + tri + comptes ; typedef `SearchItem` (`{ event, distanceKm }`)
 - **`eventSuggestions.js`** : `suggestEvents` — selection publique de trois evenements a venir non complets, issue du meme chargement que l'accueil
 
 ### Regle d'or
@@ -361,7 +380,7 @@ Un fichier de `domain/` ne contient :
 ### Exemple : places restantes
 
 ```js
-// model/domain/event.js
+// model/domain/event/event.js
 export const LAST_PLACES_THRESHOLD = 5;
 
 export function remainingPlaces(capacity, registeredCount) {
@@ -463,8 +482,8 @@ front/tools/typecheck.sh
 ```
 
 - `jsconfig.json` active la verification JSDoc (VS Code en direct, `tsc` en CI)
-- Perimetre : `model/`, `shared/`, `core/`, `controller/` (et les views qu'ils importent) et les tests
-- Le reste de `view/` (carte Leaflet, header, composants non importes) **n'est pas encore** dans le perimetre
+- Perimetre : tout `src/` (routeur, pages, views comprises) avec `strictNullChecks` : un element du DOM ou un champ qui peut manquer doit etre teste ou explicitement type (les views typent leurs elements non nuls, garantis par `isReady`)
+- Les tests ont leur config (`tests/jsconfig.json`, sans `strictNullChecks` : leurs assertions garantissent deja les valeurs)
 - `tools/typecheck.sh` installe TypeScript (version epinglee) dans `tools/.cache/` (ignore par git)
 
 ---
@@ -473,11 +492,11 @@ front/tools/typecheck.sh
 
 ### Localisation
 
-- [`src/model/mappers/eventMapper.js`](src/model/mappers/eventMapper.js) : `toEvent(dto)`, `toEvents(dtos)`, `toEventDto(event)`
+- [`src/model/mappers/event/eventMapper.js`](src/model/mappers/event/eventMapper.js) : `toEvent(dto)`, `toEvents(dtos)`, `toEventDto(event)`
 - [`src/model/mappers/categoryMapper.js`](src/model/mappers/categoryMapper.js) : `toCategory(dto)`, `toCategoryDto(category)`
 - [`src/model/mappers/pageQueryMapper.js`](src/model/mappers/pageQueryMapper.js) : `toPageQuery({ limit, offset })` (pagination commune a toutes les listes, bornes de `core/apiLimits.js`)
-- [`src/model/mappers/eventRequestMapper.js`](src/model/mappers/eventRequestMapper.js) : `toEventQuery({ limit, offset, from, keyword })` (query string de `GET /events`), `toEventPath(id)` (`/events/{id}`, ou `null` si l'identifiant est invalide)
-- [`src/model/mappers/faqRequestMapper.js`](src/model/mappers/faqRequestMapper.js) : `toFaqQuery({ limit, offset })` (query string de `GET /faq`)
+- [`src/model/mappers/event/eventRequestMapper.js`](src/model/mappers/event/eventRequestMapper.js) : `toEventQuery({ limit, offset, from, keyword })` (query string de `GET /events`), `toEventPath(id)` (`/events/{id}`, identifiant encode)
+- [`src/model/mappers/faq/faqRequestMapper.js`](src/model/mappers/faq/faqRequestMapper.js) : `toFaqQuery({ limit, offset })` (query string de `GET /faq`)
 
 ### Operations
 
@@ -495,7 +514,7 @@ const dto = toEventDto(event);       // camelCase -> snake_case pour un envoi (l
 - Renommer un champ cote API ne touche qu'ici (+ le typedef DTO + le schema YAML cote back)
 - `toEvent` construit la structure camelCase du front, incluant :
   - `position: { lat, lng } | null` (plutot que `latitude`/`longitude` separes)
-  - `remainingPlaces` et `availability` calcules via `domain/event.js`
+  - `remainingPlaces` et `availability` calcules via `domain/event/event.js`
   - Dates `Date` (plutot que strings ISO)
 - `toEventDto` **ne renvoie pas** les champs calcules (pas d'aller-retour)
 - Dans l'autre sens, les criteres de lecture deviennent des parametres d'API dans les mappers de requete (`eventRequestMapper.js`, `faqRequestMapper.js`) : le service ne construit lui-meme ni les noms `limit`, `offset`, `from`, `q` ni le chemin `/events/{id}`
@@ -510,7 +529,7 @@ Le test de contrat `tests/contract.test.js` echoue si un champ du JSON back n'es
 
 Fichiers dans [`src/model/services/`](src/model/services/) :
 
-- [`eventService.js`](src/model/services/eventService.js) : `fetchUpcomingEventPage` (une page de `GET /events`), `fetchUpcomingEvents` (ses elements), `fetchEvent(id)` (`GET /events/{id}` ; un identifiant invalide leve une `ApiError` 404 sans appel reseau)
+- [`eventService.js`](src/model/services/eventService.js) : `fetchUpcomingEventPage` (une page de `GET /events`), `fetchUpcomingEvents` (ses elements), `fetchEvent(id)` (`GET /events/{id}` ; l'API repond 404, donc une `ApiError` 404, pour un identifiant invalide)
 - [`faqService.js`](src/model/services/faqService.js) : `fetchFaq()` (toutes les questions actives, page par page)
 - Plafonds de l'API (`MAX_PAGE_LIMIT`, `MAX_PAGE_OFFSET`, `MAX_KEYWORD_LENGTH`) : [`core/apiLimits.js`](src/core/apiLimits.js)
 
@@ -524,8 +543,8 @@ les categories arrivent dans les evenements, donc pas de `categoryService` pour 
 ```js
 // src/model/services/eventService.js : le mapper de requete construit la query, le mapper de reponse le modele
 import { api } from "../../core/api.js";
-import { toEvents } from "../mappers/eventMapper.js";
-import { toEventQuery } from "../mappers/eventRequestMapper.js";
+import { toEvents } from "../mappers/event/eventMapper.js";
+import { toEventQuery } from "../mappers/event/eventRequestMapper.js";
 
 export async function fetchUpcomingEventPage({ limit, offset = 0, from, query: keyword = "", signal } = {}) {
     const page = await api.get(`/events?${toEventQuery({ limit, offset, from, keyword })}`, { signal });
@@ -556,9 +575,9 @@ api.del(path, { signal, timeout })
 
 ### Localisation
 
-- [`src/controller/HomeController.js`](src/controller/HomeController.js) : page carte ; s'appuie sur [`LatestTask`](src/controller/LatestTask.js) (seule la derniere recherche compte) et [`OriginPicker`](src/controller/OriginPicker.js) (clic sur la carte ou position de l'appareil)
-- [`src/controller/EventsController.js`](src/controller/EventsController.js) : page liste
-- [`src/controller/EventDetailController.js`](src/controller/EventDetailController.js) : page detail
+- [`src/controller/HomeController.js`](src/controller/HomeController.js) : page carte ; s'appuie sur [`LatestTask`](src/shared/LatestTask.js) (seule la derniere recherche compte) et [`OriginPicker`](src/controller/OriginPicker.js) (clic sur la carte ou position de l'appareil)
+- [`src/controller/event/EventsController.js`](src/controller/event/EventsController.js) : page liste
+- [`src/controller/event/EventDetailController.js`](src/controller/event/EventDetailController.js) : page detail
 - [`src/controller/FaqController.js`](src/controller/FaqController.js) : FAQ
 - [`src/controller/PageLoader.js`](src/controller/PageLoader.js) : cycle d'un chargement (un a la fois, chargement -> succes ou message, rien apres le depart de la page)
 
@@ -574,7 +593,7 @@ api.del(path, { signal, timeout })
 ### Exemple
 
 ```js
-// src/controller/EventDetailController.js (extrait)
+// src/controller/event/EventDetailController.js (extrait)
 export class EventDetailController {
     constructor({ view = new EventDetailView(), loadEvent = fetchEvent } = {}) {
         this.view = view;
@@ -583,9 +602,10 @@ export class EventDetailController {
     }
 
     async start({ id = null, signal } = {}) {
-        if (!this.view.isReady || signal?.aborted) return;
+        if (!this.view.isReady || this.started || signal?.aborted) return;
+        this.started = true;
         this.loader = new PageLoader(this.view, { signal });
-        this.id = parseEventId(id);
+        this.id = id || null; // absent : 404 sans requete ; sinon l'API valide
         this.view.bind({ onRetry: () => this.load() }, signal);
         await this.load();
     }
@@ -603,12 +623,14 @@ export class EventDetailController {
 ### Point d'entree (page)
 
 ```js
-// src/pages/event.js : appele par le routeur (app/appRoutes.js) une fois pages/event.html affiche
-import { EventDetailController } from "../controller/EventDetailController.js";
+// src/pages/event/event.js : appele par le routeur (app/appRoutes.js) une fois pages/event/event.html affiche
+import { EventDetailController } from "../../controller/event/EventDetailController.js";
+import { EventDetailView } from "../../view/event/EventDetailView.js";
 
-export function mountEvent({ signal, params }) {
+export function mountEvent({ root, signal, params }) {
     const ids = params.getAll("id");
-    return new EventDetailController().start({ id: ids.length === 1 ? ids[0] : null, signal });
+    return new EventDetailController({ view: new EventDetailView(root) })
+        .start({ id: ids.length === 1 ? ids[0] : null, signal });
 }
 ```
 
@@ -710,14 +732,22 @@ node --test "tests/**/*.test.js"
 
 ```
 tests/
-├── eventMapper.test.js      ← aller-retour DTO <-> modele
-├── eventSearch.test.js      ← filtres, recherche, distance, tri
+├── event/
+│   ├── eventMapper.test.js          ← aller-retour DTO <-> modele
+│   ├── eventSearch.test.js          ← filtres, recherche, distance, tri
+│   ├── eventAvailability.test.js    ← places restantes, disponibilite
+│   ├── eventSuggestions.test.js     ← suggestions de l'onglet "Pour toi"
+│   ├── eventService.test.js         ← requetes GET /events (eventRequestMapper) et service
+│   ├── eventDetail.test.js          ← mapper du detail (organisateur)
+│   ├── eventDetailController.test.js, eventsPagination.test.js ← controleurs avec doubles de view
+│   └── eventNavigation.test.js      ← routeur complet : changement de page, Precedent/Suivant, setParam, erreur de mount
 ├── shared.test.js           ← dom (h), format (dates/prix/distance), geo (haversine)
-├── eventService.test.js     ← requetes GET /events (eventRequestMapper) et service
+├── keywordSearch.test.js    ← recherche par mot-cle, surlignage
 ├── pageLoader.test.js       ← cycle de chargement, depart de la page
 ├── originPicker.test.js     ← LatestTask, choix du point de depart
+├── navigation.test.js       ← decisions du routeur (liens, formulaires, parametres d'adresse)
 ├── viewMessages.test.js     ← textes de statut et presenter de la page detail
-├── *Controller.test.js, faq.test.js, eventsPagination.test.js ← controleurs avec doubles de view
+├── homeSearchController.test.js, faq.test.js ← controleurs avec doubles de view
 ├── contract.test.js         ← contrat avec la spec OpenAPI du back
 └── fixtures.js              ← eventDto(), event() : donnees communes
 ```
@@ -729,6 +759,7 @@ tests/
 - **Shared** : `h()` (XSS, URLs refusees), formats (dates, prix, distance, pluralize), `distanceKm`, `isLatLng`
 - **Views** : leurs textes calcules (`*Messages.js`, `eventDetailPresenter.js`) sont testes ; le DOM l'est indirectement
 - **Controleurs** : avec des doubles de view ; `PageLoader`, `LatestTask`, `OriginPicker` testes directement
+- **Routeur** : ses decisions (`app/navigation.js`) en fonctions pures, et le routeur entier dans un navigateur simule
 
 ### Test de contrat (`contract.test.js`)
 
@@ -739,11 +770,11 @@ tests/
 ### Ajouter un test
 
 ```js
-// tests/eventFilters.test.js
+// tests/event/eventFilters.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { event } from "./fixtures.js";
-import { matchesCriteria } from "../src/model/domain/eventFilters.js";
+import { event } from "../fixtures.js";
+import { matchesCriteria } from "../../src/model/domain/event/eventFilters.js";
 
 test("week-end filter includes Saturday 23h59", () => {
     const e = event({ startAt: new Date("2026-11-07T23:59:00Z") });
@@ -762,7 +793,7 @@ front/tools/typecheck.sh
 ```
 
 - Installe TypeScript (version epinglee) dans `tools/.cache/` au premier lancement
-- Verifie les JSDoc de `model/`, `shared/`, `core/`, `controller/` (et les views qu'ils importent), tests
+- Verifie les JSDoc de tout `src/` (`strictNullChecks`) puis des tests (`tests/jsconfig.json`)
 - Globales (`DAYOUT_CONFIG`, `L`) declarees dans `src/types/globals.d.ts`
 
 ### Conventions de nommage
@@ -788,7 +819,7 @@ front/tools/typecheck.sh
   - element : `.event-card__meta`, `.site-header__logo` (double underscore)
   - variante : `.alert--error` (double tiret)
   - etat : `.is-*` **uniquement** si aucun attribut ARIA ne l'exprime ; sinon styler l'attribut (`[aria-current="page"]`, `[aria-busy="true"]`, `[aria-invalid="true"]`)
-- **Composant rendu par une view** : feuille a cote de son JS (`src/view/components/eventCard/eventCard.css`, `src/view/home/pointCard/pointCard.css`) ; quand une view est decoupee, sa feuille l'est aussi
+- **Composant rendu par une view** : feuille a cote de son JS (`src/view/components/event/eventCard/eventCard.css`, `src/view/home/pointCard/pointCard.css`) ; quand une view est decoupee, sa feuille l'est aussi
 - **Composant purement HTML/CSS** : feuille dans `assets/css/components/`
 - Dans les deux cas, ajoutee par `@import` dans `assets/css/main.css`
 
@@ -835,7 +866,7 @@ php -S localhost:5500 -t front
 ```bash
 cd front
 node --test "tests/**/*.test.js"                  # tout
-node --test tests/eventMapper.test.js             # un fichier
+node --test tests/event/eventMapper.test.js             # un fichier
 REQUIRE_CONTRACT=1 node --test tests/contract.test.js   # force l'echec si PHP manque
 ```
 
@@ -865,6 +896,31 @@ Les logs serveur sont dans `back/storage/logs/` (voir `../back/README.md`).
 Hebergement statique (nginx, Apache, Cloudflare Pages, Netlify, Vercel...).
 Aucun build, aucun bundler : copier le contenu de `front/` tel quel.
 
+### Toutes les adresses servent `index.html`
+
+Les pages ont des adresses sans fichier (`/events`, `/faq`, `/event?id=1`) que seul le routeur JS connait.
+Ouvrir ou recharger directement `/events` demande donc au serveur de renvoyer `index.html` pour toute
+adresse qui n'est pas un fichier (sinon : 404 du serveur). Exemples :
+
+```nginx
+location / { try_files $uri /index.html; }
+```
+
+```apache
+# .htaccess
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.html [L]
+```
+
+```text
+# Netlify / Cloudflare Pages : fichier _redirects
+/*  /index.html  200
+```
+
+`php -S localhost:5500 -t front` (installation locale) le fait deja ; **Live Server ne le fait pas** :
+avec lui, partir de `/` et naviguer par les liens.
+
 ### Configuration en prod
 
 1. Copier `src/config.local.example.js` -> `config.local.js` avec l'URL de l'API prod :
@@ -879,19 +935,27 @@ Aucun build, aucun bundler : copier le contenu de `front/` tel quel.
 ### Checklist avant mise en prod
 
 - [ ] `config.local.js` genere avec l'URL de l'API prod
-- [ ] Headers `Content-Security-Policy` configures sur le serveur HTTP (recommande : `script-src 'self' unpkg.com fonts.googleapis.com; style-src 'self' fonts.googleapis.com; font-src fonts.gstatic.com; img-src 'self' *.tile.openstreetmap.org data:; connect-src 'self' <API_URL>`)
+- [ ] Toute adresse qui n'est pas un fichier renvoie `index.html` (voir ci-dessus)
+- [ ] Headers `Content-Security-Policy` configures sur le serveur HTTP (recommande, a completer avec les domaines des images de couverture : `default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com <API_URL>; connect-src 'self' <API_URL>`). `unpkg.com` sert Leaflet (JS, CSS et images de ses controles), `tile.openstreetmap.org` les tuiles de la carte
 - [ ] `Strict-Transport-Security` (HSTS) par le serveur HTTP
 - [ ] Compression (gzip / brotli) sur `*.js`, `*.css`, `*.svg`, `*.html`
-- [ ] Cache long sur `assets/` (immutables) ; court sur `*.html` et `src/*.js` (pour deploiements rapides)
+- [ ] Cache long sur `assets/img/` (immutables) ; `Cache-Control: no-cache` (revalidation a chaque chargement, via ETag) sur `*.html`, `*.css` et `src/*.js` : les modules ES ne sont pas versionnes, un cache "court" pourrait melanger des modules de deux deploiements
 
 ---
 
 ## 20) Troubleshooting
 
-### Page blanche, 404 sur `../src/pages/xxx.js`
+### 404 du serveur en ouvrant ou rechargeant `/events`, `/faq`...
 
-L'URL est relative au HTML. Verifier que `pages/events.html` reference bien
-`../src/pages/events.js` (deux niveaux au-dessus).
+Le serveur ne renvoie pas `index.html` pour les adresses de l'app : voir *Deploiement > Toutes les
+adresses servent `index.html`*. En local, servir avec `php -S localhost:5500 -t front` (Live Server ne le
+fait pas).
+
+### "Impossible d'afficher cette page"
+
+Le routeur n'a pas pu lire `pages/<page>.html` (voir la console : statut HTTP, ou `pas de <main id="app-root">`).
+Verifier que le fichier existe et contient un `<main id="app-root">` : seul son contenu est affiche, ses
+`<script>` ne sont pas executes (le JS de la page est le `mount` de `app/appRoutes.js`).
 
 ### Erreur CORS
 
@@ -914,7 +978,7 @@ Leaflet n'a pas pu etre charge depuis unpkg. Causes :
    ```bash
    curl -sL https://unpkg.com/leaflet@1.9.4/dist/leaflet.js | openssl dgst -sha384 -binary | openssl base64 -A
    ```
-3. CSP du serveur trop stricte : autoriser `unpkg.com`
+3. CSP du serveur trop stricte : autoriser `https://unpkg.com` dans `script-src` **et** `style-src`
 
 La liste des evenements reste fonctionnelle meme sans la carte.
 
@@ -940,7 +1004,7 @@ Les icones sont des SVG inline (pas de CDN). Verifier :
 
 ### Les filtres ne correspondent pas aux resultats attendus
 
-Les filtres de la carte sont **cote client** (`model/domain/eventFilters.js`). Verifier :
+Les filtres de la carte sont **cote client** (`model/domain/event/eventFilters.js`). Verifier :
 
 1. `isUpcoming(event)` : les events termines sont **exclus** (`end_at < now`, ou `start_at < now` a defaut)
 2. "Ce week-end" : samedi 0 h -> **lundi 0 h** (fuseau local du navigateur)
@@ -1057,7 +1121,7 @@ export async function fetchXxx({ signal } = {}) {
 import { maPageStatus } from "./maPageMessages.js"; // textes calcules : fonctions pures, testees sans DOM
 
 export class MaPageView {
-    constructor(root = document) {
+    constructor(root = document) { // root : le <main> de la page, passe par le point d'entree
         this.statusEl  = root.querySelector("#ma-page-status");
         this.errorEl   = root.querySelector("#ma-page-error");
         this.contentEl = root.querySelector("#ma-page-content");
@@ -1089,7 +1153,8 @@ export class MaPageController {
     }
 
     async start({ signal } = {}) {
-        if (!this.view.isReady || signal?.aborted) return;
+        if (!this.view.isReady || this.started || signal?.aborted) return;
+        this.started = true;
         // un chargement a la fois, message d'erreur, rien apres le depart de la page
         await new PageLoader(this.view, { signal }).run((s) => this.load({ signal: s }), {
             onSuccess: (items) => this.view.showItems(items),
@@ -1103,9 +1168,11 @@ export class MaPageController {
 ```js
 // src/pages/ma-page.js : appele par le routeur une fois pages/ma-page.html affiche
 import { MaPageController } from "../controller/MaPageController.js";
+import { MaPageView } from "../view/ma-page/MaPageView.js";
 
-export function mountMaPage({ signal, params }) {
-    return new MaPageController().start({ signal });
+/** @param {import("../app/router.js").PageContext} page */
+export function mountMaPage({ root, signal }) {
+    return new MaPageController({ view: new MaPageView(root) }).start({ signal });
 }
 
 // src/app/appRoutes.js : une ligne, et NAV_ITEMS (view/layout/header/header.js) si la page est dans le menu
