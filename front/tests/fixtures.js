@@ -6,7 +6,8 @@ export const creatorDto = (overrides = {}) => ({
   id: 2, display_name: "Garage ISEP", description: null, avatar_url: null, school_name: "ISEP", ...overrides,
 });
 
-/** EventDto complet (GET /events/1), surcharges par `overrides`. */
+/** EventDto complet (GET /events/1), surcharges par `overrides`.
+ * @returns {import("../src/model/dto/eventDto.js").EventDto} */
 export function eventDto(overrides = {}) {
   return {
     id: 1,

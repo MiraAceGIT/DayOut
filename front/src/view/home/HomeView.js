@@ -11,7 +11,7 @@ import { resultsMessage } from "./homeMessages.js";
 // Le compte est annonce par role=status : on attend la fin de la frappe / du glissement pour ne pas saturer.
 const STATUS_DELAY_MS = 400;
 
-/** Elements cherches dans `root`, le <main> ou le routeur a pose la page carte. */
+/** Elements cherches dans `root`, le <main> ou le routeur a pose la page carte ; garantis par `isReady`, verifie par le controleur. */
 export class HomeView {
   /** @param {ParentNode} [root] */
   constructor(root = document) {
@@ -21,9 +21,9 @@ export class HomeView {
     /** @type {HTMLElement[]} */
     this.tabs      = [...root.querySelectorAll('#home-tabs [role="tab"]')].map((el) => /** @type {HTMLElement} */ (el));
     this.countEl   = root.querySelector("#home-nearby-count");
-    this.errorEl   = root.querySelector("#home-error");
-    this.statusEl  = root.querySelector("#home-status");
-    this.listEl    = root.querySelector("#home-list");
+    this.errorEl   = /** @type {HTMLElement} */ (root.querySelector("#home-error"));
+    this.statusEl  = /** @type {HTMLElement} */ (root.querySelector("#home-status"));
+    this.listEl    = /** @type {HTMLElement} */ (root.querySelector("#home-list"));
     this.loginLink = /** @type {HTMLAnchorElement|null} */ (root.querySelector("#home-login-link"));
     this.point = new PointCard({
       labelEl:   root.querySelector("#home-point-label"),

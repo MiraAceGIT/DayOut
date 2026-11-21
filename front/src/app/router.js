@@ -27,8 +27,9 @@ import { formNavigation, linkNavigation, withParam } from "./navigation.js";
  * routeur sache toujours ce qui est affiche.
  * @param {{ routes: Route[], notFound: Route, root: HTMLElement|null, onChange: (path: string) => void }} options
  */
-export function startRouter({ routes, notFound, root, onChange }) {
-  if (!root) return;
+export function startRouter({ routes, notFound, root: rootOrNull, onChange }) {
+  if (!rootOrNull) return;
+  const root = rootOrNull;
   /** Adresse (route + query string) de la page affichee. */
   let shownLocation = null;
   /** @type {AbortController|null} */

@@ -1,14 +1,14 @@
 import { renderEventCard } from "../components/eventCard/eventCard.js";
 import { errorStatus, paginationStatus } from "./eventsMessages.js";
 
-/** Elements cherches dans `root`, le <main> ou le routeur a pose la page. */
+/** Elements cherches dans `root`, le <main> ou le routeur a pose la page ; garantis par `isReady`, verifie par le controleur. */
 export class EventsView {
   /** @param {ParentNode} [root] */
   constructor(root = document) {
-    this.listEl   = root.querySelector("#events-list");
-    this.errorEl  = root.querySelector("#events-error");
-    this.statusEl = root.querySelector("#events-status");
-    this.moreBtn  = /** @type {HTMLButtonElement|null} */ (root.querySelector("#events-more"));
+    this.listEl   = /** @type {HTMLElement} */ (root.querySelector("#events-list"));
+    this.errorEl  = /** @type {HTMLElement} */ (root.querySelector("#events-error"));
+    this.statusEl = /** @type {HTMLElement} */ (root.querySelector("#events-status"));
+    this.moreBtn  = /** @type {HTMLButtonElement} */ (root.querySelector("#events-more"));
     this.count = 0;
   }
 

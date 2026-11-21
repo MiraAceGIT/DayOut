@@ -69,6 +69,7 @@ function buildSignal(callerSignal, timeoutMs) {
   return ctrl.signal;
 }
 
+/** @param {unknown} cause @param {AbortSignal|undefined} signal @param {string|null} [requestId] */
 function transportError(cause, signal, requestId = null) {
   const reason = signal?.aborted ? signal.reason : cause;
   if (reason?.name === "TimeoutError") {

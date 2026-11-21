@@ -1,6 +1,7 @@
 {
-  // Verification des types depuis les JSDoc : VS Code l'applique en direct, la CI lance `tsc -p front/jsconfig.json`.
-  // Perimetre : couches sans DOM, controleurs (et les views qu'ils importent) ; le reste de view/ suivra.
+  // Verification des types depuis les JSDoc : VS Code l'applique en direct, la CI lance tools/typecheck.sh.
+  // Perimetre : tout src/ (routeur, pages, views comprises), null et undefined verifies (strictNullChecks).
+  // Les tests ont leur propre config (tests/jsconfig.json) : leurs assertions garantissent deja les non-null.
   "compilerOptions": {
     "checkJs": true,
     "allowJs": true,
@@ -10,14 +11,11 @@
     "moduleResolution": "bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"],
-    "strict": false
+    "strict": false,
+    "strictNullChecks": true
   },
   "include": [
-    "src/types/**/*.d.ts",
-    "src/model/**/*.js",
-    "src/shared/**/*.js",
-    "src/core/**/*.js",
-    "src/controller/**/*.js",
-    "tests/**/*.js"
+    "src/**/*.d.ts",
+    "src/**/*.js"
   ]
 }

@@ -38,7 +38,7 @@ describe("toEvent", () => {
   });
 
   it("tolere un DTO incomplet", () => {
-    const event = toEvent({ id: 3 });
+    const event = toEvent(/** @type {any} */ ({ id: 3 })); // reponse inattendue : le mapper ne doit pas planter
     assert.equal(event.title, "");
     assert.equal(event.registeredCount, 0);
     assert.deepEqual(event.categories, []);

@@ -15,7 +15,8 @@ export class EventsController {
     this.offset = 0;
     this.hasMore = true;
     this.started = false;
-    this.from = null;
+    /** @type {string|undefined} */
+    this.from = undefined;
   }
 
   /** @param {{ signal?: AbortSignal }} [options] `signal` : depart de la page */

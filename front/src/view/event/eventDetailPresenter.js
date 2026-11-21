@@ -2,7 +2,7 @@
 // EventDetailView ne fait que les poser dans la page.
 import { formatEventWhen, formatPrice, formatRemainingPlaces, pluralize } from "../../shared/format.js";
 
-/** @typedef {Awaited<ReturnType<typeof import("../../model/services/eventService.js").fetchEvent>>} Event */
+/** @typedef {import("../../model/domain/event.js").Event} Event */
 
 /** "Garage ISEP" -> "GI" : deux premieres initiales, pour l'avatar sans image. @param {string} name */
 export function initials(name) {
@@ -42,7 +42,7 @@ export function presentEventDetail(event) {
     price: formatPrice(event.priceCents, { isPaid: event.isPaid, currency: event.currency }),
     registrations: `${pluralize(event.registeredCount, "inscrit")}${unlimited ? " · Capacité illimitée" : ` sur ${pluralize(event.capacity, "place")}`}`,
     /** null : capacite illimitee, pas de barre de remplissage */
-    capacity: unlimited ? null : {
+    capacity: event.capacity === null ? null : {
       max: event.capacity,
       value: event.registeredCount,
       label: `${event.registeredCount} / ${event.capacity}`,

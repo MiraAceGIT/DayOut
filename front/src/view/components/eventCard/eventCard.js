@@ -9,7 +9,7 @@ import { renderCategoryPill, renderPlacesPill, renderPricePill } from "../pill/p
 
 /** Meme composant pour la grille, les resultats de recherche et les bulles de carte.
  * `keyword` : mot-cle a surligner (titre, lieu, description).
- * @param event
+ * @param {import("../../../model/domain/event.js").Event} event
  * @param {{ variant?: "grid"|"compact"|"popup", distanceKm?: number|null, selected?: boolean, keyword?: string, onSelect?: (id: number) => void }} [options]
  */
 export function renderEventCard(event, { variant = "grid", distanceKm = null, selected = false, keyword = "", onSelect } = {}) {

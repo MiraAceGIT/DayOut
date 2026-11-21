@@ -36,8 +36,8 @@ export function formatHour(value, { timeZone = EVENT_TIME_ZONE } = {}) {
   const parts = new Intl.DateTimeFormat(LOCALE, {
     hour: "numeric", minute: "2-digit", hourCycle: "h23", timeZone,
   }).formatToParts(date);
-  const hour = Number(parts.find(part => part.type === "hour").value);
-  const minute = parts.find(part => part.type === "minute").value;
+  const hour = Number(parts.find(part => part.type === "hour")?.value);
+  const minute = parts.find(part => part.type === "minute")?.value;
   return minute === "00" ? `${hour} h` : `${hour} h ${minute}`;
 }
 

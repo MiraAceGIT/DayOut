@@ -3,6 +3,7 @@ import { toCategory, toCategoryDto } from "./categoryMapper.js";
 import { toCreator, toCreatorDto } from "./creatorMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventDto} EventDto */
+/** @typedef {import("../domain/event.js").Event} Event */
 
 /** Vide ou invalide -> null (pas 0 : c'est une vraie coordonnee). */
 function toCoordinate(value) {
@@ -11,7 +12,8 @@ function toCoordinate(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Valeurs gardees brutes : `formatPrice` traite un `isPaid` absent comme payant. */
+/** Valeurs gardees brutes : `formatPrice` traite un `isPaid` absent comme payant.
+ * @param {EventDto} dto @returns {Event} */
 export function toEvent(dto) {
   const latitude = toCoordinate(dto.latitude);
   const longitude = toCoordinate(dto.longitude);
@@ -46,11 +48,14 @@ export function toEvent(dto) {
   };
 }
 
+/** Autre chose qu'un tableau -> liste vide. @param {unknown} dtos @returns {Event[]} */
 export function toEvents(dtos) {
   return Array.isArray(dtos) ? dtos.map(toEvent) : [];
 }
 
-/** Les champs calcules (places restantes, disponibilite) ne repartent pas. */
+/** Les champs calcules (places restantes, disponibilite) ne repartent pas.
+ * Sert au test de contrat (le front connait tous les champs du schema Event) et aux futurs formulaires.
+ * @param {Event} event */
 export function toEventDto(event) {
   return /** @type {EventDto} */ ({
     id: event.id,

@@ -29,6 +29,6 @@ export const USER_FILTERS = [
 ];
 
 export function matchesCriteria(criteria, filters = USER_FILTERS) {
-  const predicates = filters.map((toPredicate) => toPredicate(criteria)).filter(Boolean);
+  const predicates = filters.map((toPredicate) => toPredicate(criteria)).filter((test) => test !== null);
   return (event) => predicates.every((test) => test(event));
 }

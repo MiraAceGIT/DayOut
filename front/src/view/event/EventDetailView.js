@@ -2,19 +2,25 @@ import { h } from "../../shared/dom.js";
 import { setCover } from "../components/cover/cover.js";
 import { presentEventDetail } from "./eventDetailPresenter.js";
 
-/** Elements cherches dans `root`, le <main> ou le routeur a pose la page ; le titre est celui du document. */
+/** Elements cherches dans `root`, le <main> ou le routeur a pose la page ; garantis par `isReady` (ceux de l'etat)
+ * et par pages/event.html (ceux du detail). Le titre est celui du document. */
 export class EventDetailView {
   /** @param {HTMLElement} [root] */
-  constructor(root = document.getElementById("app-root")) {
+  constructor(root = /** @type {HTMLElement} */ (document.getElementById("app-root"))) {
     this.root = root;
     this.main = root;
-    this.detail = /** @type {HTMLElement|null} */ (root.querySelector("#event-detail"));
-    this.state = /** @type {HTMLElement|null} */ (root.querySelector("#event-state"));
-    this.stateTitle = /** @type {HTMLElement|null} */ (root.querySelector("#event-state-title"));
-    this.code = /** @type {HTMLElement|null} */ (root.querySelector("#event-state-code"));
-    this.status = root.querySelector("#event-status");
-    this.error = root.querySelector("#event-error");
-    this.retry = /** @type {HTMLButtonElement|null} */ (root.querySelector("#event-retry"));
+    this.detail = /** @type {HTMLElement} */ (root.querySelector("#event-detail"));
+    this.state = /** @type {HTMLElement} */ (root.querySelector("#event-state"));
+    this.stateTitle = /** @type {HTMLElement} */ (root.querySelector("#event-state-title"));
+    this.code = /** @type {HTMLElement} */ (root.querySelector("#event-state-code"));
+    this.status = /** @type {HTMLElement} */ (root.querySelector("#event-status"));
+    this.error = /** @type {HTMLElement} */ (root.querySelector("#event-error"));
+    this.retry = /** @type {HTMLButtonElement} */ (root.querySelector("#event-retry"));
+  }
+
+  /** Element du detail, present dans pages/event.html. @param {string} selector @returns {HTMLElement} */
+  el(selector) {
+    return /** @type {HTMLElement} */ (this.root.querySelector(selector));
   }
 
   get isReady() {
@@ -76,7 +82,7 @@ export class EventDetailView {
     };
     text("#event-title", view.title);
     text("#event-venue", view.place);
-    this.root.querySelector("#event-date").replaceChildren(
+    this.el("#event-date").replaceChildren(
       h("time", { datetime: view.when.datetime }, view.when.label),
       h("span", { class: "event-date__timezone event-note" }, "Heure de Paris"),
     );
@@ -89,11 +95,11 @@ export class EventDetailView {
     text("#event-creator-avatar", view.creator.initials);
     text("#event-description", view.description);
     text("#event-places", view.places);
-    this.root.querySelector("#event-places").setAttribute("data-availability", view.availability);
+    this.el("#event-places").setAttribute("data-availability", view.availability);
     text("#event-practical-summary", view.practicalSummary);
     text("#registration-title", view.price);
     text("#event-registration-count", view.registrations);
-    const progress = /** @type {HTMLProgressElement} */ (this.root.querySelector("#event-capacity"));
+    const progress = /** @type {HTMLProgressElement} */ (this.el("#event-capacity"));
     progress.hidden = view.capacity === null;
     if (view.capacity !== null) {
       progress.max = view.capacity.max;
@@ -101,10 +107,10 @@ export class EventDetailView {
       progress.textContent = view.capacity.label;
     }
     text("#event-register", view.registerLabel);
-    this.root.querySelector("#event-free-entry").toggleAttribute("hidden", !view.showFreeEntry);
-    this.root.querySelector("#event-free-reliability").toggleAttribute("hidden", !view.showFreeEntry);
-    this.root.querySelector("#event-tags").replaceChildren(...view.tags.map((label) => h("span", {}, label)));
-    setCover(/** @type {HTMLImageElement} */ (this.root.querySelector("#event-cover")), view.coverImageUrl);
+    this.el("#event-free-entry").toggleAttribute("hidden", !view.showFreeEntry);
+    this.el("#event-free-reliability").toggleAttribute("hidden", !view.showFreeEntry);
+    this.el("#event-tags").replaceChildren(...view.tags.map((label) => h("span", {}, label)));
+    setCover(/** @type {HTMLImageElement} */ (this.el("#event-cover")), view.coverImageUrl);
     this.state.hidden = true;
     this.detail.hidden = false;
     this.status.textContent = "";

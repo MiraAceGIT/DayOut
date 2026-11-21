@@ -89,6 +89,6 @@ describe("contrat avec la spec OpenAPI du back", { skip }, () => {
     const fields = Object.keys(schemas.Event.properties);
     const dto = Object.fromEntries(fields.map((f) => [f, sample(schemas.Event.properties[f])]));
     dto.categories = [];
-    assert.deepEqual(Object.keys(toEventDto(toEvent(dto))), fields);
+    assert.deepEqual(Object.keys(toEventDto(toEvent(/** @type {any} */ (dto)))), fields);
   });
 });
