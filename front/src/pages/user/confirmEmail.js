@@ -2,8 +2,8 @@ import { ConfirmEmailController } from "../../controller/user/ConfirmEmailContro
 import { ConfirmEmailView } from "../../view/user/ConfirmEmailView.js";
 
 /** @param {import("../../app/router.js").PageContext} page */
-export function mountConfirmEmail({ root, signal, params }) {
+export function mountConfirmEmail({ root, signal, params, setParam }) {
   const tokens = params.getAll("token");
   return new ConfirmEmailController({ view: new ConfirmEmailView(root) })
-    .start({ token: tokens.length === 1 ? tokens[0] : null, signal });
+    .start({ token: tokens.length === 1 ? tokens[0] : null, signal, setParam });
 }

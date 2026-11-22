@@ -50,8 +50,9 @@ export class ConfirmEmailView {
     this.text.textContent = text;
     this.error.textContent = "";
     this.retry.hidden = true;
-    this.home.hidden = outcome !== "confirmed" && outcome !== "used";
-    this.register.hidden = outcome !== "expired" && outcome !== "invalid";
+    // Lien expire : pas d'inscription a refaire, l'adresse appartient deja au compte non confirme.
+    this.home.hidden = outcome === "invalid";
+    this.register.hidden = outcome !== "invalid";
     document.title = `${title} — DayOut`;
     this.title.focus();
   }

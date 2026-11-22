@@ -14,7 +14,8 @@ const OUTCOMES = {
   },
   expired: {
     title: "Lien de confirmation expiré",
-    text: "Ce lien n'est valable que 24 h. Ton adresse n'a pas été confirmée.",
+    // Pas de « refaire une inscription » : l'adresse est deja prise par ce compte non confirme.
+    text: "Ce lien n'était valable que 24 h : ton adresse n'a pas été confirmée et ton compte n'est pas encore actif.",
   },
   used: {
     title: "Lien déjà utilisé",

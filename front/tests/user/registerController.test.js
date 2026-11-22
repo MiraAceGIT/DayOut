@@ -106,6 +106,17 @@ describe("inscription : controleur", () => {
     await view.handlers.onSubmit();
     assert.match(view.submitError, /joindre le serveur/);
   });
+
+  it("met aussi sous l'e-mail les refus rares : doublon simultane, ecole desactivee", async () => {
+    let error = new ApiError("Resource already exists", { status: 409, code: "CONFLICT" });
+    const { view } = await started({ register: async () => { throw error; } });
+    await view.handlers.onSubmit();
+    assert.deepEqual(view.errors, { email: "taken" });
+
+    error = new ApiError("Email domain not allowed", { status: 422, code: "EMAIL_DOMAIN_NOT_ALLOWED" });
+    await view.handlers.onSubmit();
+    assert.deepEqual(view.errors, { email: "domain_not_allowed" });
+  });
 });
 
 function confirmView() {
@@ -122,11 +133,14 @@ describe("confirmation de l'adresse : controleur", () => {
   it("confirme et signale une demande createur en attente", async () => {
     const view = confirmView();
     let token = null;
+    /** @type {string[][]} */
+    const params = [];
     await new ConfirmEmailController({ view, confirm: async (t) => { token = t; return { emailVerified: true, creatorPending: true }; } })
-      .start({ token: "a".repeat(64) });
+      .start({ token: "a".repeat(64), setParam: (name, value) => params.push([name, value]) });
     assert.equal(token, "a".repeat(64));
     assert.equal(view.outcome, "confirmed");
     assert.deepEqual(view.options, { creatorPending: true });
+    assert.deepEqual(params, [["token", ""]], "le jeton quitte l'adresse");
   });
 
   it("refuse sans requete un lien sans jeton", async () => {
@@ -152,12 +166,15 @@ describe("confirmation de l'adresse : controleur", () => {
   it("propose de reessayer apres une panne", async () => {
     const view = confirmView();
     let fail = true;
+    /** @type {string[][]} */
+    const params = [];
     await new ConfirmEmailController({ view, confirm: async () => {
       if (fail) throw new ApiError("Down", { type: "network" });
       return { emailVerified: true, creatorPending: false };
-    } }).start({ token: "c".repeat(64) });
+    } }).start({ token: "c".repeat(64), setParam: (name, value) => params.push([name, value]) });
     assert.equal(view.outcome, null);
     assert.match(view.error, /joindre le serveur/);
+    assert.deepEqual(params, [], "panne : le jeton reste pour reessayer apres un rechargement");
     fail = false;
     await view.retry();
     assert.equal(view.outcome, "confirmed");

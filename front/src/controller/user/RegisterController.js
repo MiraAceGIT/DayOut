@@ -86,8 +86,14 @@ export class RegisterController {
       }),
       onError: (error) => {
         if (!isApiError(error)) return false;
-        if (error.status === 409 && error.code === "EMAIL_TAKEN") {
+        // EMAIL_TAKEN, ou CONFLICT (cle unique de l'e-mail) si deux inscriptions arrivent en meme temps.
+        if (error.status === 409 && (error.code === "EMAIL_TAKEN" || error.code === "CONFLICT")) {
           this.view.showFieldErrors({ email: "taken" }, { focus: true });
+          return true;
+        }
+        // Trigger de la base : l'ecole a ete desactivee pendant la saisie.
+        if (error.code === "EMAIL_DOMAIN_NOT_ALLOWED") {
+          this.view.showFieldErrors({ email: "domain_not_allowed" }, { focus: true });
           return true;
         }
         if (error.isValidation) {
