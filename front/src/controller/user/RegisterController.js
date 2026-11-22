@@ -91,6 +91,11 @@ export class RegisterController {
           this.view.showFieldErrors({ email: "taken" }, { focus: true });
           return true;
         }
+        // Compte deja cree, pas encore confirme, lien encore valable : il suffit de l'ouvrir.
+        if (error.status === 409 && error.code === "EMAIL_CONFIRMATION_PENDING") {
+          this.view.showFieldErrors({ email: "pending" }, { focus: true });
+          return true;
+        }
         // Trigger de la base : l'ecole a ete desactivee pendant la saisie.
         if (error.code === "EMAIL_DOMAIN_NOT_ALLOWED") {
           this.view.showFieldErrors({ email: "domain_not_allowed" }, { focus: true });

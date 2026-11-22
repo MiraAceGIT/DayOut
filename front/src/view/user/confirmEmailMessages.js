@@ -1,4 +1,6 @@
 export const CONFIRM_LOADING = "Confirmation de ton adresse…";
+export const REGISTER = "Créer un compte";
+export const REGISTER_AGAIN = "Refaire mon inscription";
 
 /** @typedef {"confirmed" | "invalid" | "expired" | "used"} ConfirmOutcome */
 
@@ -14,8 +16,8 @@ const OUTCOMES = {
   },
   expired: {
     title: "Lien de confirmation expiré",
-    // Pas de « refaire une inscription » : l'adresse est deja prise par ce compte non confirme.
-    text: "Ce lien n'était valable que 24 h : ton adresse n'a pas été confirmée et ton compte n'est pas encore actif.",
+    // Le back remplace un compte non confirme dont le lien a expire : refaire l'inscription renvoie un lien.
+    text: "Ce lien n'était valable que 24 h : ton adresse n'a pas été confirmée. Refais ton inscription avec la même adresse pour recevoir un nouveau lien.",
   },
   used: {
     title: "Lien déjà utilisé",

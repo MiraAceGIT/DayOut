@@ -313,9 +313,10 @@ shared/          -> shared/ uniquement (utilitaires purs)
 - **Confirmation** (`/confirm-email?token=`) : la page envoie le jeton en `POST /email-verifications` (jamais un `GET`
   qui modifie) et affiche compte active, demande createur en attente, lien expire, deja utilise ou invalide ; une panne
   propose « Reessayer » (le lien n'a pas ete consomme). Une fois l'issue connue, le jeton est retire de l'adresse
-  (`setParam`). Lien expire : pas de bouton « Creer un compte », l'adresse appartient deja au compte non confirme
-  (le renvoi d'un nouveau lien n'est pas dans ce ticket).
-- Refus rares du serveur aussi affiches sous l'e-mail : `409 CONFLICT` (deux inscriptions simultanees) et
+  (`setParam`). Lien expire : bouton « Refaire mon inscription » (le back remplace le compte non confirme dont le
+  lien a expire et envoie un nouveau lien).
+- Refus du serveur affiches sous l'e-mail : `409 EMAIL_TAKEN` (compte confirme), `409 EMAIL_CONFIRMATION_PENDING`
+  (lien deja envoye et encore valable), `409 CONFLICT` (deux inscriptions simultanees) et
   `422 EMAIL_DOMAIN_NOT_ALLOWED` (ecole desactivee pendant la saisie, refusee par le trigger).
 - Page sans lien dans le header pour l'instant : on y arrive par `/register` (lien a ajouter avec la connexion, SCRUM-42).
 

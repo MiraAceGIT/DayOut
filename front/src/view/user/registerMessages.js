@@ -12,6 +12,7 @@ const FIELD_MESSAGES = {
     domain_not_allowed: "Cette adresse n'appartient à aucune école partenaire : utilise l'e-mail fourni par ton école.",
     school_mismatch: "Cette adresse ne correspond pas à l'école choisie.",
     taken: "Un compte existe déjà avec cette adresse e-mail.",
+    pending: "Un lien de confirmation a déjà été envoyé à cette adresse : ouvre-le pour activer ton compte. S'il a expiré (24 h), tu pourras t'inscrire de nouveau.",
     rejected: "Cette adresse n'est pas acceptée : vérifie qu'elle correspond bien à ton école.",
   },
   schoolId: {

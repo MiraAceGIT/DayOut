@@ -1,5 +1,5 @@
 import { routeUrl } from "../../core/routes.js";
-import { CONFIRM_LOADING, confirmOutcome } from "./confirmEmailMessages.js";
+import { CONFIRM_LOADING, confirmOutcome, REGISTER, REGISTER_AGAIN } from "./confirmEmailMessages.js";
 
 /** @typedef {import("./confirmEmailMessages.js").ConfirmOutcome} ConfirmOutcome */
 
@@ -50,9 +50,10 @@ export class ConfirmEmailView {
     this.text.textContent = text;
     this.error.textContent = "";
     this.retry.hidden = true;
-    // Lien expire : pas d'inscription a refaire, l'adresse appartient deja au compte non confirme.
-    this.home.hidden = outcome === "invalid";
-    this.register.hidden = outcome !== "invalid";
+    // Lien expire : refaire l'inscription remplace le compte non confirme et renvoie un lien.
+    this.home.hidden = outcome !== "confirmed" && outcome !== "used";
+    this.register.hidden = outcome !== "expired" && outcome !== "invalid";
+    this.register.textContent = outcome === "expired" ? REGISTER_AGAIN : REGISTER;
     document.title = `${title} — DayOut`;
     this.title.focus();
   }

@@ -116,6 +116,10 @@ describe("inscription : controleur", () => {
     error = new ApiError("Email domain not allowed", { status: 422, code: "EMAIL_DOMAIN_NOT_ALLOWED" });
     await view.handlers.onSubmit();
     assert.deepEqual(view.errors, { email: "domain_not_allowed" });
+
+    error = new ApiError("Link already sent", { status: 409, code: "EMAIL_CONFIRMATION_PENDING", details: { field: "email" } });
+    await view.handlers.onSubmit();
+    assert.deepEqual(view.errors, { email: "pending" });
   });
 });
 

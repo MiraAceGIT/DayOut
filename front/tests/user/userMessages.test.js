@@ -30,6 +30,6 @@ describe("confirmation : textes", () => {
     assert.doesNotMatch(confirmOutcome("confirmed").text, /administrateur/);
     assert.doesNotMatch(confirmOutcome("expired", { creatorPending: true }).text, /administrateur/);
     assert.equal(confirmOutcome("used").title, "Lien déjà utilisé");
-    assert.doesNotMatch(confirmOutcome("expired").text, /inscri/, "lien expire : pas d'inscription a refaire, l'adresse est prise");
+    assert.match(confirmOutcome("expired").text, /Refais ton inscription avec la même adresse/, "le back remplace le compte non confirme");
   });
 });
