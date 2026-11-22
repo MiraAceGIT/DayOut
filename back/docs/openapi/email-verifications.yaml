@@ -1,0 +1,61 @@
+tags:
+  - name: email-verifications
+    description: Confirmation de l'adresse e-mail par le lien recu a l'inscription
+
+paths:
+  /email-verifications:
+    post:
+      tags: [email-verifications]
+      summary: Confirmer une adresse e-mail
+      description: >-
+        Le jeton vient du lien du mail (page front /confirm-email?token=...). Usage unique, valable 24 h.
+        Un participant est actif des la confirmation ; un createur aussi, avec sa demande toujours en attente.
+      operationId: confirmEmail
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailVerificationCreate" }
+      responses:
+        "200":
+          description: Adresse confirmee
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/EmailVerification" }
+        "400": { $ref: "#/components/responses/UserBadRequest" }
+        "409": { $ref: "#/components/responses/VerificationTokenUsed" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/VerificationTokenRejected" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  schemas:
+    EmailVerificationCreate:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, maxLength: 128, description: "64 caracteres hexadecimaux" }
+    EmailVerification:
+      type: object
+      required: [email_verified, creator_status]
+      properties:
+        email_verified: { type: boolean, enum: [true] }
+        creator_status: { type: string, enum: [none, pending, approved, rejected] }
+  responses:
+    VerificationTokenUsed:
+      description: Lien deja utilise (`VERIFICATION_TOKEN_USED`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    VerificationTokenRejected:
+      description: >-
+        Jeton absent (`VALIDATION_ERROR`), inconnu ou mal forme (`VERIFICATION_TOKEN_INVALID`),
+        lien expire (`VERIFICATION_TOKEN_EXPIRED`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

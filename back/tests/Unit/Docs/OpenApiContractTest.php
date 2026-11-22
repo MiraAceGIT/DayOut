@@ -14,6 +14,12 @@ use App\Model\Dto\Faq\FaqCreateDto;
 use App\Model\Dto\Faq\FaqDto;
 use App\Model\Dto\Faq\FaqUpdateDto;
 use App\Model\Dto\PageDto;
+use App\Model\Dto\School\SchoolDto;
+use App\Model\Dto\User\EmailVerificationDto;
+use App\Model\Dto\User\RegisteredUserDto;
+use App\Model\Dto\User\UserCreateDto;
+use App\Model\Enums\CreatorStatus;
+use App\Model\Enums\Role;
 use App\Model\Mappers\EventMapper;
 use ReflectionProperty;
 use Tests\Support\AppRouter;
@@ -139,6 +145,35 @@ final class OpenApiContractTest extends TestCase
         $this->assertSame(['question', 'answer'], $schemas['FaqCreate']['required']);
         $this->assertSame(array_keys(FaqUpdateDto::rules()), array_keys($schemas['FaqUpdate']['properties']));
         $this->assertArrayNotHasKey('required', $schemas['FaqUpdate']);
+    }
+
+    public function testRegistrationSchemasMatchTheirDtos(): void
+    {
+        $schemas = $this->spec()['components']['schemas'];
+
+        $this->assertSame(array_keys(UserCreateDto::RULES), array_keys($schemas['UserCreate']['properties']));
+        $required = array_keys(array_filter(UserCreateDto::RULES, static fn (string $r): bool => str_starts_with($r, 'required')));
+        $this->assertSame($required, $schemas['UserCreate']['required']);
+
+        $registered = array_keys((new RegisteredUserDto(1, 'a@isep.fr', 'A', Role::Participant, CreatorStatus::None, false))->jsonSerialize());
+        $this->assertSame($registered, array_keys($schemas['RegisteredUser']['properties']));
+        $this->assertSame($registered, $schemas['RegisteredUser']['required'], 'demo_confirmation_url always present (null allowed)');
+
+        $verification = array_keys((new EmailVerificationDto(true, CreatorStatus::None))->jsonSerialize());
+        $this->assertSame($verification, array_keys($schemas['EmailVerification']['properties']));
+        $this->assertSame($verification, $schemas['EmailVerification']['required']);
+
+        $school = array_keys((new SchoolDto(1, 'ISEP', null, 'isep.fr', null))->jsonSerialize());
+        $this->assertSame($school, array_keys($schemas['School']['properties']));
+        $this->assertSame($school, $schemas['School']['required']);
+    }
+
+    public function testRegistrationRoutesArePublic(): void
+    {
+        $paths = $this->spec()['paths'];
+        foreach ([['/users', 'post'], ['/email-verifications', 'post'], ['/schools', 'get'], ['/categories', 'get']] as [$path, $method]) {
+            $this->assertSame([], $paths[$path][$method]['security'], "$method $path");
+        }
     }
 
     public function testWriteOperationsRequireTheBearerToken(): void
