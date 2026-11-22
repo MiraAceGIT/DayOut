@@ -130,6 +130,8 @@ manquante, un entier invalide, un booleen malforme (`true`/`false`, `1`/`0`,
 | `LOG_PATH`             | `storage/logs`    | Relatif a `back/` ou absolu                                         |
 | `LOG_RETENTION_DAYS`   | `30`              | Purge des `error-*.log` et `info-*.log`                             |
 | `AUDIT_RETENTION_DAYS` | `365`             | Purge des `audit-*.log`                                             |
+| `FRONT_URL`            | `http://localhost:5500` | Adresse du front (URL http(s)) : base des liens envoyes par mail |
+| `MAIL_DEMO`            | `false`           | `true` : `POST /users` renvoie aussi le lien de confirmation (demo sans serveur de mail). **`false` en prod.** |
 
 ### Commentaires dans le `.env`
 
@@ -204,6 +206,7 @@ back/
 │   │   ├── Http/       ← Kernel, Middleware, ExceptionRenderer, DbErrorMapper,
 │   │   │                 Cors, SecurityHeaders
 │   │   ├── Log/        ← journalisation (error / info / audit) + ErrorHandler
+│   │   ├── Mail/       ← Mailer (interface commune des mails) + LogMailer (mails ecrits dans mail-AAAA-MM-JJ.log)
 │   │   └── Orm/        ← moteur ORM maison (Connection, Caster, QueryBuilder, Compiler, Grammar)
 │   ├── Shared/         ← petits utilitaires purs, sans dependance a Core ni Model :
 │   │                     Password, Yaml (lecteur YAML minimal)
@@ -224,7 +227,7 @@ back/
 │   └── Controller/     ← C : logique HTTP, une classe par ressource
 ├── config/
 │   ├── config.php      ← charge le .env (Core\Env), construit la Config
-│   └── container.php   ← racine de composition (Container : Config, Connection)
+│   └── container.php   ← racine de composition (Container : Config, Connection, Mailer)
 ├── routes/             ← un fichier par ressource (charges par api.php)
 ├── docs/openapi/       ← spec OpenAPI 3 en YAML, un fichier par controller
 ├── storage/logs/       ← logs (crees a la volee, ignores par git)
@@ -340,6 +343,55 @@ Les ecrans d'administration FAQ restent dans SCRUM-79, la gestion des utilisateu
 dans SCRUM-44 et l'authentification commune dans SCRUM-42. `User::isAdmin()` se limite
 a la verification du droit d'ecriture FAQ ; aucun compte utilisateur n'est modifie.
 
+### Inscription et confirmation de l'adresse
+
+Un etudiant cree son compte avec l'adresse e-mail de son ecole (SCRUM-41), puis le confirme par
+un lien a usage unique. `UserCreateDto` valide le corps, `RegistrationService` applique les regles
+et ecrit tout dans **une transaction** (`Connection::transaction`).
+
+| Methode | Route | Comportement |
+| --- | --- | --- |
+| POST | `/users` | Inscription publique : 201 avec le compte cree (`email_verified: false`) |
+| POST | `/email-verifications` | Confirme l'adresse avec `{ "token": "..." }` du lien, 200 |
+| GET | `/schools` | Ecoles actives, triees par nom (liste du formulaire, domaines autorises) |
+| GET | `/categories` | Categories actives, triees par libelle (centres d'interet) |
+
+Regles de `POST /users` (toutes reverifiees par le serveur, meme si le front les controle deja) :
+
+- `profile` : `participant` ou `creator` ; `first_name`, `last_name` (80 caracteres), `email` (sans espaces, stocke
+  en minuscules), `school_id`, `password` (8 caracteres au moins, une majuscule et un chiffre, 72 octets au plus pour bcrypt),
+  `terms_accepted` (doit valoir `true`), `interests` (au moins un slug de categorie active), `search_radius_km` (1 a 20, defaut 3).
+- Createur : `organization_name` (association, club ou BDE, 120 caracteres), sauf `individual: true`.
+- Le domaine de l'e-mail doit etre celui d'une ecole **active** (sinon `422`, erreur sur `email`) et celui de
+  l'ecole choisie (`422` sur `email`) ; ecole inconnue ou inactive : `422` sur `school_id`. Le trigger
+  `trg_users_bi_whitelist` (`50101`) reste le dernier filet.
+- E-mail deja utilise : `409 EMAIL_TAKEN` (`details.field = email`).
+- Mot de passe hache par `Shared\Password` (bcrypt), jamais stocke ni journalise en clair.
+- Compte cree `role = participant`, `email_verified = 0`. Un createur a `creator_status = pending` et une ligne
+  `creator_profiles` (nom de l'association, ou « Prenom N. » a titre individuel) : il ne peut pas publier tant qu'un
+  admin n'a pas valide sa demande (`User::canPublish`). **La liste des demandes a valider (SCRUM-45) doit ne garder
+  que les comptes `email_verified = 1`.**
+- Jeton : 32 octets aleatoires (64 caracteres hexadecimaux) envoyes dans le lien `FRONT_URL/confirm-email?token=...`,
+  seul son SHA-256 est stocke (`email_verifications`), valable 24 h, usage unique.
+- Le mail part en dernier dans la transaction : s'il echoue, rien n'est cree et l'etudiant peut recommencer.
+- Audit : `user.register`, `user.email_verified` (sans e-mail, mot de passe ni jeton).
+
+`POST /email-verifications` : jeton mal forme ou inconnu `422 VERIFICATION_TOKEN_INVALID`, expire
+`422 VERIFICATION_TOKEN_EXPIRED`, deja utilise `409 VERIFICATION_TOKEN_USED` (`UPDATE ... WHERE used_at IS NULL`,
+atomique : deux clics simultanes ne confirment qu'une fois). Reponse : `{ email_verified: true, creator_status }`.
+Confirmation en `POST` et non `GET` : un antivirus ou un apercu de messagerie qui ouvre le lien ne consomme rien
+(la page front `/confirm-email` fait l'appel).
+
+Securite : route publique sans session ; le corps JSON obligatoire (`415` sinon) et la whitelist CORS
+remplacent le jeton CSRF, qui arrivera avec la session de connexion (SCRUM-42). La connexion devra refuser un compte
+`email_verified = 0`.
+
+**Mails** : `App\Core\Mail\Mailer` (`send($to, $subject, $body)`) est l'interface commune, a reutiliser pour le
+mot de passe oublie (SCRUM-56). Sans serveur de mail dans le projet, `LogMailer` ecrit chaque mail (une ligne JSON :
+destinataire, sujet, corps) dans `LOG_PATH/mail-AAAA-MM-JJ.log`, a part des logs `info` / `audit` puisqu'il contient
+le lien. En demo, `MAIL_DEMO=true` renvoie aussi ce lien dans `demo_confirmation_url` pour l'afficher a l'ecran.
+Un vrai envoi (SMTP) = une autre classe qui implemente `Mailer`, declaree dans `config/container.php`.
+
 ### Declarer un DAO
 
 ```php
@@ -369,7 +421,9 @@ final class User extends Dao
 
 ### Entites principales (voir `infra/sql/schema/`)
 
-- **users** : id, email, first_name, last_name, school_id, role, banned, reliability_score, created_at
+- **users** : id, email, first_name, last_name, school_id, search_radius_km, role, creator_status, email_verified, banned, reliability_score, created_at
+- **email_verifications** : user_id, token_hash (SHA-256), expires_at, used_at ; **user_interests** : user_id, category_id ;
+  **creator_profiles** : user_id, display_name (demande createur)
 - **schools** : id, name, email_domain (whitelist des domaines d'inscription)
 - **events** : id, creator_id, title, slug, description, cover_image_url, start_at, end_at,
   venue_name, address_line, city, postal_code, latitude, longitude, capacity, registered_count,
@@ -631,6 +685,10 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | PATCH   | `/events/{id}`       | — ; body `EventUpdate` (partiel, ou `{"status": ...}` seul) ; **auth** | `Event`                               | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` / `EVENT_FIELDS_LOCKED`, `415`, `422` |
 | DELETE  | `/events/{id}`       | — ; **auth** ; brouillons uniquement           | `204`                                 | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` |
 | GET     | `/creators`          | `q`, `school_id`, `ids` (CSV), `has_upcoming_events`, `from`, `sort_by` (`display_name`, `created_at`), `sort_dir`, `limit`, `offset` (`CreatorFindQuery`) | `{ items: Creator[], limit, offset, has_more, total }` (approuves, non bannis) | `422 VALIDATION_ERROR` |
+| POST    | `/users`             | — ; body `UserCreate` ; public                 | `201` `RegisteredUser` (non confirme) | `409 EMAIL_TAKEN`, `415`, `422` (dont domaine refuse sur `email`) |
+| POST    | `/email-verifications` | — ; body `{ token }` ; public                | `{ email_verified, creator_status }`  | `409 VERIFICATION_TOKEN_USED`, `415`, `422 VERIFICATION_TOKEN_INVALID` / `_EXPIRED` |
+| GET     | `/schools`           | —                                              | `School[]` (actives, par nom)         | —                                                     |
+| GET     | `/categories`        | —                                              | `Category[]` (actives, par libelle)   | —                                                     |
 | GET     | `/docs`              | —                                              | Swagger UI (hors enveloppe)           | `404` si `DOCS_ENABLED=false`                         |
 | GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | `404` si `DOCS_ENABLED=false`                         |
 
@@ -846,7 +904,7 @@ Chaque erreur SQL traduite est journalisee en `info` (`Database rule violated`, 
 ### Codes emis globalement
 
 `BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `VALIDATION_ERROR`, `CONFLICT`,
-codes metier (`EVENT_NOT_FOUND`...), codes triggers (`EVENT_FULL`...),
+codes metier (`EVENT_NOT_FOUND`, `EMAIL_TAKEN`, `VERIFICATION_TOKEN_*`...), codes triggers (`EVENT_FULL`...),
 `INTERNAL_ERROR`, `ENCODING_ERROR`.
 
 ---
@@ -928,12 +986,14 @@ tests/
 │       ├── Enums/              ← EventStatusTest
 │       ├── Mappers/            ← EventMapperTest, CategoryMapperTest
 │       ├── DomainServices/     ← EventDomainServiceTest (regles pures, sans base)
-│       └── Services/           ← EventServiceTest (SQLite en memoire, services obtenus du conteneur)
+│       ├── Dto/                ← FaqWriteDtoTest, UserCreateDtoTest
+│       └── Services/           ← EventServiceTest, RegistrationServiceTest (SQLite en memoire, services obtenus du conteneur)
 │   └── Shared/                 ← YamlTest
 ├── Integration/                ← vraies requetes HTTP
-│   ├── Controller/             ← EventControllerTest, HealthControllerTest, DocsControllerTest
+│   ├── Controller/             ← EventControllerTest, HealthControllerTest, DocsControllerTest, UserControllerTest,
+│   │                             EmailVerificationControllerTest (jeton lu dans mail-*.log), School/CategoryControllerTest
 │   └── Core/                   ← RouterTest, Http/{Kernel,Cors,ExceptionRenderer}Test, Log/AccessLogTest
-├── Support/                    ← doublures partagees (EchoController, AppRouter, TestContainer)
+├── Support/                    ← doublures partagees (EchoController, AppRouter, TestContainer, FakeMailer, ReadsConfirmationMail)
 ├── fixtures/                   ← scripts lances dans un processus a part
 └── TestCase.php, HttpTestCase.php, run.php, run.sh
 ```
@@ -1086,6 +1146,7 @@ composer stan
 tail -f back/storage/logs/error-$(date +%Y-%m-%d).log
 tail -f back/storage/logs/info-$(date +%Y-%m-%d).log
 tail -f back/storage/logs/audit-$(date +%Y-%m-%d).log
+tail -f back/storage/logs/mail-$(date +%Y-%m-%d).log    # mails envoyes (liens de confirmation)
 ```
 
 ---
@@ -1112,6 +1173,8 @@ LOG_LEVEL=info
 LOG_PATH=/var/log/dayout
 LOG_RETENTION_DAYS=30
 AUDIT_RETENTION_DAYS=365
+FRONT_URL=https://app.dayout.example
+MAIL_DEMO=false
 ```
 
 ### Checklist avant mise en prod
