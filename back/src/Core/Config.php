@@ -25,6 +25,8 @@ final class Config
         public readonly int $logRetentionDays = 30,
         public readonly int $auditRetentionDays = 365,
         public readonly bool $docsEnabled = false,
+        public readonly string $frontUrl = 'http://localhost:5500',
+        public readonly bool $mailDemo = false,
     ) {
     }
 
@@ -61,7 +63,22 @@ final class Config
             auditRetentionDays: self::positiveInt('AUDIT_RETENTION_DAYS', 365),
             // /docs et /openapi.json : coupes par defaut, a activer en dev (la spec decrit toute l'API).
             docsEnabled: self::bool('DOCS_ENABLED', false),
+            // Base des liens envoyes par mail (confirmation d'inscription) : l'adresse du front.
+            frontUrl: self::httpUrl('FRONT_URL', 'http://localhost:5500'),
+            // Demo sans serveur de mail : l'API renvoie aussi le lien de confirmation. Jamais en prod.
+            mailDemo: self::bool('MAIL_DEMO', false),
         );
+    }
+
+    /** URL http(s) sans `/` final ; autre valeur = erreur plutot qu'un lien casse dans les mails. */
+    private static function httpUrl(string $key, string $default): string
+    {
+        $raw = self::env($key) ?? $default;
+        $scheme = strtolower((string) parse_url($raw, PHP_URL_SCHEME));
+        if (filter_var($raw, FILTER_VALIDATE_URL) === false || !in_array($scheme, ['http', 'https'], true)) {
+            throw new RuntimeException("$key must be an http(s) URL, got '$raw'");
+        }
+        return rtrim($raw, '/');
     }
 
     private static function env(string $key): ?string
