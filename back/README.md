@@ -365,7 +365,12 @@ Regles de `POST /users` (toutes reverifiees par le serveur, meme si le front les
 - Le domaine de l'e-mail doit etre celui d'une ecole **active** (sinon `422`, erreur sur `email`) et celui de
   l'ecole choisie (`422` sur `email`) ; ecole inconnue ou inactive : `422` sur `school_id`. Le trigger
   `trg_users_bi_whitelist` (`50101`) reste le dernier filet.
-- E-mail deja utilise : `409 EMAIL_TAKEN` (`details.field = email`).
+- E-mail deja utilise par un compte confirme : `409 EMAIL_TAKEN` (`details.field = email`). Par un compte non
+  confirme dont le lien est encore valable : `409 EMAIL_CONFIRMATION_PENDING`. Par un compte non confirme dont le
+  lien a expire : ce compte est **remplace** dans la meme transaction (`ON DELETE CASCADE` : interets, demande
+  createur, jetons), sinon une adresse prise par erreur ou au nom d'un autre etudiant le resterait pour toujours.
+  Audit : `replaced_unverified_user_id`. Deux inscriptions simultanees : `409 CONFLICT` (cle unique). Ecole
+  desactivee entre la verification et l'ecriture : `422 EMAIL_DOMAIN_NOT_ALLOWED` (trigger).
 - Mot de passe hache par `Shared\Password` (bcrypt), jamais stocke ni journalise en clair.
 - Compte cree `role = participant`, `email_verified = 0`. Un createur a `creator_status = pending` et une ligne
   `creator_profiles` (nom de l'association, ou « Prenom N. » a titre individuel) : il ne peut pas publier tant qu'un
@@ -685,7 +690,7 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | PATCH   | `/events/{id}`       | — ; body `EventUpdate` (partiel, ou `{"status": ...}` seul) ; **auth** | `Event`                               | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` / `EVENT_FIELDS_LOCKED`, `415`, `422` |
 | DELETE  | `/events/{id}`       | — ; **auth** ; brouillons uniquement           | `204`                                 | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` |
 | GET     | `/creators`          | `q`, `school_id`, `ids` (CSV), `has_upcoming_events`, `from`, `sort_by` (`display_name`, `created_at`), `sort_dir`, `limit`, `offset` (`CreatorFindQuery`) | `{ items: Creator[], limit, offset, has_more, total }` (approuves, non bannis) | `422 VALIDATION_ERROR` |
-| POST    | `/users`             | — ; body `UserCreate` ; public                 | `201` `RegisteredUser` (non confirme) | `409 EMAIL_TAKEN`, `415`, `422` (dont domaine refuse sur `email`) |
+| POST    | `/users`             | — ; body `UserCreate` ; public                 | `201` `RegisteredUser` (non confirme) | `409 EMAIL_TAKEN` / `EMAIL_CONFIRMATION_PENDING` / `CONFLICT`, `415`, `422` (dont domaine refuse sur `email`, `EMAIL_DOMAIN_NOT_ALLOWED`) |
 | POST    | `/email-verifications` | — ; body `{ token }` ; public                | `{ email_verified, creator_status }`  | `409 VERIFICATION_TOKEN_USED`, `415`, `422 VERIFICATION_TOKEN_INVALID` / `_EXPIRED` |
 | GET     | `/schools`           | —                                              | `School[]` (actives, par nom)         | —                                                     |
 | GET     | `/categories`        | —                                              | `Category[]` (actives, par libelle)   | —                                                     |
@@ -904,7 +909,7 @@ Chaque erreur SQL traduite est journalisee en `info` (`Database rule violated`, 
 ### Codes emis globalement
 
 `BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `VALIDATION_ERROR`, `CONFLICT`,
-codes metier (`EVENT_NOT_FOUND`, `EMAIL_TAKEN`, `VERIFICATION_TOKEN_*`...), codes triggers (`EVENT_FULL`...),
+codes metier (`EVENT_NOT_FOUND`, `EMAIL_TAKEN`, `EMAIL_CONFIRMATION_PENDING`, `VERIFICATION_TOKEN_*`...), codes triggers (`EVENT_FULL`...),
 `INTERNAL_ERROR`, `ENCODING_ERROR`.
 
 ---

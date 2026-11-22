@@ -13,6 +13,13 @@ final class RegistrationException extends BusinessException
         return new self(ErrorKind::Conflict, 'EMAIL_TAKEN', 'An account already exists with this email', ['field' => 'email']);
     }
 
+    /** Compte non confirme dont le lien est encore valable : il suffit de l'ouvrir. */
+    public static function confirmationPending(): self
+    {
+        return new self(ErrorKind::Conflict, 'EMAIL_CONFIRMATION_PENDING',
+            'A confirmation link has already been sent to this email and is still valid', ['field' => 'email']);
+    }
+
     public static function tokenInvalid(): self
     {
         return new self(ErrorKind::Invalid, 'VERIFICATION_TOKEN_INVALID', 'Invalid confirmation link');

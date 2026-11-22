@@ -42,16 +42,18 @@ final class RegistrationServiceTest extends TestCase
             creator_status TEXT DEFAULT 'none', email_verified INTEGER DEFAULT 0, email_verified_at TEXT, banned INTEGER DEFAULT 0)");
         $this->pdo->exec('CREATE TABLE schools (id INTEGER PRIMARY KEY, name TEXT, short_name TEXT, email_domain TEXT UNIQUE, city TEXT, active INTEGER)');
         $this->pdo->exec('CREATE TABLE categories (id INTEGER PRIMARY KEY, slug TEXT UNIQUE, label TEXT, icon TEXT, active INTEGER)');
-        $this->pdo->exec('CREATE TABLE user_interests (user_id INTEGER, category_id INTEGER, PRIMARY KEY (user_id, category_id))');
-        $this->pdo->exec('CREATE TABLE creator_profiles (user_id INTEGER PRIMARY KEY, display_name TEXT NOT NULL)');
-        $this->pdo->exec('CREATE TABLE email_verifications (id INTEGER PRIMARY KEY, user_id INTEGER, token_hash TEXT UNIQUE,
+        // Cles etrangeres comme MariaDB : supprimer un compte supprime ses interets, sa demande createur et ses jetons.
+        $this->pdo->exec('PRAGMA foreign_keys = ON');
+        $this->pdo->exec('CREATE TABLE user_interests (user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, category_id INTEGER, PRIMARY KEY (user_id, category_id))');
+        $this->pdo->exec('CREATE TABLE creator_profiles (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, display_name TEXT NOT NULL)');
+        $this->pdo->exec('CREATE TABLE email_verifications (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token_hash TEXT UNIQUE,
             expires_at TEXT, used_at TEXT)');
         $this->pdo->exec("INSERT INTO schools VALUES (1, 'ISEP', 'ISEP', 'isep.fr', 'Issy', 1), (2, 'EPITA', 'EPITA', 'epita.fr', NULL, 1),
             (3, 'Fermee', NULL, 'fermee.fr', NULL, 0)");
         $this->pdo->exec("INSERT INTO categories VALUES (1, 'soiree', 'Soiree', NULL, 1), (2, 'sport', 'Sport', NULL, 1),
             (3, 'afterwork', 'Afterwork', NULL, 0), (4, 'culture', 'Culture', NULL, 1)");
-        $this->pdo->exec("INSERT INTO users (id, email, email_domain, password_hash, first_name, last_name, school_id)
-            VALUES (1, 'deja@isep.fr', 'isep.fr', 'x', 'Deja', 'Inscrit', 1)");
+        $this->pdo->exec("INSERT INTO users (id, email, email_domain, password_hash, first_name, last_name, school_id, email_verified)
+            VALUES (1, 'deja@isep.fr', 'isep.fr', 'x', 'Deja', 'Inscrit', 1, 1)");
 
         $this->mailer = new FakeMailer();
         $this->container = $this->containerWith(mailDemo: false);
@@ -148,6 +150,36 @@ final class RegistrationServiceTest extends TestCase
         $this->assertSame('EMAIL_TAKEN', $error->errorCode);
         $this->assertSame(['field' => 'email'], $error->details);
         $this->assertSame(1, $this->count('users'));
+    }
+
+    public function testUnconfirmedAccountWithAValidLinkKeepsItsEmail(): void
+    {
+        $this->register();
+        $error = $this->assertThrows(RegistrationException::class, fn () => $this->register(['first_name' => 'Autre']));
+        $this->assertSame('EMAIL_CONFIRMATION_PENDING', $error->errorCode);
+        $this->assertSame(['field' => 'email'], $error->details);
+        $this->assertSame(2, $this->count('users'));
+        $this->assertCount(1, $this->mailer->sent);
+    }
+
+    public function testUnconfirmedAccountWhoseLinkExpiredIsReplaced(): void
+    {
+        $this->register(['profile' => 'creator', 'organization_name' => 'BDE ISEP']);
+        $oldToken = $this->mailer->lastToken();
+        $this->sql("UPDATE email_verifications SET expires_at = '2020-01-01 00:00:00'");
+
+        // SQLite peut reprendre l'id supprime (MariaDB non) : on verifie les lignes, pas l'id.
+        $new = $this->register(['first_name' => 'Lina', 'interests' => ['sport']]);
+        $this->assertSame(CreatorStatus::None, $new->creatorStatus);
+        $this->assertSame(['none'], $this->sql("SELECT creator_status FROM users WHERE email = 'lina.martin@isep.fr'")->fetchAll(PDO::FETCH_COLUMN));
+        $this->assertSame(2, $this->count('users'));
+        foreach (['user_interests' => 1, 'creator_profiles' => 0, 'email_verifications' => 1] as $table => $count) {
+            $this->assertSame($count, $this->count($table), "$table : the old account's rows are gone");
+        }
+        $this->assertNotSame($oldToken, $this->mailer->lastToken(), 'a new link is sent');
+        $this->assertSame('VERIFICATION_TOKEN_INVALID', $this->assertThrows(RegistrationException::class,
+            fn () => $this->service->confirmEmail($oldToken))->errorCode);
+        $this->assertSame('none', $this->service->confirmEmail($this->mailer->lastToken())->creatorStatus->value);
     }
 
     public function testNothingIsKeptWhenTheMailCannotBeSent(): void

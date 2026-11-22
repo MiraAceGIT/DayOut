@@ -12,6 +12,8 @@ paths:
         Le compte est cree non confirme (email_verified false) avec un lien de confirmation valable 24 h, envoye
         par mail (ecrit dans LOG_PATH/mail-AAAA-MM-JJ.log). Un createur reste participant avec une demande
         creator_status pending, a valider par un administrateur. Les champs inconnus sont ignores.
+        Adresse deja utilisee par un compte non confirme dont le lien a expire : ce compte est remplace
+        (nouvelle inscription, nouveau lien).
       operationId: createUser
       security: []
       requestBody:
@@ -32,7 +34,7 @@ paths:
         "400": { $ref: "#/components/responses/UserBadRequest" }
         "409": { $ref: "#/components/responses/EmailTaken" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
-        "422": { $ref: "#/components/responses/ValidationError" }
+        "422": { $ref: "#/components/responses/UserRejected" }
         "500": { $ref: "#/components/responses/InternalError" }
 
 components:
@@ -85,7 +87,17 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     EmailTaken:
-      description: Un compte existe deja avec cet e-mail (`EMAIL_TAKEN`, `details.field` = email)
+      description: >-
+        Adresse deja utilisee : compte confirme (`EMAIL_TAKEN`), compte non confirme dont
+        le lien est encore valable (`EMAIL_CONFIRMATION_PENDING`), les deux avec `details.field` = email ;
+        deux inscriptions simultanees de la meme adresse (`CONFLICT`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UserRejected:
+      description: >-
+        Champ invalide (`VALIDATION_ERROR`, `details` = champ -> message ; domaine refuse ou ecole differente sur `email`),
+        ou ecole desactivee pendant la saisie, refusee par la base (`EMAIL_DOMAIN_NOT_ALLOWED`)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

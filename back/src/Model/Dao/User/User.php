@@ -19,10 +19,15 @@ final class User extends Dao
     /** Saisie de l'inscription ; mot de passe, role et statuts sont fixes par le serveur. */
     protected const FILLABLE = ['email', 'first_name', 'last_name', 'school_id', 'search_radius_km'];
 
-    /** $email deja normalise (minuscules) : les adresses sont stockees ainsi. */
-    public function emailExists(string $email): bool
+    /**
+     * Compte qui porte deja cette adresse ($email deja en minuscules, comme en base).
+     *
+     * @return array{id: int, email_verified: bool}|null
+     */
+    public function findByEmail(string $email): ?array
     {
-        return $this->table()->where('email', $email)->exists();
+        $row = $this->table()->select('id', 'email_verified')->where('email', $email)->first();
+        return $row === null ? null : ['id' => (int) $row['id'], 'email_verified' => (bool) $row['email_verified']];
     }
 
     public function markEmailVerified(int $id, DateTimeImmutable $at): void

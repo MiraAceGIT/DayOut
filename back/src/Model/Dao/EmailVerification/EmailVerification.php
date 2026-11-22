@@ -41,6 +41,12 @@ final class EmailVerification extends Dao
         ];
     }
 
+    /** Un lien envoye a ce compte peut-il encore servir (ni utilise, ni expire) ? */
+    public function hasUsableFor(int $userId, DateTimeImmutable $now): bool
+    {
+        return $this->table()->where('user_id', $userId)->whereNull('used_at')->where('expires_at', '>', $now)->exists();
+    }
+
     /** Atomique : 0 si le jeton a deja servi entre-temps (deux clics simultanes). */
     public function markUsed(int $id, DateTimeImmutable $at): int
     {

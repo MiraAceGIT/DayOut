@@ -48,9 +48,7 @@ final class RegistrationService
     public function register(UserCreateDto $dto): RegisteredUserDto
     {
         $this->assertSchoolMatchesEmail($dto);
-        if ($this->users->emailExists($dto->email)) {
-            throw RegistrationException::emailTaken();
-        }
+        $replacedId = $this->replaceableAccount($dto->email);
         $categoryIds = $this->categoryIds($dto->interests);
 
         $creatorStatus = $dto->isCreator() ? CreatorStatus::Pending : CreatorStatus::None;
@@ -60,7 +58,11 @@ final class RegistrationService
 
         // Tout ou rien. Le mail part en dernier, avant le COMMIT : s'il echoue, aucun compte n'est cree
         // et l'etudiant peut recommencer (sinon son adresse serait prise sans lien pour la confirmer).
-        $id = $this->connection->transaction(function () use ($dto, $categoryIds, $creatorStatus, $token, $link, $expiresAt): int {
+        $id = $this->connection->transaction(function () use ($dto, $replacedId, $categoryIds, $creatorStatus, $token, $link, $expiresAt): int {
+            if ($replacedId !== null) {
+                // ON DELETE CASCADE : interets, demande createur et anciens jetons partent avec lui.
+                $this->users->deleteById($replacedId);
+            }
             $id = $this->users->create(UserMapper::toRow($dto), [
                 'email_domain'   => self::domainOf($dto->email),
                 'password_hash'  => Password::hash($dto->password),
@@ -76,7 +78,8 @@ final class RegistrationService
             return $id;
         });
 
-        Log::audit('user.register', 'user', $id, 'success', ['creator_status' => $creatorStatus->value]);
+        Log::audit('user.register', 'user', $id, 'success',
+            ['creator_status' => $creatorStatus->value, 'replaced_unverified_user_id' => $replacedId]);
 
         return UserMapper::toRegisteredDto($id, $dto, $creatorStatus, $this->config->mailDemo ? $link : null);
     }
@@ -108,6 +111,26 @@ final class RegistrationService
         Log::audit('user.email_verified', 'user', $verification['user_id'], 'success', ['creator_status' => $creatorStatus->value]);
 
         return new EmailVerificationDto(true, $creatorStatus);
+    }
+
+    /**
+     * Adresse deja utilisee : compte confirme -> EMAIL_TAKEN ; non confirme avec un lien encore valable ->
+     * EMAIL_CONFIRMATION_PENDING ; non confirme sans lien valable -> son id, ce compte sera remplace.
+     * Sinon une adresse prise par erreur (faute de frappe, inscription au nom d'un autre) le resterait pour toujours.
+     */
+    private function replaceableAccount(string $email): ?int
+    {
+        $existing = $this->users->findByEmail($email);
+        if ($existing === null) {
+            return null;
+        }
+        if ($existing['email_verified']) {
+            throw RegistrationException::emailTaken();
+        }
+        if ($this->verifications->hasUsableFor($existing['id'], self::now())) {
+            throw RegistrationException::confirmationPending();
+        }
+        return $existing['id'];
     }
 
     /** Domaine autorise (ecole active) ET egal a celui de l'ecole choisie ; erreurs sous le champ concerne. */

@@ -5,6 +5,7 @@ namespace Tests\Integration\Controller;
 
 use Tests\HttpTestCase;
 use Tests\Support\ReadsConfirmationMail;
+use Tests\Support\TestDatabase;
 use Tests\TestResponse;
 
 final class UserControllerTest extends HttpTestCase
@@ -66,6 +67,20 @@ final class UserControllerTest extends HttpTestCase
     {
         $error = $this->assertError(409, 'EMAIL_TAKEN', $this->register(['email' => 'PENDING@efrei.net', 'school_id' => 13]));
         $this->assertSame(['field' => 'email'], $error['details']);
+    }
+
+    public function testAnUnconfirmedEmailIsFreedOnceItsLinkHasExpired(): void
+    {
+        $body = self::body();
+        $first = $this->post('/users', $body)->json()['data'];
+        $this->assertError(409, 'EMAIL_CONFIRMATION_PENDING', $this->post('/users', $body));
+
+        TestDatabase::pdo()->prepare('UPDATE email_verifications SET expires_at = UTC_TIMESTAMP() - INTERVAL 1 MINUTE WHERE user_id = ?')
+            ->execute([$first['id']]);
+        $second = $this->post('/users', $body);
+        $this->assertStatus(201, $second);
+        $this->assertNotSame($first['id'], $second->json()['data']['id']);
+        $this->assertError(409, 'EMAIL_TAKEN', $this->register(['email' => 'pending@efrei.net', 'school_id' => 13])); // compte confirme : adresse gardee
     }
 
     public function testInvalidFormIsRefusedByTheServerToo(): void
