@@ -1,7 +1,6 @@
 /* Inscription (RegisterView) et confirmation de l'adresse (ConfirmEmailView). */
 .register-page,
 .confirm-email-page {
-  max-width: 720px;
   padding-block: var(--space-7);
 }
 
@@ -69,7 +68,7 @@
 }
 .profile-choice__card:hover { border-color: var(--color-border); }
 .profile-choice__card:has(input:checked) { border-color: var(--color-brand); background: var(--color-surface-2); }
-.profile-choice__card input { margin-top: .3em; }
+.profile-choice__card input { margin-top: var(--space-1); }
 .profile-choice__title { font-weight: 700; }
 .profile-choice__text { grid-column: 2; color: var(--color-muted); font-size: var(--font-size-detail); }
 
@@ -80,12 +79,11 @@
   min-height: var(--tap-target);
   cursor: pointer;
 }
-.checkbox input { flex: none; width: 1.125rem; height: 1.125rem; margin-top: .2em; }
+.checkbox input { flex: none; width: var(--space-4); height: var(--space-4); margin-top: var(--space-1); }
 
+/* Le curseur de rayon reprend `.range` (pointCard.css), comme sur la carte. */
 input[type="checkbox"],
-input[type="radio"],
-.range { accent-color: var(--color-brand); }
-.range { width: 100%; min-height: var(--tap-target); }
+input[type="radio"] { accent-color: var(--color-brand); }
 .field output { font-weight: 700; }
 
 .interest-list {
@@ -111,7 +109,7 @@ input[type="radio"],
 
 /* Jauge : la largeur suit le niveau ; le texte a cote donne le niveau (jamais la couleur seule). */
 .password-strength {
-  height: 6px;
+  height: var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--color-surface-2);
   overflow: hidden;

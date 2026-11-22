@@ -183,6 +183,15 @@ export class RegisterView {
     this.creator.hidden = !creator;
     this.creatorNotice.hidden = !creator;
     this.organization.disabled = values.individual;
-    this.radiusValue.textContent = radiusLabel(values.searchRadiusKm);
+    this.showRadius(values.searchRadiusKm);
+  }
+
+  /** Le trait orange du curseur (style `.range` partage avec la carte) suit `--range-progress`. @param {number} km */
+  showRadius(km) {
+    const min = Number(this.radius.min);
+    const max = Number(this.radius.max);
+    this.radius.style.setProperty("--range-progress", `${((km - min) / (max - min)) * 100}%`);
+    this.radius.setAttribute("aria-valuetext", radiusLabel(km));
+    this.radiusValue.textContent = radiusLabel(km);
   }
 }
