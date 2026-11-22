@@ -1,0 +1,37 @@
+tags:
+  - name: schools
+    description: Ecoles dont l'adresse e-mail ouvre l'inscription
+
+paths:
+  /schools:
+    get:
+      tags: [schools]
+      summary: Lister les ecoles actives
+      description: Petit referentiel, sans pagination, trie par nom. Une ecole inactive n'est pas listee.
+      operationId: listSchools
+      security: []
+      responses:
+        "200":
+          description: Ecoles actives
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/School" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  schemas:
+    School:
+      type: object
+      required: [id, name, short_name, email_domain, city]
+      properties:
+        id: { type: integer, minimum: 1 }
+        name: { type: string, example: EFREI Paris }
+        short_name: { type: string, nullable: true, example: EFREI }
+        email_domain: { type: string, example: efrei.net }
+        city: { type: string, nullable: true, example: Villejuif }
