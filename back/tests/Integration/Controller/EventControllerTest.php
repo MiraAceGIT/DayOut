@@ -175,7 +175,7 @@ final class EventControllerTest extends HttpTestCase
         $this->assertSame(48.8689, $byId[1]['latitude']);
         $this->assertSame(2.341, $byId[1]['longitude']);
         $this->assertSame(
-            [['slug' => 'bde', 'label' => 'BDE / Assoc'], ['slug' => 'soiree', 'label' => 'Soiree']],
+            [['slug' => 'bde', 'label' => 'BDE / Association'], ['slug' => 'soiree', 'label' => 'Soiree']],
             $byId[1]['categories'],
             'categories sorted by label'
         );

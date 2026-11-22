@@ -34,7 +34,7 @@ INSERT INTO categories (id, slug, label, icon, active) VALUES
   (5,  'culture',      'Culture',          'book',        1),
   (6,  'gaming',       'Gaming / Esport',  'gamepad',     1),
   (7,  'tech',         'Tech / Hackathon', 'cpu',         1),
-  (8,  'bde',          'BDE / Assoc',      'users',       1),
+  (8,  'bde',          'BDE / Association', 'users',      1),
   (9,  'exterieur',    'Exterieur',        'tree',        1),
   (10, 'gastronomie',  'Gastronomie',      'utensils',    1),
   (11, 'afterwork',    'Afterwork',        'glass',       0);  -- desactivee : jamais exposee par l'API
