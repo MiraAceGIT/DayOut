@@ -7,6 +7,9 @@ import { fileURLToPath } from "node:url";
 import { toCategory } from "../src/model/mappers/categoryMapper.js";
 import { toEvent, toEventDto } from "../src/model/mappers/event/eventMapper.js";
 import { toCreator } from "../src/model/mappers/creatorMapper.js";
+import { toSchool } from "../src/model/mappers/schoolMapper.js";
+import { toEmailVerification, toRegisteredUser } from "../src/model/mappers/user/userMapper.js";
+import { toUserCreateDto } from "../src/model/mappers/user/userRequestMapper.js";
 
 const BACK = fileURLToPath(new URL("../../back/", import.meta.url));
 const DTO_FILE = new URL("../src/model/dto/", import.meta.url);
@@ -77,6 +80,32 @@ describe("contrat avec la spec OpenAPI du back", { skip }, () => {
     const fields = Object.keys(schemas.Category.properties);
     const read = keysReadBy(toCategory, Object.fromEntries(fields.map((f) => [f, "x"])));
     assert.deepEqual(fields.filter((f) => !read.has(f)), []);
+  });
+
+  it("le corps de l'inscription suit le schema UserCreate", () => {
+    const fields = Object.keys(schemas.UserCreate.properties);
+    assert.deepEqual(typedefProperties("userDto.js", "UserCreateDto"), fields);
+    const body = toUserCreateDto({
+      profile: "creator", firstName: "A", lastName: "B", email: "a@isep.fr", schoolId: "1", password: "Soiree2026",
+      passwordConfirm: "Soiree2026", termsAccepted: true, interests: ["soiree"], searchRadiusKm: 3, organizationName: "BDE", individual: false,
+    });
+    assert.deepEqual(Object.keys(body), fields, "ni plus ni moins de champs que l'API (la confirmation ne part pas)");
+  });
+
+  it("les reponses de l'inscription et de la confirmation suivent leurs schemas", () => {
+    /** @type {Array<[string, string, string, (dto: any) => unknown]>} */
+    const cases = [
+      ["userDto.js", "RegisteredUserDto", "RegisteredUser", toRegisteredUser],
+      ["userDto.js", "EmailVerificationDto", "EmailVerification", toEmailVerification],
+      ["schoolDto.js", "SchoolDto", "School", toSchool],
+    ];
+    for (const [file, name, schema, mapper] of cases) {
+      const fields = Object.keys(schemas[schema].properties);
+      assert.deepEqual(typedefProperties(file, name), fields, name);
+      const read = keysReadBy(mapper, Object.fromEntries(fields.map((f) => [f, sample(schemas[schema].properties[f])])));
+      assert.deepEqual(fields.filter((f) => !read.has(f)), [], `${name} : champs ignores par le mapper`);
+    }
+    assert.deepEqual(typedefProperties("userDto.js", "EmailVerificationCreateDto"), Object.keys(schemas.EmailVerificationCreate.properties));
   });
 
   it("toEventDto renvoie exactement les champs du schema Event", () => {
