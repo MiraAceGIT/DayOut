@@ -230,6 +230,40 @@ final class EventControllerTest extends HttpTestCase
         }
     }
 
+    public function testRadiusFilterKeepsOnlyEventsCloseToTheOrigin(): void
+    {
+        // Centre : event 1 (48.8689, 2.341). A 1 km, seul l'event 5 (48.8748, 2.3347) le rejoint.
+        $ids = array_column($this->list('lat=48.8689&lng=2.341&radius=1')['items'], 'id');
+        sort($ids);
+        $this->assertSame([1, 5], $ids);
+
+        // Elargi a 20 km (borne max du ticket) : tous les events a venir avec coordonnees (6 n'en a pas).
+        $ids = array_column($this->list('lat=48.8689&lng=2.341&radius=20')['items'], 'id');
+        sort($ids);
+        $this->assertSame([1, 2, 3, 4, 5, 7], $ids);
+
+        // Zone sans event (ocean Atlantique) : aucune reponse.
+        $this->assertSame([], $this->list('lat=48&lng=-30&radius=5')['items']);
+    }
+
+    public function testRadiusFilterRejectsInvalidAndIncompleteParameters(): void
+    {
+        $cases = [
+            'lat=48.8689&lng=2.341'                => 'radius',
+            'lat=48.8689&radius=3'                 => 'lng',
+            'lng=2.341&radius=3'                   => 'lat',
+            'lat=91&lng=2&radius=3'                => 'lat',
+            'lat=48&lng=181&radius=3'              => 'lng',
+            'lat=48&lng=2&radius=0'                => 'radius',
+            'lat=48&lng=2&radius=21'               => 'radius',
+            'lat=48&lng=2&radius=abc'              => 'radius',
+        ];
+        foreach ($cases as $query => $field) {
+            $error = $this->assertError(422, 'VALIDATION_ERROR', $this->get("/events?from=" . self::SEED_NOW . "&$query"));
+            $this->assertSame([$field], array_keys($error['details']), $query);
+        }
+    }
+
     public function testWritesAreRejectedWithoutAuthentication(): void
     {
         foreach ([['POST', '/events'], ['PATCH', '/events/1'], ['DELETE', '/events/1']] as [$method, $path]) {

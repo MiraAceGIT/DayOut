@@ -51,6 +51,13 @@ final class Event extends Dao
         'price_cents' => 'price_cents',
     ];
 
+    private const HAVERSINE_KM_SQL =
+        'latitude IS NOT NULL AND longitude IS NOT NULL'
+        . ' AND (6371 * 2 * ASIN(LEAST(1, SQRT('
+        . 'POW(SIN(RADIANS(latitude - ?) / 2), 2)'
+        . ' + COS(RADIANS(?)) * COS(RADIANS(latitude)) * POW(SIN(RADIANS(longitude - ?) / 2), 2)'
+        . ')))) <= ?';
+
     /** @return array{0: array<int, array<string, mixed>>, 1: int} */
     public function findManyPublished(?EventSearchParams $params = null): array
     {
@@ -98,6 +105,11 @@ final class Event extends Dao
         }
         if ($param->onlyAvailable) {
             $query->whereRaw('capacity IS NULL OR registered_count < capacity');
+        }
+        if ($param->latitude !== null && $param->longitude !== null && $param->radiusKm !== null) {
+            $query->whereRaw(self::HAVERSINE_KM_SQL, [
+                $param->latitude, $param->latitude, $param->longitude, $param->radiusKm,
+            ]);
         }
 
         return $this->paginate($query, $param->page, self::SORT_MAP);

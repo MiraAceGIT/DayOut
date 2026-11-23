@@ -68,9 +68,38 @@ final class EventFindQueryTest extends TestCase
             [['start_to' => '2026-11-07'], 'start_to'],
             [['start_from' => '2026-11-09T00:00:00Z', 'start_to' => '2026-11-07T00:00:00Z'], 'start_to'],
             [['ids' => implode(',', range(1, 51))], 'ids'],
+            [['lat' => '91', 'lng' => '2', 'radius' => '3'], 'lat'],
+            [['lat' => '48', 'lng' => '181', 'radius' => '3'], 'lng'],
+            [['lat' => '48', 'lng' => '2', 'radius' => '0'], 'radius'],
+            [['lat' => '48', 'lng' => '2', 'radius' => '21'], 'radius'],
+            [['lat' => 'abc', 'lng' => '2', 'radius' => '3'], 'lat'],
         ] as [$input, $field]) {
             $e = $this->assertThrows(ValidationException::class, fn () => EventFindQuery::fromQuery($input), $field);
             $this->assertSame([$field], array_keys($e->errors));
         }
+    }
+
+    public function testGeoParamsGoTogether(): void
+    {
+        foreach ([
+            [['lat' => '48.8689'], 'lng'],
+            [['lng' => '2.341'], 'lat'],
+            [['radius' => '3'], 'lat'],
+            [['lat' => '48.8689', 'lng' => '2.341'], 'radius'],
+            [['lat' => '48.8689', 'radius' => '3'], 'lng'],
+        ] as [$input, $missingField]) {
+            $e = $this->assertThrows(ValidationException::class, fn () => EventFindQuery::fromQuery($input), $missingField);
+            $this->assertSame([$missingField], array_keys($e->errors));
+            $this->assertStringContains('lat, lng and radius', $e->errors[$missingField]);
+        }
+    }
+
+    public function testGeoParamsPropagateToSearchParams(): void
+    {
+        $params = EventFindQuery::fromQuery(['lat' => '48.8689', 'lng' => '2.341', 'radius' => '3.5'])->toParams();
+
+        $this->assertSame(48.8689, $params->latitude);
+        $this->assertSame(2.341, $params->longitude);
+        $this->assertSame(3.5, $params->radiusKm);
     }
 }

@@ -23,6 +23,9 @@ final readonly class EventSearchParams
         public ?int $creatorId = null,
         public ?bool $isFree = null,
         public bool $onlyAvailable = false,
+        public ?float $latitude = null,
+        public ?float $longitude = null,
+        public ?float $radiusKm = null,
         public PageRequest $page = new PageRequest(),
     ) {
     }

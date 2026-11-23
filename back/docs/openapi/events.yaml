@@ -65,6 +65,21 @@ paths:
           in: query
           description: "`true` : uniquement les evenements sans limite de places ou non complets."
           schema: { type: boolean, default: false }
+        - name: lat
+          in: query
+          description: >-
+            Latitude du centre de recherche (degres decimaux). Doit etre envoyee avec `lng` et `radius` ;
+            les trois ensemble filtrent par distance au grand cercle (Haversine, rayon 6371 km). Les evenements
+            sans coordonnees sont exclus. Envoye seul : 422.
+          schema: { type: number, format: double, minimum: -90, maximum: 90, example: 48.8689 }
+        - name: lng
+          in: query
+          description: Longitude du centre de recherche (degres decimaux). Voir `lat`.
+          schema: { type: number, format: double, minimum: -180, maximum: 180, example: 2.341 }
+        - name: radius
+          in: query
+          description: Rayon de recherche en kilometres (CdC D1 : 1 a 20 km). Voir `lat`.
+          schema: { type: number, format: double, minimum: 1, maximum: 20, example: 3 }
         - name: sort_by
           in: query
           description: Tri principal, toujours departage par `id` dans le meme sens.

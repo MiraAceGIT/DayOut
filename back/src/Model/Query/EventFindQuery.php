@@ -14,6 +14,9 @@ final readonly class EventFindQuery
 {
     use ParsesQueryString;
 
+    public const MIN_RADIUS_KM = 1;
+    public const MAX_RADIUS_KM = 20;
+
     /** Filtres propres aux events ; tri et pagination viennent de pageRules(). */
     private const FILTERS = [
         'from'       => 'datetime',
@@ -24,6 +27,9 @@ final readonly class EventFindQuery
         'creator_id' => 'int|min:1',
         'is_free'    => 'bool',
         'available'  => 'bool',
+        'lat'        => 'number|min:-90|max:90',
+        'lng'        => 'number|min:-180|max:180',
+        'radius'     => 'number|min:' . self::MIN_RADIUS_KM . '|max:' . self::MAX_RADIUS_KM,
     ];
 
     /**
@@ -41,6 +47,9 @@ final readonly class EventFindQuery
         public ?int $creatorId = null,
         public ?bool $isFree = null,
         public bool $available = false,
+        public ?float $lat = null,
+        public ?float $lng = null,
+        public ?float $radius = null,
         public PageRequest $page = new PageRequest(),
     ) {
     }
@@ -61,6 +70,14 @@ final readonly class EventFindQuery
             throw ValidationException::field('start_to', 'Must be after start_from');
         }
 
+        // Recherche geographique : les trois parametres vont ensemble, sinon la requete est ambigue.
+        $geoKeys  = ['lat', 'lng', 'radius'];
+        $geoGiven = array_values(array_filter($geoKeys, static fn (string $k): bool => array_key_exists($k, $clean)));
+        if ($geoGiven !== [] && count($geoGiven) !== count($geoKeys)) {
+            $missing = array_values(array_diff($geoKeys, $geoGiven));
+            throw ValidationException::field($missing[0], 'Requires lat, lng and radius together');
+        }
+
         return new self(
             from:       self::date($clean['from'] ?? null),
             startFrom:  self::date($clean['start_from'] ?? null),
@@ -72,6 +89,9 @@ final readonly class EventFindQuery
             creatorId:  $clean['creator_id'] ?? null,
             isFree:     $clean['is_free'] ?? null,
             available:  $clean['available'] ?? false,
+            lat:        $clean['lat'] ?? null,
+            lng:        $clean['lng'] ?? null,
+            radius:     $clean['radius'] ?? null,
             page:       self::page($clean, Event::SORT_MAP),
         );
     }
@@ -89,6 +109,9 @@ final readonly class EventFindQuery
             creatorId:     $this->creatorId,
             isFree:        $this->isFree,
             onlyAvailable: $this->available,
+            latitude:      $this->lat,
+            longitude:     $this->lng,
+            radiusKm:      $this->radius,
             page:          $this->page,
         );
     }
