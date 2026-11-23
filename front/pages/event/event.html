@@ -57,13 +57,14 @@
           <p class="event-note">Les itinéraires en transports et à vélo ainsi que les arrêts proches seront disponibles prochainement.</p>
         </section>
         <section id="event-map" class="event-panel event-map" aria-labelledby="map-title">
-          <div class="event-section-heading"><h2 id="map-title">Le lieu sur la carte</h2><span class="event-placeholder-badge">Aperçu</span></div>
-          <figure class="event-map__figure">
+          <div class="event-section-heading"><h2 id="map-title">Le lieu sur la carte</h2></div>
+          <div id="event-mini-map" class="event-mini-map" hidden></div>
+          <figure id="event-map-figure" class="event-map__figure">
             <div class="event-map__placeholder">
               <img class="event-map__illustration" src="assets/img/event-map-placeholder.svg" alt="" width="640" height="300" loading="lazy">
               <div class="event-map__location"><span class="event-map__pin" aria-hidden="true"></span><strong id="event-map-name"></strong><span id="event-map-city"></span></div>
             </div>
-            <figcaption>Schéma décoratif, sans position géographique réelle. La carte interactive sera disponible prochainement.</figcaption>
+            <figcaption>Position précise non renseignée par l’organisateur.</figcaption>
           </figure>
           <p id="event-map-address" class="event-map__address"></p>
         </section>

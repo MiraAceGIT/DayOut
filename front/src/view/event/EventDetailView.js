@@ -1,10 +1,11 @@
 import { h } from "../../shared/dom.js";
 import { setCover } from "../components/cover/cover.js";
 import { presentEventDetail } from "./eventDetailPresenter.js";
+import { EventMiniMap } from "./eventMiniMap/EventMiniMap.js";
 
 export class EventDetailView {
-  /** @param {HTMLElement} [root] */
-  constructor(root = /** @type {HTMLElement} */ (document.getElementById("app-root"))) {
+  /** @param {HTMLElement} [root] @param {EventMiniMap} [miniMap] */
+  constructor(root = /** @type {HTMLElement} */ (document.getElementById("app-root")), miniMap) {
     this.root = root;
     this.main = root;
     this.detail = /** @type {HTMLElement} */ (root.querySelector("#event-detail"));
@@ -14,6 +15,9 @@ export class EventDetailView {
     this.status = /** @type {HTMLElement} */ (root.querySelector("#event-status"));
     this.error = /** @type {HTMLElement} */ (root.querySelector("#event-error"));
     this.retry = /** @type {HTMLButtonElement} */ (root.querySelector("#event-retry"));
+    this.miniMapEl = /** @type {HTMLElement|null} */ (root.querySelector("#event-mini-map"));
+    this.mapFigureEl = /** @type {HTMLElement|null} */ (root.querySelector("#event-map-figure"));
+    this.miniMap = miniMap ?? new EventMiniMap(this.miniMapEl);
   }
 
   /** @param {string} selector @returns {HTMLElement} */
@@ -28,6 +32,8 @@ export class EventDetailView {
   /** @param {{ onRetry: () => void }} handlers @param {AbortSignal} [signal] */
   bind({ onRetry }, signal) {
     this.retry.addEventListener("click", onRetry, { signal });
+    // La page est deposee : liberer Leaflet (sinon il continue a animer un conteneur detache).
+    signal?.addEventListener("abort", () => this.miniMap.destroy(), { once: true });
   }
 
   showLoading() {
@@ -40,6 +46,7 @@ export class EventDetailView {
     this.error.textContent = "";
     this.retry.hidden = true;
     this.retry.disabled = true;
+    this.miniMap.destroy();
     document.title = "Événement — DayOut";
   }
 
@@ -56,6 +63,7 @@ export class EventDetailView {
     this.status.textContent = "Cet événement n’existe pas ou n’est plus disponible.";
     this.error.textContent = "";
     this.retry.hidden = true;
+    this.miniMap.destroy();
     document.title = "404 — Événement introuvable — DayOut";
     this.stateTitle.focus();
   }
@@ -68,6 +76,7 @@ export class EventDetailView {
     this.status.textContent = "";
     this.error.textContent = message;
     this.retry.hidden = false;
+    this.miniMap.destroy();
     document.title = "Chargement impossible — DayOut";
     this.stateTitle.focus();
   }
@@ -109,10 +118,20 @@ export class EventDetailView {
     this.el("#event-free-reliability").toggleAttribute("hidden", !view.showFreeEntry);
     this.el("#event-tags").replaceChildren(...view.tags.map((label) => h("span", {}, label)));
     setCover(/** @type {HTMLImageElement} */ (this.el("#event-cover")), view.coverImageUrl);
+    this.renderLocation(event);
     this.state.hidden = true;
     this.detail.hidden = false;
     this.status.textContent = "";
     this.error.textContent = "";
     document.title = view.documentTitle;
+  }
+
+  /** @param {import("./eventDetailPresenter.js").Event} event */
+  renderLocation(event) {
+    // Leaflet mesure son conteneur a l'init : il faut qu'il soit visible AVANT show(), sinon clientWidth=0 -> tuiles grises.
+    const hasPosition = Boolean(event.position);
+    if (this.miniMapEl) this.miniMapEl.hidden = !hasPosition;
+    if (this.mapFigureEl) this.mapFigureEl.hidden = hasPosition;
+    if (hasPosition) this.miniMap.show(event);
   }
 }
