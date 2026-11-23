@@ -32,6 +32,7 @@ function registerView(values = formValues()) {
     showFieldErrors(errors, { focus = false } = {}) { this.errors = errors; this.focus = focus; },
     showPasswordStrength(level) { this.strength = level; },
     showCreatorSchool(name) { this.creatorSchool = name; },
+    selectSchool(id) { this.selected = id; this.values = { ...this.values, schoolId: String(id) }; },
     showSubmitting() { this.submitting = true; },
     endSubmitting() { this.submitting = false; },
     showSubmitError(message) { this.submitError = message; },
@@ -52,6 +53,21 @@ describe("inscription : controleur", () => {
   it("charge ecoles et categories puis affiche le formulaire", async () => {
     const { view } = await started();
     assert.deepEqual(view.options, { schools, categories });
+  });
+
+  it("choisit l'ecole d'apres le domaine de l'adresse e-mail", async () => {
+    const view = registerView(formValues({ email: "lina@isep.fr", schoolId: "" }));
+    await started({ view });
+    view.handlers.onInput("email");
+    assert.equal(view.selected, 1);
+    assert.equal(view.creatorSchool, "ISEP");
+
+    view.selected = undefined;
+    view.values = { ...view.values, email: "lina@gmail.com" };
+    view.handlers.onInput("email");
+    assert.equal(view.selected, undefined, "domaine inconnu : l'ecole ne change pas");
+    view.handlers.onInput("password");
+    assert.equal(view.selected, undefined, "seule la saisie de l'e-mail choisit l'ecole");
   });
 
   it("n'affiche une erreur qu'apres avoir quitte le champ, puis en direct", async () => {

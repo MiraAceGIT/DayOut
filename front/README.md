@@ -297,7 +297,8 @@ shared/          -> shared/ uniquement (utilitaires purs)
 
 - Profil **participant** ou **createur** (cartes radio) ; createur : message « compte soumis a validation », nom de
   l'association / du club / du BDE ou case « a titre individuel », ecole de rattachement = l'ecole choisie.
-- Champs : nom, prenom, e-mail de l'ecole, ecole (liste de `GET /schools`), mot de passe + confirmation (jamais envoyee),
+- Champs : nom, prenom, e-mail de l'ecole, ecole (liste de `GET /schools`, choisie automatiquement des que le domaine de
+  l'e-mail est celui d'une ecole, annonce dans la zone de statut), mot de passe + confirmation (jamais envoyee),
   centres d'interet (cases de `GET /categories`, au moins une), rayon de recherche (1-20 km, 3 par defaut), CGU.
 - **Validation en direct** (`model/domain/registration.js`, fonctions pures) : un champ est verifie des qu'on l'a quitte,
   puis a chaque frappe ; tous apres un premier envoi. Format de l'e-mail, domaine d'une ecole partenaire, coherence

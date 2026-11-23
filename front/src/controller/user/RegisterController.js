@@ -1,5 +1,5 @@
 import { isApiError } from "../../core/errors.js";
-import { passwordStrength, validateRegistration } from "../../model/domain/registration.js";
+import { passwordStrength, schoolForEmail, validateRegistration } from "../../model/domain/registration.js";
 import { fetchCategories } from "../../model/services/categoryService.js";
 import { fetchSchools } from "../../model/services/schoolService.js";
 import { registerUser, rejectedRegistrationFields } from "../../model/services/userService.js";
@@ -11,7 +11,7 @@ import { PageLoader } from "../PageLoader.js";
 
 export class RegisterController {
   /** @param {{ view?: Pick<RegisterView, "isReady" | "bind" | "readValues" | "showLoading" | "endLoading" | "showError"
-   *   | "showOptions" | "showFieldErrors" | "showPasswordStrength" | "showCreatorSchool" | "showSubmitting"
+   *   | "showOptions" | "showFieldErrors" | "showPasswordStrength" | "showCreatorSchool" | "selectSchool" | "showSubmitting"
    *   | "endSubmitting" | "showSubmitError" | "showSuccess">,
    * loadSchools?: typeof fetchSchools, loadCategories?: typeof fetchCategories, register?: typeof registerUser }} [options] */
   constructor({ view = new RegisterView(), loadSchools = fetchSchools, loadCategories = fetchCategories, register = registerUser } = {}) {
@@ -36,7 +36,10 @@ export class RegisterController {
     this.loader = new PageLoader(this.view, { signal });
     this.sender = this.senderFor(this.view, signal);
     this.view.bind({
-      onInput: () => this.refresh(),
+      onInput: (field) => {
+        if (field === "email") this.selectSchoolFromEmail();
+        this.refresh();
+      },
       onBlur: (field) => {
         this.touched.add(field);
         this.refresh();
@@ -54,6 +57,16 @@ export class RegisterController {
         this.view.showOptions(schools, categories);
       },
     });
+  }
+
+  /**
+   * L'adresse fait foi : des que son domaine est celui d'une ecole, cette ecole est choisie dans la liste.
+   * Un domaine inconnu ne change rien (l'erreur « aucune ecole partenaire » s'en charge).
+   */
+  selectSchoolFromEmail() {
+    const values = this.view.readValues();
+    const school = schoolForEmail(this.schools, values.email);
+    if (school && String(school.id) !== values.schoolId) this.view.selectSchool(school.id);
   }
 
   /**

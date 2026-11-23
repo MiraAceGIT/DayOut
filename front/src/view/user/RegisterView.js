@@ -1,7 +1,7 @@
 import { h } from "../../shared/dom.js";
 import { clearFieldErrors, showFieldErrors } from "../../shared/forms.js";
 import {
-  creatorSchoolText, DEMO_LINK_INTRO, DEMO_LINK_LABEL, fieldMessages, passwordStrengthLabel, radiusLabel,
+  creatorSchoolText, DEMO_LINK_INTRO, DEMO_LINK_LABEL, fieldMessages, passwordStrengthLabel, radiusLabel, schoolDetectedText,
   REGISTER_INVALID, REGISTER_LOADING, REGISTER_SUBMITTING, SUCCESS_CREATOR, successText,
 } from "./registerMessages.js";
 
@@ -136,6 +136,12 @@ export class RegisterView {
   showPasswordStrength(level) {
     this.strengthBar.dataset.level = String(level);
     this.strengthLabel.textContent = passwordStrengthLabel(level);
+  }
+
+  /** Ecole deduite de l'adresse e-mail : choisie dans la liste, annoncee aux lecteurs d'ecran. @param {number} schoolId */
+  selectSchool(schoolId) {
+    this.school.value = String(schoolId);
+    this.status.textContent = schoolDetectedText(this.school.selectedOptions[0]?.textContent ?? "");
   }
 
   /** @param {string|null} schoolName ecole choisie, rattachement du createur */

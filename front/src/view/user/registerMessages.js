@@ -85,3 +85,8 @@ export const DEMO_LINK_LABEL = "ouvrir le lien de confirmation";
 export function creatorSchoolText(schoolName) {
   return schoolName ?? "celle choisie plus haut";
 }
+
+/** École choisie d'après le domaine de l'adresse e-mail. @param {string} schoolName */
+export function schoolDetectedText(schoolName) {
+  return schoolName ? `École sélectionnée d'après ton adresse : ${schoolName}.` : "";
+}
