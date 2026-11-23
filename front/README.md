@@ -311,13 +311,17 @@ shared/          -> shared/ uniquement (utilitaires purs)
 - Succes : « Verifie ta boite mail » (lien valable 24 h ; demande createur examinee par un admin). Avec `MAIL_DEMO=true`
   cote back, le lien de confirmation s'affiche aussi (demo sans serveur de mail).
 - **Confirmation** (`/confirm-email?token=`) : la page envoie le jeton en `POST /email-verifications` (jamais un `GET`
-  qui modifie) et affiche compte active, demande createur en attente, lien expire, deja utilise ou invalide ; une panne
-  propose « Reessayer » (le lien n'a pas ete consomme). Une fois l'issue connue, le jeton est retire de l'adresse
-  (`setParam`). Lien expire : bouton « Refaire mon inscription » (le back remplace le compte non confirme dont le
-  lien a expire et envoie un nouveau lien).
-- Refus du serveur affiches sous l'e-mail : `409 EMAIL_TAKEN` (compte confirme), `409 EMAIL_CONFIRMATION_PENDING`
-  (lien deja envoye et encore valable), `409 CONFLICT` (deux inscriptions simultanees) et
-  `422 EMAIL_DOMAIN_NOT_ALLOWED` (ecole desactivee pendant la saisie, refusee par le trigger).
+  qui modifie) et affiche compte active, demande createur en attente, lien expire, deja utilise (`410`)
+  ou invalide ; une panne propose « Reessayer » (le lien n'a pas ete consomme). Le jeton quitte l'adresse des l'arrivee
+  sur la page (`setParam`) : il n'est ni dans l'historique ni dans l'en-tete Referer d'un lien suivi ; il reste en
+  memoire pour « Reessayer ». Lien expire : bouton « Refaire mon inscription » (le back remplace le compte non
+  confirme dont le lien a expire et envoie un nouveau lien).
+- Refus du serveur affiches sous l'e-mail : `409 EMAIL_TAKEN` (adresse deja utilisee, compte confirme ou en attente :
+  un seul code et un seul message, l'etat du compte ne se devine pas), `409 CONFLICT` (deux inscriptions simultanees)
+  et `422 EMAIL_DOMAIN_NOT_ALLOWED` (ecole desactivee pendant la saisie, refusee par le trigger). `429` (plus de
+  5 inscriptions par heure depuis la meme adresse IP) : message general sous le bouton.
+- Piege a robots : champ `website` hors ecran et hors tabulation (`register-form__trap`) ; un humain le laisse vide,
+  un robot qui le remplit est refuse par le serveur.
 - Page sans lien dans le header pour l'instant : on y arrive par `/register` (lien a ajouter avec la connexion, SCRUM-42).
 
 ### Composants reutilisables (`src/view/components/`)
@@ -401,7 +405,7 @@ HTTP 200 et affiche l'ecran 404 en JavaScript ; l'API renvoie bien le statut HTT
 - **`eventFilters.js`** : un predicat par critere (gratuit, places, categories, week-end, texte), `USER_FILTERS`, `matchesCriteria`, `weekendRange`
 - **`eventSearch.js`** : `searchEvents` — a venir + criteres + distance/rayon + tri + comptes ; typedef `SearchItem` (`{ event, distanceKm }`)
 - **`eventSuggestions.js`** : `suggestEvents` — selection publique de trois evenements a venir non complets, issue du meme chargement que l'accueil
-- **`registration.js`** : regles du formulaire d'inscription, miroir de `UserCreateDto` (back) : `emailDomain`, `schoolForEmail`,
+- **`registration.js`** : regles du formulaire d'inscription, miroir de `UserCreateDto` (back) : `normalizeEmail` (seule normalisation de l'e-mail, reprise par le mapper), `emailDomain`, `schoolForEmail`,
   `passwordIssue`, `passwordStrength` (0-4, pour la jauge), `validateRegistration(values, schools)` -> `{ champ: code }`
 
 ### Regle d'or

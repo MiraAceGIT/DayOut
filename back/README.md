@@ -118,6 +118,7 @@ manquante, un entier invalide, un booleen malforme (`true`/`false`, `1`/`0`,
 | Variable               | Defaut            | Description                                                         |
 | ---------------------- | ----------------- | ------------------------------------------------------------------- |
 | `APP_DEBUG`            | `false`           | Journalise aussi notices et deprecations (jamais affiche au client) |
+| `APP_ENV`              | `dev`             | `dev` ou `prod`. `prod` : `MAIL_DEMO` refuse au demarrage, mails journalises sans leur contenu |
 | `APP_TIMEZONE`         | `UTC`             | Fuseau PHP (whitelist)                                              |
 | `DOCS_ENABLED`         | `true` (dev)      | Active `/docs` et `/openapi.json`. **Mettre `false` en prod.**      |
 | `DB_HOST`              | **obligatoire**   | Hote MariaDB (XAMPP : `127.0.0.1`)                                  |
@@ -201,10 +202,10 @@ back/
 │   ├── index.php       ← front controller unique
 │   └── .htaccess       ← rewrite + blocage des fichiers sensibles
 ├── src/
-│   ├── Core/           ← infrastructure : Config, Env, Container, Router, RouteCompiler, Request, Response, Controller,
+│   ├── Core/           ← infrastructure : Config, Env, Container, Clock (SystemClock), Router, RouteCompiler, Request, Response, Controller,
 │   │                     Database, Validator, HttpException, BusinessException, ErrorKind
 │   │   ├── Http/       ← Kernel, Middleware, ExceptionRenderer, DbErrorMapper,
-│   │   │                 Cors, SecurityHeaders
+│   │   │                 Cors, SecurityHeaders, RateLimit + RateLimiter (limitation de debit par IP)
 │   │   ├── Log/        ← journalisation (error / info / audit) + ErrorHandler
 │   │   ├── Mail/       ← Mailer (interface commune des mails) + LogMailer (mails ecrits dans mail-AAAA-MM-JJ.log)
 │   │   └── Orm/        ← moteur ORM maison (Connection, Caster, QueryBuilder, Compiler, Grammar)
@@ -224,7 +225,7 @@ back/
 │   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
 │   │   └── Mappers/    ← ligne du DAO <-> DTO (toDto / toDtos / toRow / toUpdateRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
-│   └── Controller/     ← C : logique HTTP, une classe par ressource
+│   └── Controller/     ← C : logique HTTP, une classe par ressource ; Middleware/ : limites de debit par route
 ├── config/
 │   ├── config.php      ← charge le .env (Core\Env), construit la Config
 │   └── container.php   ← racine de composition (Container : Config, Connection, Mailer)
@@ -282,7 +283,7 @@ back/
 
 - **`HttpException`** (Core) : reservee a la couche HTTP (routeur, `Request`, middlewares)
 - **`ValidationException`** (Core) : levee par `Validator`, mappers et DAO -> 422 avec `details = champ -> message`
-- **`BusinessException`** (Core, heritee par `Model/Exceptions`) : regle metier levee par un service ; une classe par ressource, un cas par factory nommee ; `ErrorKind` fixe le statut (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Invalid` 422)
+- **`BusinessException`** (Core, heritee par `Model/Exceptions`) : regle metier levee par un service ; une classe par ressource, un cas par factory nommee ; `ErrorKind` fixe le statut (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Gone` 410, `Invalid` 422)
 
 ### Flux d'une requete
 
@@ -345,16 +346,25 @@ a la verification du droit d'ecriture FAQ ; aucun compte utilisateur n'est modif
 
 ### Inscription et confirmation de l'adresse
 
-Un etudiant cree son compte avec l'adresse e-mail de son ecole (SCRUM-41), puis le confirme par
-un lien a usage unique. `UserCreateDto` valide le corps, `RegistrationService` applique les regles
-et ecrit tout dans **une transaction** (`Connection::transaction`).
+Un etudiant cree son compte avec l'adresse e-mail de son ecole (SCRUM-41), puis le confirme par un lien a usage
+unique. Chaque classe a un role :
+
+| Classe | Role |
+| --- | --- |
+| `Dto/User/UserCreateDto` | corps de `POST /users` : normalisation (e-mail en minuscules, espaces), regles simples et regles multi-champs (meme modele que les autres DTO d'ecriture) |
+| `Policies/RegistrationPolicy` | ecole et domaine de l'e-mail, adresse deja prise ou compte a remplacer, slugs des centres d'interet |
+| `Services/RegistrationService` | ecrit le compte, ses interets et la demande createur dans **une transaction**, puis demande le lien |
+| `Services/EmailConfirmationService` | envoie le lien (jeton + mail) et confirme l'adresse (`POST /email-verifications`) |
+| `DomainServices/ConfirmationTokenIssuer` | jeton (32 octets, 64 hex), son SHA-256, expiration 24 h ; reutilisable (mot de passe oublie) |
+| `DomainServices/CreatorDisplayName` | nom public de la demande : l'association, ou « Prenom N. » a titre individuel |
+| `Core\Clock` | heure courante injectee (`SystemClock`, horloge fixe en test) : expirations testees sans SQL |
 
 | Methode | Route | Comportement |
 | --- | --- | --- |
 | POST | `/users` | Inscription publique : 201 avec le compte cree (`email_verified: false`) |
 | POST | `/email-verifications` | Confirme l'adresse avec `{ "token": "..." }` du lien, 200 |
-| GET | `/schools` | Ecoles actives, triees par nom (liste du formulaire, domaines autorises) |
-| GET | `/categories` | Categories actives, triees par libelle (centres d'interet) |
+| GET | `/schools` | Ecoles actives, triees par nom (liste du formulaire, domaines autorises) ; cache 1 h |
+| GET | `/categories` | Categories actives, triees par libelle (centres d'interet) ; cache 1 h |
 
 Regles de `POST /users` (toutes reverifiees par le serveur, meme si le front les controle deja) :
 
@@ -362,40 +372,53 @@ Regles de `POST /users` (toutes reverifiees par le serveur, meme si le front les
   en minuscules), `school_id`, `password` (8 caracteres au moins, une majuscule et un chiffre, 72 octets au plus pour bcrypt),
   `terms_accepted` (doit valoir `true`), `interests` (au moins un slug de categorie active), `search_radius_km` (1 a 20, defaut 3).
 - Createur : `organization_name` (association, club ou BDE, 120 caracteres), sauf `individual: true`.
+- `website` : piege a robots, champ cache du formulaire ; rempli, `422`.
 - Le domaine de l'e-mail doit etre celui d'une ecole **active** (sinon `422`, erreur sur `email`) et celui de
   l'ecole choisie (`422` sur `email`) ; ecole inconnue ou inactive : `422` sur `school_id`. Le trigger
-  `trg_users_bi_whitelist` (`50101`) reste le dernier filet.
-- E-mail deja utilise par un compte confirme : `409 EMAIL_TAKEN` (`details.field = email`). Par un compte non
-  confirme dont le lien est encore valable : `409 EMAIL_CONFIRMATION_PENDING`. Par un compte non confirme dont le
-  lien a expire : ce compte est **remplace** dans la meme transaction (`ON DELETE CASCADE` : interets, demande
-  createur, jetons), sinon une adresse prise par erreur ou au nom d'un autre etudiant le resterait pour toujours.
-  Audit : `replaced_unverified_user_id`. Deux inscriptions simultanees : `409 CONFLICT` (cle unique). Ecole
-  desactivee entre la verification et l'ecriture : `422 EMAIL_DOMAIN_NOT_ALLOWED` (trigger).
-- Mot de passe hache par `Shared\Password` (bcrypt), jamais stocke ni journalise en clair.
+  `trg_users_bi_whitelist` (`50101`, `422 EMAIL_DOMAIN_NOT_ALLOWED`) reste le dernier filet.
+- Adresse deja utilisee, par un compte confirme ou par un compte non confirme dont le lien est encore valable :
+  `409 EMAIL_TAKEN` (`details.field = email`). Un seul code pour les deux : l'existence du compte est revelee
+  (le ticket demande de refuser un e-mail deja utilise), mais pas son etat. Compte non confirme dont le lien a expire :
+  il est **remplace** dans la meme transaction (`ON DELETE CASCADE` : interets, demande createur, jetons), sinon une
+  adresse prise par erreur ou au nom d'un autre etudiant le resterait pour toujours (audit : `replaced_unverified_user_id`).
+  Deux inscriptions simultanees : `409 CONFLICT` (cle unique).
+- **Limite** : 5 inscriptions reussies par adresse IP et par heure (`RegistrationRateLimit`), `429 TOO_MANY_REQUESTS`
+  + `Retry-After` au-dela ; un formulaire refuse ne compte pas. Par adresse e-mail, la limite existe de fait : `409`
+  tant que le compte existe, donc au plus un mail par adresse et par 24 h.
+- Mot de passe hache par `Shared\Password` (bcrypt, cost 12), jamais stocke ni journalise en clair.
 - Compte cree `role = participant`, `email_verified = 0`. Un createur a `creator_status = pending` et une ligne
-  `creator_profiles` (nom de l'association, ou « Prenom N. » a titre individuel) : il ne peut pas publier tant qu'un
-  admin n'a pas valide sa demande (`User::canPublish`). **La liste des demandes a valider (SCRUM-45) doit ne garder
-  que les comptes `email_verified = 1`.**
-- Jeton : 32 octets aleatoires (64 caracteres hexadecimaux) envoyes dans le lien `FRONT_URL/confirm-email?token=...`,
-  seul son SHA-256 est stocke (`email_verifications`), valable 24 h, usage unique.
-- Le mail part en dernier dans la transaction : s'il echoue, rien n'est cree et l'etudiant peut recommencer.
+  `creator_profiles` : il ne peut pas publier tant qu'un admin n'a pas valide sa demande (`User::canPublish`).
+  **La liste des demandes a valider (SCRUM-45) doit ne garder que les comptes `email_verified = 1`.**
+- Lien `FRONT_URL/confirm-email?token=...` ; seul le SHA-256 du jeton est stocke (`email_verifications`), valable 24 h,
+  usage unique. Les jetons expires depuis plus de 7 jours sont purges a chaque nouvel envoi (pas de cron).
+- 201 sans en-tete `Location` : aucune route `GET /users/{id}` n'existe (le profil est SCRUM-43).
 - Audit : `user.register`, `user.email_verified` (sans e-mail, mot de passe ni jeton).
 
 `POST /email-verifications` : jeton mal forme ou inconnu `422 VERIFICATION_TOKEN_INVALID`, expire
-`422 VERIFICATION_TOKEN_EXPIRED`, deja utilise `409 VERIFICATION_TOKEN_USED` (`UPDATE ... WHERE used_at IS NULL`,
-atomique : deux clics simultanes ne confirment qu'une fois). Reponse : `{ email_verified: true, creator_status }`.
-Confirmation en `POST` et non `GET` : un antivirus ou un apercu de messagerie qui ouvre le lien ne consomme rien
-(la page front `/confirm-email` fait l'appel).
+`422 VERIFICATION_TOKEN_EXPIRED`, deja utilise `410 VERIFICATION_TOKEN_USED` (le lien a existe mais ne servira plus ;
+`UPDATE ... WHERE used_at IS NULL`, atomique : deux clics simultanes ne confirment qu'une fois). 30 essais par adresse
+IP et par heure (`EmailVerificationRateLimit`). Reponse : `{ email_verified: true, creator_status }` (`none` ou
+`pending`). **Choix REST assume** : c'est la consommation d'un jeton, pas la creation d'une ressource, d'ou `200` et
+non `201`. `POST` et non `GET` : un antivirus ou un apercu de messagerie qui ouvre le lien ne consomme rien (la page
+front `/confirm-email` fait l'appel) ; jeton dans le corps et non dans l'URL : absent des logs d'acces.
 
-Securite : route publique sans session ; le corps JSON obligatoire (`415` sinon) et la whitelist CORS
-remplacent le jeton CSRF, qui arrivera avec la session de connexion (SCRUM-42). La connexion devra refuser un compte
-`email_verified = 0`.
+Securite : route publique sans session, donc sans jeton CSRF. Un formulaire HTML d'un autre site ne peut envoyer que
+du texte ou du multipart (`415`, corps JSON obligatoire) ; un `fetch` JSON d'un autre site passe par une
+verification CORS refusee hors de `CORS_ORIGIN`. La connexion (SCRUM-42) devra refuser un compte `email_verified = 0`.
 
 **Mails** : `App\Core\Mail\Mailer` (`send($to, $subject, $body)`) est l'interface commune, a reutiliser pour le
 mot de passe oublie (SCRUM-56). Sans serveur de mail dans le projet, `LogMailer` ecrit chaque mail (une ligne JSON :
-destinataire, sujet, corps) dans `LOG_PATH/mail-AAAA-MM-JJ.log`, a part des logs `info` / `audit` puisqu'il contient
-le lien. En demo, `MAIL_DEMO=true` renvoie aussi ce lien dans `demo_confirmation_url` pour l'afficher a l'ecran.
-Un vrai envoi (SMTP) = une autre classe qui implemente `Mailer`, declaree dans `config/container.php`.
+destinataire, sujet, corps) dans `LOG_PATH/mail-AAAA-MM-JJ.log`, a part des logs `info` / `audit`. En production
+(`APP_ENV=prod`), le corps (qui contient le lien) n'est **pas** ecrit. En demo, `MAIL_DEMO=true` renvoie aussi le
+lien dans `demo_confirmation_url` pour l'afficher a l'ecran ; `APP_ENV=prod` avec `MAIL_DEMO=true` est refuse au
+demarrage. Un vrai envoi (SMTP) = une autre classe qui implemente `Mailer`, declaree dans `config/container.php` ;
+le mail part aujourd'hui dans la transaction (un echec annule l'inscription), ce qui est instantane avec `LogMailer` :
+avec SMTP, passer par une table d'envoi (outbox) pour ne pas garder la transaction ouverte pendant l'envoi reseau.
+
+**Limitation de debit** (`Core\Http\RateLimit` + `RateLimiter`) : middleware generique par adresse IP
+(`Request::CLIENT_IP`, pose par `fromGlobals()` depuis `REMOTE_ADDR`), compteur en base (`rate_limit_hits`, IP hashee,
+purge a chaque ajout). Une sous-classe par usage dans `src/Controller/Middleware/` (constantes `BUCKET`, `MAX_HITS`,
+`WINDOW_SECONDS`, `COUNT_ONLY_SUCCESS`), declaree sur sa route. Derriere un proxy, configurer `REMOTE_ADDR`.
 
 ### Declarer un DAO
 
@@ -691,9 +714,9 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | DELETE  | `/events/{id}`       | — ; **auth** ; brouillons uniquement           | `204`                                 | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` |
 | GET     | `/creators`          | `q`, `school_id`, `ids` (CSV), `has_upcoming_events`, `from`, `sort_by` (`display_name`, `created_at`), `sort_dir`, `limit`, `offset` (`CreatorFindQuery`) | `{ items: Creator[], limit, offset, has_more, total }` (approuves, non bannis) | `422 VALIDATION_ERROR` |
 | POST    | `/users`             | — ; body `UserCreate` ; public                 | `201` `RegisteredUser` (non confirme) | `409 EMAIL_TAKEN` / `EMAIL_CONFIRMATION_PENDING` / `CONFLICT`, `415`, `422` (dont domaine refuse sur `email`, `EMAIL_DOMAIN_NOT_ALLOWED`) |
-| POST    | `/email-verifications` | — ; body `{ token }` ; public                | `{ email_verified, creator_status }`  | `409 VERIFICATION_TOKEN_USED`, `415`, `422 VERIFICATION_TOKEN_INVALID` / `_EXPIRED` |
-| GET     | `/schools`           | —                                              | `School[]` (actives, par nom)         | —                                                     |
-| GET     | `/categories`        | —                                              | `Category[]` (actives, par libelle)   | —                                                     |
+| POST    | `/email-verifications` | — ; body `{ token }` ; public                | `{ email_verified, creator_status }`  | `410 VERIFICATION_TOKEN_USED`, `415`, `422 VERIFICATION_TOKEN_INVALID` / `_EXPIRED`, `429` |
+| GET     | `/schools`           | —                                              | `School[]` (actives, par nom), cache 1 h | —                                                  |
+| GET     | `/categories`        | —                                              | `Category[]` (actives, par libelle), cache 1 h | —                                            |
 | GET     | `/docs`              | —                                              | Swagger UI (hors enveloppe)           | `404` si `DOCS_ENABLED=false`                         |
 | GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | `404` si `DOCS_ENABLED=false`                         |
 
@@ -863,7 +886,7 @@ a `App\Core\Http\ExceptionRenderer`.
   throw ValidationException::field('end_at', 'Must be after start_at');
   ```
 - **`BusinessException`** -> regle metier levee par un service. `ErrorKind` fixe le statut
-  (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Invalid` 422) ; `details` part au client,
+  (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Gone` 410, `Invalid` 422) ; `details` part au client,
   `context` reste dans `info-*.log` avec le `requestId` :
   ```php
   // src/Model/Exceptions/EventException.php
@@ -909,7 +932,7 @@ Chaque erreur SQL traduite est journalisee en `info` (`Database rule violated`, 
 ### Codes emis globalement
 
 `BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `VALIDATION_ERROR`, `CONFLICT`,
-codes metier (`EVENT_NOT_FOUND`, `EMAIL_TAKEN`, `EMAIL_CONFIRMATION_PENDING`, `VERIFICATION_TOKEN_*`...), codes triggers (`EVENT_FULL`...),
+codes metier (`EVENT_NOT_FOUND`, `EMAIL_TAKEN`, `VERIFICATION_TOKEN_*`...), `TOO_MANY_REQUESTS`, codes triggers (`EVENT_FULL`...),
 `INTERNAL_ERROR`, `ENCODING_ERROR`.
 
 ---
@@ -982,7 +1005,8 @@ tests/
 ├── Unit/                       ← classe testee directement, sans serveur ni MariaDB
 │   ├── Controller/             ← DocsControllerTest
 │   ├── Core/                   ← ConfigTest, ContainerTest, EnvTest, RequestTest, ResponseTest, RouterTest, ValidatorTest
-│   │   ├── Http/               ← KernelTest, ExceptionRendererTest
+│   │   ├── Http/               ← KernelTest, ExceptionRendererTest, RateLimitTest
+│   │   ├── Mail/               ← LogMailerTest (contenu jamais journalise en production)
 │   │   ├── Log/                ← ContextSanitizerTest, ErrorHandlerTest (processus a part)
 │   │   └── Orm/                ← CasterTest, ConnectionTest (transactions), Query/QueryBuilderTest
 │   ├── Docs/                   ← OpenApiSpecTest, OpenApiContractTest
@@ -998,7 +1022,7 @@ tests/
 │   ├── Controller/             ← EventControllerTest, HealthControllerTest, DocsControllerTest, UserControllerTest,
 │   │                             EmailVerificationControllerTest (jeton lu dans mail-*.log), School/CategoryControllerTest
 │   └── Core/                   ← RouterTest, Http/{Kernel,Cors,ExceptionRenderer}Test, Log/AccessLogTest
-├── Support/                    ← doublures partagees (EchoController, AppRouter, TestContainer, FakeMailer, ReadsConfirmationMail)
+├── Support/                    ← doublures partagees (EchoController, AppRouter, TestContainer, FakeMailer, FixedClock, ReadsConfirmationMail)
 ├── fixtures/                   ← scripts lances dans un processus a part
 └── TestCase.php, HttpTestCase.php, run.php, run.sh
 ```
@@ -1178,6 +1202,7 @@ LOG_LEVEL=info
 LOG_PATH=/var/log/dayout
 LOG_RETENTION_DAYS=30
 AUDIT_RETENTION_DAYS=365
+APP_ENV=prod
 FRONT_URL=https://app.dayout.example
 MAIL_DEMO=false
 ```
