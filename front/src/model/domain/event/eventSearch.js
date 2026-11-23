@@ -13,9 +13,8 @@ export function measureFrom(origin) {
   });
 }
 
-// Sans position, on ne sait pas s'il est dans le cercle : il reste dans la liste.
-export function withinRadius(radiusKm) {
-  return ({ distanceKm: km }) => km === null || !(km > radiusKm);
+export function withinLoadedRadius(radiusKm) {
+  return ({ distanceKm: km }) => km === null || km <= radiusKm;
 }
 
 export function countByPosition(items) {
@@ -35,7 +34,7 @@ export function searchEvents(events, { origin, radiusKm, now = new Date(), ...cr
   const items = events
     .filter((event) => isUpcoming(event, now) && matches(event))
     .map(measureFrom(origin))
-    .filter(withinRadius(radiusKm))
+    .filter(withinLoadedRadius(radiusKm))
     .sort((a, b) => startTime(a) - startTime(b));
   return { items, ...countByPosition(items) };
 }

@@ -12,6 +12,8 @@ import { MapView } from "../view/home/map/MapView.js";
 import { LatestTask } from "../shared/LatestTask.js";
 import { OriginPicker } from "./OriginPicker.js";
 
+const RADIUS_RELOAD_DELAY_MS = 220;
+
 export class HomeController {
   constructor({
     view = new HomeView(),
@@ -21,6 +23,7 @@ export class HomeController {
     loadEvents = fetchUpcomingEvents,
     getPosition = currentPosition,
     limit = MAX_PAGE_LIMIT,
+    radiusReloadDelayMs = RADIUS_RELOAD_DELAY_MS,
   } = {}) {
     this.view = view;
     this.map = map;
@@ -28,10 +31,13 @@ export class HomeController {
     this.state = state;
     this.loadEvents = loadEvents;
     this.limit = normalizePageLimit(limit);
+    this.radiusReloadDelayMs = radiusReloadDelayMs;
     this.searches = new LatestTask();
     this.origin = new OriginPicker({ map, getPosition, onOrigin: (point) => this.applyOrigin(point) });
     this.keyword = "";
     this.started = false;
+    /** @type {ReturnType<typeof setTimeout>|null} */
+    this.reloadTimer = null;
     /** @type {(name: string, value: string) => void} */
     this.setParam = () => {};
   }
@@ -66,6 +72,7 @@ export class HomeController {
     signal?.addEventListener("abort", () => {
       this.origin.cancel();
       this.searches.cancel();
+      this.cancelPendingReload();
       this.map.destroy();
     });
     this.searchBox.setQuery(this.keyword);
@@ -76,12 +83,16 @@ export class HomeController {
   }
 
   async load() {
+    this.cancelPendingReload();
     const search = this.searches.start();
     const keyword = this.keyword;
+    const { origin, radiusKm } = this.state.criteria;
 
     this.view.showLoading();
     try {
-      const events = await this.loadEvents({ limit: this.limit, query: keyword, signal: search.signal });
+      const events = await this.loadEvents({
+        limit: this.limit, query: keyword, origin, radiusKm, signal: search.signal,
+      });
       if (!search.isCurrent()) return;
       this.state.load(events, { limit: this.limit, keyword });
       const { categories } = this.state;
@@ -119,6 +130,28 @@ export class HomeController {
     this.view.setRadius(km);
     this.map.setRadius(km);
     this.render();
+    // Mouvement du curseur : le cercle suit immediatement ; la requete est debouncee pour ne pas inonder l'API.
+    this.scheduleReload();
+  }
+
+  scheduleReload() {
+    this.cancelPendingReload();
+    const delay = Math.max(0, this.radiusReloadDelayMs);
+    if (delay === 0) {
+      void this.load();
+      return;
+    }
+    this.reloadTimer = setTimeout(() => {
+      this.reloadTimer = null;
+      void this.load();
+    }, delay);
+  }
+
+  cancelPendingReload() {
+    if (this.reloadTimer !== null) {
+      clearTimeout(this.reloadTimer);
+      this.reloadTimer = null;
+    }
   }
 
   setFlag(name, on) {
@@ -142,5 +175,6 @@ export class HomeController {
     this.view.setOrigin(origin);
     this.map.setOrigin(origin, this.state.criteria.radiusKm);
     this.render();
+    void this.load();
   }
 }

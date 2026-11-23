@@ -30,6 +30,25 @@ describe("requete GET /events", () => {
     assert.equal(toEventQuery({ keyword: "   " }).has("q"), false);
     assert.equal(toEventQuery({ keyword: "a".repeat(150) }).get("q")?.length, 100);
   });
+
+  it("transmet le centre et le rayon pour la recherche geographique, ou rien si l'un manque", () => {
+    const geo = Object.fromEntries(toEventQuery({ origin: { lat: 48.8689, lng: 2.341 }, radiusKm: 3 }));
+    assert.equal(geo.lat, "48.8689");
+    assert.equal(geo.lng, "2.341");
+    assert.equal(geo.radius, "3");
+
+    const partial = toEventQuery({ origin: { lat: 48.8689, lng: 2.341 } }); // pas de rayon
+    assert.equal(partial.has("lat"), false);
+    assert.equal(partial.has("lng"), false);
+    assert.equal(partial.has("radius"), false);
+  });
+
+  it("borne le rayon sur [1, 20] km avant d'appeler l'API (meme regle qu'au backend)", () => {
+    const origin = { lat: 48.8689, lng: 2.341 };
+    assert.equal(toEventQuery({ origin, radiusKm: 0 }).get("radius"), "1");
+    assert.equal(toEventQuery({ origin, radiusKm: 100 }).get("radius"), "20");
+    assert.equal(toEventQuery({ origin, radiusKm: 5 }).get("radius"), "5");
+  });
 });
 
 describe("service evenement", () => {

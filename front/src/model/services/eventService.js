@@ -5,9 +5,12 @@ import { DEFAULT_PAGE_LIMIT } from "../mappers/pageQueryMapper.js";
 
 /** @typedef {import("../dto/eventDto.js").EventPageDto} EventPageDto */
 
-/** @param {{ limit?: number, offset?: number, from?: string, query?: string, signal?: AbortSignal }} [options] */
-export async function fetchUpcomingEventPage({ limit = DEFAULT_PAGE_LIMIT, offset = 0, from, query: keyword = "", signal } = {}) {
-  const query = toEventQuery({ limit, offset, from, keyword });
+/** @param {{ limit?: number, offset?: number, from?: string, query?: string,
+ *             origin?: { lat: number, lng: number }, radiusKm?: number, signal?: AbortSignal }} [options] */
+export async function fetchUpcomingEventPage({
+  limit = DEFAULT_PAGE_LIMIT, offset = 0, from, query: keyword = "", origin, radiusKm, signal,
+} = {}) {
+  const query = toEventQuery({ limit, offset, from, keyword, origin, radiusKm });
   /** @type {EventPageDto} */
   const page = await api.get(`/events?${query}`, { signal });
   return {
@@ -15,7 +18,8 @@ export async function fetchUpcomingEventPage({ limit = DEFAULT_PAGE_LIMIT, offse
   };
 }
 
-/** @param {{ limit?: number, query?: string, signal?: AbortSignal }} [options]
+/** @param {{ limit?: number, query?: string, origin?: { lat: number, lng: number }, radiusKm?: number,
+ *             signal?: AbortSignal }} [options]
  */
 export async function fetchUpcomingEvents(options = {}) {
   return (await fetchUpcomingEventPage(options)).items;
