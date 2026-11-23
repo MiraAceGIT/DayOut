@@ -5,6 +5,7 @@ namespace Tests\Unit\Model\Services;
 
 use App\Controller\EmailVerificationController;
 use App\Controller\UserController;
+use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Container;
 use App\Core\Mail\Mailer;
@@ -16,6 +17,7 @@ use App\Model\Dto\User\UserCreateDto;
 use App\Model\Enums\CreatorStatus;
 use App\Model\Exceptions\RegistrationException;
 use App\Model\Services\CategoryService;
+use App\Model\Services\EmailConfirmationService;
 use App\Model\Services\RegistrationService;
 use App\Model\Services\SchoolService;
 use App\Shared\Password;
@@ -23,6 +25,7 @@ use PDO;
 use PDOStatement;
 use RuntimeException;
 use Tests\Support\FakeMailer;
+use Tests\Support\FixedClock;
 use Tests\Support\TestContainer;
 use Tests\TestCase;
 use Tests\Unit\Model\Dto\UserCreateDtoTest;
@@ -33,6 +36,8 @@ final class RegistrationServiceTest extends TestCase
     private FakeMailer $mailer;
     private Container $container;
     private RegistrationService $service;
+    private EmailConfirmationService $confirmations;
+    private FixedClock $clock;
 
     public function setUp(): void
     {
@@ -56,14 +61,17 @@ final class RegistrationServiceTest extends TestCase
             VALUES (1, 'deja@isep.fr', 'isep.fr', 'x', 'Deja', 'Inscrit', 1, 1)");
 
         $this->mailer = new FakeMailer();
+        $this->clock = new FixedClock();
         $this->container = $this->containerWith(mailDemo: false);
         $this->service = $this->container->get(RegistrationService::class);
+        $this->confirmations = $this->container->get(EmailConfirmationService::class);
     }
 
     private function containerWith(bool $mailDemo): Container
     {
         $container = TestContainer::create(new Connection($this->pdo));
         $container->set(Mailer::class, fn (): Mailer => $this->mailer);
+        $container->set(Clock::class, fn (): Clock => $this->clock);
         $container->set(Config::class, static fn (): Config => new Config(frontUrl: 'https://front.dayout.test', mailDemo: $mailDemo));
         return $container;
     }
@@ -108,8 +116,7 @@ final class RegistrationServiceTest extends TestCase
         $verification = $this->sql('SELECT * FROM email_verifications')->fetch();
         $this->assertSame(hash('sha256', $token), $verification['token_hash'], 'only the hash is stored');
         $this->assertSame((int) $user->id, (int) $verification['user_id']);
-        $ttl = strtotime($verification['expires_at'] . ' UTC') - time();
-        $this->assertTrue($ttl > 86000 && $ttl <= 86400, 'expires in 24 h');
+        $this->assertSame('2026-11-24 10:00:00', $verification['expires_at'], 'expires 24 h after the registration');
     }
 
     public function testCreatorStaysParticipantWithAPendingRequest(): void
@@ -156,7 +163,7 @@ final class RegistrationServiceTest extends TestCase
     {
         $this->register();
         $error = $this->assertThrows(RegistrationException::class, fn () => $this->register(['first_name' => 'Autre']));
-        $this->assertSame('EMAIL_CONFIRMATION_PENDING', $error->errorCode);
+        $this->assertSame('EMAIL_TAKEN', $error->errorCode, 'same code as a confirmed account: the state does not leak');
         $this->assertSame(['field' => 'email'], $error->details);
         $this->assertSame(2, $this->count('users'));
         $this->assertCount(1, $this->mailer->sent);
@@ -166,7 +173,7 @@ final class RegistrationServiceTest extends TestCase
     {
         $this->register(['profile' => 'creator', 'organization_name' => 'BDE ISEP']);
         $oldToken = $this->mailer->lastToken();
-        $this->sql("UPDATE email_verifications SET expires_at = '2020-01-01 00:00:00'");
+        $this->clock->advance('PT24H'); // lien expire : a 24 h pile, il ne sert plus
 
         // SQLite peut reprendre l'id supprime (MariaDB non) : on verifie les lignes, pas l'id.
         $new = $this->register(['first_name' => 'Lina', 'interests' => ['sport']]);
@@ -178,8 +185,20 @@ final class RegistrationServiceTest extends TestCase
         }
         $this->assertNotSame($oldToken, $this->mailer->lastToken(), 'a new link is sent');
         $this->assertSame('VERIFICATION_TOKEN_INVALID', $this->assertThrows(RegistrationException::class,
-            fn () => $this->service->confirmEmail($oldToken))->errorCode);
-        $this->assertSame('none', $this->service->confirmEmail($this->mailer->lastToken())->creatorStatus->value);
+            fn () => $this->confirmations->confirm($oldToken))->errorCode);
+        $this->assertSame('none', $this->confirmations->confirm($this->mailer->lastToken())->creatorStatus->value);
+    }
+
+    public function testLinksExpiredForMoreThanAWeekArePurgedOnTheNextSending(): void
+    {
+        $this->register();
+        $this->clock->advance('P9D');
+        $this->register(['email' => 'eve@epita.fr', 'school_id' => 2]);
+        $this->assertSame(1, $this->count('email_verifications'), 'the 9-day-old link is gone, the new one stays');
+
+        $this->clock->advance('PT1H');
+        $this->register(['email' => 'tom@epita.fr', 'school_id' => 2]);
+        $this->assertSame(2, $this->count('email_verifications'), 'a link expired for less than a week is kept');
     }
 
     public function testNothingIsKeptWhenTheMailCannotBeSent(): void
@@ -205,34 +224,34 @@ final class RegistrationServiceTest extends TestCase
         $user = $this->register(['profile' => 'creator', 'organization_name' => 'BDE ISEP']);
         $token = $this->mailer->lastToken();
 
-        $this->assertSame(['email_verified' => true, 'creator_status' => 'pending'], $this->service->confirmEmail($token)->jsonSerialize());
+        $this->assertSame(['email_verified' => true, 'creator_status' => 'pending'], $this->confirmations->confirm($token)->jsonSerialize());
         $row = $this->sql("SELECT email_verified, email_verified_at, creator_status FROM users WHERE id = $user->id")->fetch();
         $this->assertSame(1, (int) $row['email_verified']);
         $this->assertTrue($row['email_verified_at'] !== null);
         $this->assertSame('pending', $row['creator_status'], 'the creator request still waits for an admin');
         $this->assertTrue($this->sql('SELECT used_at FROM email_verifications')->fetchColumn() !== null);
 
-        $error = $this->assertThrows(RegistrationException::class, fn () => $this->service->confirmEmail($token));
+        $error = $this->assertThrows(RegistrationException::class, fn () => $this->confirmations->confirm($token));
         $this->assertSame('VERIFICATION_TOKEN_USED', $error->errorCode);
     }
 
     public function testParticipantConfirmationReturnsNoCreatorRequest(): void
     {
         $this->register();
-        $this->assertSame('none', $this->service->confirmEmail($this->mailer->lastToken())->creatorStatus->value);
+        $this->assertSame('none', $this->confirmations->confirm($this->mailer->lastToken())->creatorStatus->value);
     }
 
     public function testExpiredUnknownAndMalformedTokensAreRejected(): void
     {
         $user = $this->register();
         $token = $this->mailer->lastToken();
-        $this->pdo->exec("UPDATE email_verifications SET expires_at = '2020-01-01 00:00:00'");
-        $error = $this->assertThrows(RegistrationException::class, fn () => $this->service->confirmEmail($token));
+        $this->clock->advance('PT24H');
+        $error = $this->assertThrows(RegistrationException::class, fn () => $this->confirmations->confirm($token));
         $this->assertSame('VERIFICATION_TOKEN_EXPIRED', $error->errorCode);
         $this->assertSame(0, (int) $this->sql("SELECT email_verified FROM users WHERE id = $user->id")->fetchColumn());
 
         foreach ([str_repeat('a', 64), strtoupper($token), substr($token, 1), $token . 'a', '', "$token\n"] as $bad) {
-            $error = $this->assertThrows(RegistrationException::class, fn () => $this->service->confirmEmail($bad));
+            $error = $this->assertThrows(RegistrationException::class, fn () => $this->confirmations->confirm($bad));
             $this->assertSame('VERIFICATION_TOKEN_INVALID', $error->errorCode);
         }
     }
@@ -241,7 +260,8 @@ final class RegistrationServiceTest extends TestCase
     {
         $container = TestContainer::create(TestContainer::noDatabase());
         $container->set(Mailer::class, fn (): Mailer => $this->mailer);
-        $error = $this->assertThrows(RegistrationException::class, fn () => $container->get(RegistrationService::class)->confirmEmail('../../etc'));
+        $container->set(Clock::class, fn (): Clock => $this->clock);
+        $error = $this->assertThrows(RegistrationException::class, fn () => $container->get(EmailConfirmationService::class)->confirm('../../etc'));
         $this->assertSame('VERIFICATION_TOKEN_INVALID', $error->errorCode);
     }
 

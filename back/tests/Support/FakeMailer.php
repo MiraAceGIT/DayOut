@@ -14,6 +14,9 @@ final class FakeMailer implements Mailer
 
     public bool $fail = false;
 
+    /** Lien de confirmation dans le corps d'un mail (partage avec ReadsConfirmationMail). */
+    public const TOKEN_PATTERN = '/[?&]token=([0-9a-f]{64})/';
+
     public function send(string $to, string $subject, string $body): void
     {
         if ($this->fail) {
@@ -26,7 +29,7 @@ final class FakeMailer implements Mailer
     public function lastToken(): string
     {
         $last = end($this->sent) ?: throw new RuntimeException('No mail sent');
-        preg_match('/[?&]token=([0-9a-f]{64})/', $last['body'], $match) === 1 ?: throw new RuntimeException('No token in mail');
+        preg_match(self::TOKEN_PATTERN, $last['body'], $match) === 1 ?: throw new RuntimeException('No token in mail');
         return $match[1];
     }
 }

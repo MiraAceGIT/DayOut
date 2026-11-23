@@ -1,12 +1,14 @@
 <?php
 declare(strict_types=1);
 
+use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Container;
 use App\Core\Database;
 use App\Core\Mail\LogMailer;
 use App\Core\Mail\Mailer;
 use App\Core\Orm\Connection;
+use App\Core\SystemClock;
 
 /**
  * Racine de composition : seules les dependances que le Container ne sait pas construire seul
@@ -19,6 +21,7 @@ return static function (Config $config): Container {
     $container = new Container();
     $container->set(Config::class, static fn (): Config => $config);
     $container->set(Connection::class, static fn (): Connection => Database::connection($config));
+    $container->set(Clock::class, static fn (): Clock => new SystemClock());
     $container->set(Mailer::class, static fn (Container $c): Mailer => $c->get(LogMailer::class));
     return $container;
 };

@@ -22,16 +22,6 @@ final class UserMapper
         ];
     }
 
-    /** Nom public de la demande createur : l'association, ou « Prenom N. » a titre individuel (jamais le nom complet). */
-    public static function creatorDisplayName(UserCreateDto $dto): string
-    {
-        if ($dto->organizationName !== null) {
-            return $dto->organizationName;
-        }
-        $initial = mb_substr($dto->lastName, 0, 1);
-        return $dto->firstName . ($initial === '' ? '' : ' ' . mb_strtoupper($initial) . '.');
-    }
-
     public static function toRegisteredDto(int $id, UserCreateDto $dto, CreatorStatus $creatorStatus, ?string $demoUrl): RegisteredUserDto
     {
         return new RegisteredUserDto(

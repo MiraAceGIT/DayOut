@@ -6,19 +6,23 @@ namespace App\Controller;
 use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
-use App\Model\Services\RegistrationService;
+use App\Model\Services\EmailConfirmationService;
 
 final class EmailVerificationController extends Controller
 {
-    public function __construct(private readonly RegistrationService $registration)
+    public function __construct(private readonly EmailConfirmationService $confirmations)
     {
     }
 
-    /** POST et non GET : un lien ouvert par un antivirus ou un apercu de messagerie ne confirme rien. */
+    /**
+     * Consomme le jeton du lien (action, pas creation : 200 et non 201). POST et non GET : un antivirus ou un apercu
+     * de messagerie qui ouvre le lien ne confirme rien. Jeton dans le corps et non dans l'URL : il n'apparait ni
+     * dans les logs d'acces ni dans l'historique.
+     */
     public function create(Request $request): Response
     {
         $token = $this->validate($request, ['token' => 'required|string|max:128'])['token'];
 
-        return $this->ok($this->registration->confirmEmail($token));
+        return $this->ok($this->confirmations->confirm($token));
     }
 }

@@ -17,7 +17,8 @@ final class EmailVerification extends Dao
     }
 
     /**
-     * Jeton et statut createur de son compte, en une requete.
+     * Jeton et statut createur de son compte, en une requete. La jointure sur `users` sort du perimetre de ce DAO,
+     * choix assume : la reponse de la confirmation a besoin du statut, et une seconde requete n'apporterait rien.
      *
      * @return array{id: int, user_id: int, expires_at: string, used_at: ?string, creator_status: string}|null
      */
@@ -45,6 +46,12 @@ final class EmailVerification extends Dao
     public function hasUsableFor(int $userId, DateTimeImmutable $now): bool
     {
         return $this->table()->where('user_id', $userId)->whereNull('used_at')->where('expires_at', '>', $now)->exists();
+    }
+
+    /** Purge sans cron : jetons expires depuis plus longtemps que $before (utilises ou non). */
+    public function deleteExpiredBefore(DateTimeImmutable $before): int
+    {
+        return $this->table()->where('expires_at', '<', $before)->delete();
     }
 
     /** Atomique : 0 si le jeton a deja servi entre-temps (deux clics simultanes). */
