@@ -34,8 +34,8 @@ final readonly class UserCreateDto
         'search_radius_km'  => 'int|min:' . self::RADIUS_MIN . '|max:' . self::RADIUS_MAX,
         'organization_name' => 'nullable|string|max:120',
         'individual'        => 'bool',
-        // Piege a robots : champ cache du formulaire, qu'un humain ne remplit jamais ; rempli = 422.
-        'website'           => 'nullable|string|max:0',
+        // Piege a robots : champ cache du formulaire, qu'un humain ne remplit jamais (voir botTrapFilled).
+        'website'           => 'nullable|string|max:500',
     ];
 
     /** @param list<string> $interests slugs de categories, sans doublon */
@@ -50,6 +50,9 @@ final readonly class UserCreateDto
         public int $searchRadiusKm = self::RADIUS_DEFAULT,
         public ?string $organizationName = null,
         public bool $individual = false,
+        // Champ piege rempli : un robot. Le service fait semblant d'accepter (rien n'est cree) pour ne pas lui
+        // apprendre quel champ l'a trahi.
+        public bool $botTrapFilled = false,
     ) {
     }
 
@@ -85,6 +88,7 @@ final readonly class UserCreateDto
             searchRadiusKm: $clean['search_radius_km'] ?? self::RADIUS_DEFAULT,
             organizationName: $creator && !$individual ? $clean['organization_name'] : null,
             individual: $individual,
+            botTrapFilled: trim((string) ($clean['website'] ?? '')) !== '',
         );
     }
 

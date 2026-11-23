@@ -51,14 +51,15 @@ components:
         creator_status: { type: string, enum: [none, pending], description: "pending : demande createur a valider par un admin" }
   responses:
     VerificationTokenUsed:
-      description: Lien deja utilise, il ne servira plus jamais (`VERIFICATION_TOKEN_USED`, 410 Gone)
+      description: >-
+        Lien qui ne servira plus jamais (410 Gone) : deja utilise (`VERIFICATION_TOKEN_USED`) ou expire
+        (`VERIFICATION_TOKEN_EXPIRED`)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     VerificationTokenRejected:
       description: >-
-        Jeton absent (`VALIDATION_ERROR`), inconnu ou mal forme (`VERIFICATION_TOKEN_INVALID`),
-        lien expire (`VERIFICATION_TOKEN_EXPIRED`)
+        Jeton absent (`VALIDATION_ERROR`), inconnu ou mal forme (`VERIFICATION_TOKEN_INVALID`)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

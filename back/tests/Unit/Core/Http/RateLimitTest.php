@@ -30,7 +30,7 @@ final class RateLimitTest extends TestCase
         $this->pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $this->pdo->exec('CREATE TABLE rate_limit_hits (id INTEGER PRIMARY KEY, bucket TEXT, key_hash TEXT, hit_at TEXT)');
         $this->clock = new FixedClock();
-        $this->limiter = new RateLimiter(new Connection($this->pdo), $this->clock);
+        $this->limiter = new RateLimiter(new Connection($this->pdo), $this->clock, new Config());
     }
 
     /** @param class-string<RateLimit> $class */
@@ -78,6 +78,21 @@ final class RateLimitTest extends TestCase
         $this->assertSame(201, $limit->process(self::request('1.1.1.1'), self::created())->status, 'the window has passed');
         $this->assertSame(1, $this->count(), 'the hits of the past hour are purged');
         $this->assertSame(0, $this->count("key_hash = '1.1.1.1'"), 'IP hashed');
+        $this->assertSame(0, $this->count("key_hash = '" . hash('sha256', '1.1.1.1') . "'"), 'keyed hash: not found by hashing every IPv4');
+    }
+
+    /** Retry-After = attente reelle avant qu'une place se libere, pas la fenetre entiere. */
+    public function testRetryAfterIsTheTimeUntilTheOldestHitExpires(): void
+    {
+        $limit = $this->limit(RegistrationRateLimit::class, new Config(rateLimitRegistrations: 2));
+        $limit->process(self::request('1.1.1.1'), self::created());
+        $this->clock->advance('PT40M');
+        $limit->process(self::request('1.1.1.1'), self::created());
+        $this->clock->advance('PT5M');
+
+        $error = $this->assertThrows(HttpException::class, fn () => $limit->process(self::request('1.1.1.1'), self::created()));
+        $this->assertSame(['900', ['retry_after_seconds' => 900]], [$error->headers['Retry-After'] ?? null, $error->details],
+            'the first hit leaves the window in 15 min');
     }
 
     /**

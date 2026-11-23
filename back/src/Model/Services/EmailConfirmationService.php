@@ -14,12 +14,13 @@ use App\Model\DomainServices\ConfirmationTokenIssuer;
 use App\Model\Dto\User\EmailVerificationDto;
 use App\Model\Enums\CreatorStatus;
 use App\Model\Exceptions\RegistrationException;
+use App\Model\Mails\ConfirmationMail;
 use DateInterval;
 
 /** Lien de confirmation de l'adresse : envoi (a l'inscription) et confirmation (POST /email-verifications). */
 final class EmailConfirmationService
 {
-    /** Jetons expires gardes une semaine (trace en cas de reclamation), puis purges a chaque nouvel envoi. */
+    /** Jetons expires gardes une semaine (trace en cas de reclamation), puis purges (purgeExpired). */
     private const PURGE_AFTER = 'P7D';
 
     public function __construct(
@@ -42,10 +43,15 @@ final class EmailConfirmationService
     {
         $token = $this->tokens->issue();
         $this->verifications->createFor($userId, $token->hash, $token->expiresAt);
-        $this->verifications->deleteExpiredBefore($this->clock->now()->sub(new DateInterval(self::PURGE_AFTER)));
         $link = $this->config->frontUrl . '/confirm-email?token=' . $token->value;
-        $this->mailer->send($email, 'Confirme ton adresse e-mail DayOut', self::mail($firstName, $creator, $link));
+        $this->mailer->send($email, ConfirmationMail::SUBJECT, ConfirmationMail::body($firstName, $creator, $link));
         return $link;
+    }
+
+    /** Purge sans cron, apres chaque inscription et hors de sa transaction : jetons expires depuis plus d'une semaine. */
+    public function purgeExpired(): void
+    {
+        $this->verifications->deleteExpiredBefore($this->clock->now()->sub(new DateInterval(self::PURGE_AFTER)));
     }
 
     public function confirm(string $token): EmailVerificationDto
@@ -74,16 +80,5 @@ final class EmailConfirmationService
         Log::audit('user.email_verified', 'user', $verification['user_id'], 'success', ['creator_status' => $creatorStatus->value]);
 
         return new EmailVerificationDto(true, $creatorStatus);
-    }
-
-    private static function mail(string $firstName, bool $creator, string $link): string
-    {
-        $next = $creator
-            ? "Ton compte sera actif dès la confirmation. Ta demande de compte créateur sera ensuite examinée par un administrateur :\ntu pourras publier des événements une fois qu'elle sera validée."
-            : 'Ton compte sera actif dès la confirmation.';
-        return "Bonjour {$firstName},\n\n"
-            . "Pour finaliser ton inscription sur DayOut, confirme ton adresse e-mail en ouvrant ce lien (valable 24 h, une seule fois) :\n"
-            . "$link\n\n$next\n\n"
-            . "Si tu n'es pas à l'origine de cette inscription, ignore ce message.";
     }
 }

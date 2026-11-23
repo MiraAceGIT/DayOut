@@ -137,6 +137,7 @@ manquante, un entier invalide, un booleen malforme (`true`/`false`, `1`/`0`,
 | `RATE_LIMIT_REGISTRATIONS_PER_HOUR` | `5` | Inscriptions reussies par client et par heure |
 | `RATE_LIMIT_REGISTRATION_ATTEMPTS_PER_HOUR` | `30` | Tentatives d'inscription (refusees ou non) par client et par heure |
 | `RATE_LIMIT_EMAIL_VERIFICATIONS_PER_HOUR` | `30` | Essais de confirmation par client et par heure |
+| `RATE_LIMIT_SECRET`    | _(secret de dev)_ | Cle HMAC des compteurs par IP (aucune adresse retrouvable depuis la base). **Obligatoire en prod**, 32 caracteres au moins (`openssl rand -hex 32`) |
 
 ### Commentaires dans le `.env`
 
@@ -227,6 +228,7 @@ back/
 │   │   ├── Assemblers/ ← lignes -> DTO complets avec leurs relations en une requete chacune (EventAssembler)
 │   │   ├── Exceptions/ ← une classe par ressource (EventException, FaqException), heritant de Core\BusinessException
 │   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
+│   │   ├── Mails/      ← texte des mails envoyes (ConfirmationMail)
 │   │   └── Mappers/    ← ligne du DAO <-> DTO (toDto / toDtos / toRow / toUpdateRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
 │   └── Controller/     ← C : logique HTTP, une classe par ressource ; Middleware/ : limites de debit par route
@@ -361,6 +363,7 @@ unique. Chaque classe a un role :
 | `Services/EmailConfirmationService` | envoie le lien (jeton + mail) et confirme l'adresse (`POST /email-verifications`) |
 | `DomainServices/ConfirmationTokenIssuer` | jeton (32 octets, 64 hex), son SHA-256, expiration 24 h ; reutilisable (mot de passe oublie) |
 | `DomainServices/CreatorDisplayName` | nom public de la demande : l'association, ou « Prenom N. » a titre individuel |
+| `Mails/ConfirmationMail` | sujet et texte du mail de confirmation (hors du service qui l'envoie) |
 | `Core\Clock` | heure courante injectee (`SystemClock`, horloge fixe en test) : expirations testees sans SQL |
 
 | Methode | Route | Comportement |
@@ -376,7 +379,8 @@ Regles de `POST /users` (toutes reverifiees par le serveur, meme si le front les
   en minuscules), `school_id`, `password` (8 caracteres au moins, une majuscule et un chiffre, 72 octets au plus pour bcrypt),
   `terms_accepted` (doit valoir `true`), `interests` (au moins un slug de categorie active), `search_radius_km` (1 a 20, defaut 3).
 - Createur : `organization_name` (association, club ou BDE, 120 caracteres), sauf `individual: true`.
-- `website` : piege a robots, champ cache du formulaire ; rempli, `422`.
+- `website` : piege a robots, champ cache du formulaire. Rempli : `201` comme une vraie inscription (`id` 0), sans
+  compte ni mail, audit `user.register` `blocked` : le robot n'apprend ni quel champ l'a trahi ni si l'adresse a un compte.
 - Le domaine de l'e-mail doit etre celui d'une ecole **active** (sinon `422`, erreur sur `email`) et celui de
   l'ecole choisie (`422` sur `email`) ; ecole inconnue ou inactive : `422` sur `school_id`. Le trigger
   `trg_users_bi_whitelist` (`50101`, `422 EMAIL_DOMAIN_NOT_ALLOWED`) reste le dernier filet.
@@ -385,22 +389,24 @@ Regles de `POST /users` (toutes reverifiees par le serveur, meme si le front les
   (le ticket demande de refuser un e-mail deja utilise), mais pas son etat. Compte non confirme dont le lien a expire :
   il est **remplace** dans la meme transaction (`ON DELETE CASCADE` : interets, demande createur, jetons), sinon une
   adresse prise par erreur ou au nom d'un autre etudiant le resterait pour toujours (audit : `replaced_unverified_user_id`).
-  Deux inscriptions simultanees : `409 CONFLICT` (cle unique).
+  Deux inscriptions simultanees avec la meme adresse : la cle unique refuse la seconde, qui recoit aussi `409 EMAIL_TAKEN`.
 - **Limites** par client et par heure, `429 TOO_MANY_REQUESTS` + `Retry-After` au-dela : 5 inscriptions reussies
   (`RegistrationRateLimit`, un formulaire refuse ne compte pas) et 30 tentatives, refusees ou non
   (`RegistrationAttemptRateLimit` : pas de sondage sans fin des adresses qui ont un compte). Par adresse e-mail, la
-  limite existe de fait : `409` tant que le compte existe, donc au plus un mail par adresse et par 24 h.
+  limite existe de fait : `409` tant que le compte existe, donc au plus un mail par adresse et par 24 h. `Retry-After`
+  donne l'attente reelle avant qu'une place se libere (pas toute la fenetre).
 - Mot de passe hache par `Shared\Password` (bcrypt, cost 12), jamais stocke ni journalise en clair.
 - Compte cree `role = participant`, `email_verified = 0`. Un createur a `creator_status = pending` et une ligne
   `creator_profiles` : il ne peut pas publier tant qu'un admin n'a pas valide sa demande (`User::canPublish`).
   **La liste des demandes a valider (SCRUM-45) doit ne garder que les comptes `email_verified = 1`.**
 - Lien `FRONT_URL/confirm-email?token=...` ; seul le SHA-256 du jeton est stocke (`email_verifications`), valable 24 h,
-  usage unique. Les jetons expires depuis plus de 7 jours sont purges a chaque nouvel envoi (pas de cron).
+  usage unique. Les jetons expires depuis plus de 7 jours sont purges apres chaque inscription, hors de sa transaction
+  (pas de cron). Texte du mail : `Model/Mails/ConfirmationMail`.
 - 201 sans en-tete `Location` : aucune route `GET /users/{id}` n'existe (le profil est SCRUM-43).
 - Audit : `user.register`, `user.email_verified` (sans e-mail, mot de passe ni jeton).
 
 `POST /email-verifications` : jeton mal forme ou inconnu `422 VERIFICATION_TOKEN_INVALID`, expire
-`422 VERIFICATION_TOKEN_EXPIRED`, deja utilise `410 VERIFICATION_TOKEN_USED` (le lien a existe mais ne servira plus ;
+`410 VERIFICATION_TOKEN_EXPIRED`, deja utilise `410 VERIFICATION_TOKEN_USED` (le lien a existe mais ne servira plus ;
 `UPDATE ... WHERE used_at IS NULL`, atomique : deux clics simultanes ne confirment qu'une fois). 30 essais par adresse
 IP et par heure (`EmailVerificationRateLimit`). Reponse : `{ email_verified: true, creator_status }` (`none` ou
 `pending`). **Choix REST assume** : c'est la consommation d'un jeton, pas la creation d'une ressource, d'ou `200` et
@@ -421,7 +427,7 @@ le mail part aujourd'hui dans la transaction (un echec annule l'inscription), ce
 avec SMTP, passer par une table d'envoi (outbox) pour ne pas garder la transaction ouverte pendant l'envoi reseau.
 
 **Limitation de debit** (`Core\Http\RateLimit` + `RateLimiter`) : middleware generique par client, compteur en base
-(`rate_limit_hits`, cle hashee, purge a chaque ajout). Une sous-classe par usage dans `src/Controller/Middleware/`
+(`rate_limit_hits`, cle en HMAC-SHA256 avec `RATE_LIMIT_SECRET`, purge a chaque ajout). Une sous-classe par usage dans `src/Controller/Middleware/`
 (constantes `BUCKET`, `WINDOW_SECONDS`, `COUNT_ONLY_SUCCESS` ; seuil `maxHits()` lu dans la Config), declaree sur sa
 route. La requete est comptee **avant** d'etre traitee, puis retiree du compte si elle depasse la limite (ou, avec
 `COUNT_ONLY_SUCCESS`, si elle echoue) : une rafale de requetes paralleles ne passe pas. Seuils dans `.env`
@@ -727,7 +733,7 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | DELETE  | `/events/{id}`       | — ; **auth** ; brouillons uniquement           | `204`                                 | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` |
 | GET     | `/creators`          | `q`, `school_id`, `ids` (CSV), `has_upcoming_events`, `from`, `sort_by` (`display_name`, `created_at`), `sort_dir`, `limit`, `offset` (`CreatorFindQuery`) | `{ items: Creator[], limit, offset, has_more, total }` (approuves, non bannis) | `422 VALIDATION_ERROR` |
 | POST    | `/users`             | — ; body `UserCreate` ; public                 | `201` `RegisteredUser` (non confirme) | `409 EMAIL_TAKEN` / `EMAIL_CONFIRMATION_PENDING` / `CONFLICT`, `415`, `422` (dont domaine refuse sur `email`, `EMAIL_DOMAIN_NOT_ALLOWED`) |
-| POST    | `/email-verifications` | — ; body `{ token }` ; public                | `{ email_verified, creator_status }`  | `410 VERIFICATION_TOKEN_USED`, `415`, `422 VERIFICATION_TOKEN_INVALID` / `_EXPIRED`, `429` |
+| POST    | `/email-verifications` | — ; body `{ token }` ; public                | `{ email_verified, creator_status }`  | `410 VERIFICATION_TOKEN_USED` / `_EXPIRED`, `415`, `422 VERIFICATION_TOKEN_INVALID`, `429` |
 | GET     | `/schools`           | —                                              | `School[]` (actives, par nom), cache 1 h | —                                                  |
 | GET     | `/categories`        | —                                              | `Category[]` (actives, par libelle), cache 1 h | —                                            |
 | GET     | `/docs`              | —                                              | Swagger UI (hors enveloppe)           | `404` si `DOCS_ENABLED=false`                         |
@@ -1219,6 +1225,7 @@ APP_ENV=prod
 FRONT_URL=https://app.dayout.example
 MAIL_DEMO=false
 TRUSTED_PROXIES=127.0.0.1
+RATE_LIMIT_SECRET=<openssl-rand-hex-32>
 ```
 
 ### Checklist avant mise en prod
@@ -1226,6 +1233,7 @@ TRUSTED_PROXIES=127.0.0.1
 - [ ] `.env` genere, **jamais** committer
 - [ ] `DOCS_ENABLED=false` (coupe `/docs` et `/openapi.json`)
 - [ ] `TRUSTED_PROXIES` = adresse du reverse proxy (sinon tous les clients partagent les limites de debit)
+- [ ] `RATE_LIMIT_SECRET` genere (`openssl rand -hex 32`) ; l'API refuse de demarrer sans en prod
 - [ ] `APP_DEBUG=false`
 - [ ] `CORS_ORIGIN` ne contient que les origines prod
 - [ ] `composer install --no-dev --optimize-autoloader`

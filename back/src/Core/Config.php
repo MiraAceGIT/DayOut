@@ -36,12 +36,19 @@ final class Config
         public readonly int $rateLimitRegistrations = 5,
         public readonly int $rateLimitRegistrationAttempts = 30,
         public readonly int $rateLimitEmailVerifications = 30,
+        public readonly string $rateLimitSecret = self::DEV_RATE_LIMIT_SECRET,
     ) {
     }
 
     public const ENV_DEV = 'dev';
 
     public const ENV_PROD = 'prod';
+
+    /** Secret de dev, ecrit dans le code donc connu de tous : refuse en prod. */
+    public const DEV_RATE_LIMIT_SECRET = 'dev-only-rate-limit-secret-not-for-production';
+
+    /** Longueur minimale de RATE_LIMIT_SECRET en prod (`openssl rand -hex 32` en donne 64). */
+    public const SECRET_MIN_LENGTH = 32;
 
     /** Production : liens a usage unique jamais renvoyes ni journalises (voir fromEnv et LogMailer). */
     public function isProduction(): bool
@@ -70,6 +77,12 @@ final class Config
         // l'adresse d'un autre. Refus au demarrage plutot qu'une faille silencieuse.
         if ($appEnv === self::ENV_PROD && self::bool('MAIL_DEMO', false)) {
             throw new RuntimeException('MAIL_DEMO=true is forbidden when APP_ENV=prod');
+        }
+        // Cle des compteurs par IP (HMAC) : en prod, un vrai secret, sinon les adresses se retrouvent depuis la base.
+        $rateLimitSecret = self::env('RATE_LIMIT_SECRET') ?? self::DEV_RATE_LIMIT_SECRET;
+        if ($appEnv === self::ENV_PROD
+            && (strlen($rateLimitSecret) < self::SECRET_MIN_LENGTH || $rateLimitSecret === self::DEV_RATE_LIMIT_SECRET)) {
+            throw new RuntimeException('RATE_LIMIT_SECRET must be set (at least ' . self::SECRET_MIN_LENGTH . ' characters) when APP_ENV=prod');
         }
         if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
             throw new RuntimeException("Invalid APP_TIMEZONE: $timezone");
@@ -103,6 +116,7 @@ final class Config
             rateLimitRegistrations: self::positiveInt('RATE_LIMIT_REGISTRATIONS_PER_HOUR', 5),
             rateLimitRegistrationAttempts: self::positiveInt('RATE_LIMIT_REGISTRATION_ATTEMPTS_PER_HOUR', 30),
             rateLimitEmailVerifications: self::positiveInt('RATE_LIMIT_EMAIL_VERIFICATIONS_PER_HOUR', 30),
+            rateLimitSecret: $rateLimitSecret,
         );
     }
 

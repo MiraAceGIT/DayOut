@@ -87,15 +87,24 @@ final class UserControllerTest extends HttpTestCase
     public function testFiveRegistrationsPerClientAndPerHour(): void
     {
         $from = static fn (string $ip): array => ['X-Forwarded-For' => $ip];
-        $this->assertError(422, 'VALIDATION_ERROR',
-            $this->post('/users', self::body(['website' => 'https://spam.example']), $from('203.0.113.7'))); // piege a robots
         for ($i = 0; $i < 5; $i++) {
             $this->assertStatus(201, $this->post('/users', self::body(), $from('203.0.113.7')));
         }
         $error = $this->post('/users', self::body(), $from('203.0.113.7'));
         $this->assertError(429, 'TOO_MANY_REQUESTS', $error);
-        $this->assertSame('3600', $error->header('Retry-After'));
+        $wait = (int) $error->header('Retry-After');
+        $this->assertTrue($wait > 3500 && $wait <= 3600, "Retry-After = time until a place frees up ($wait s)");
         $this->assertStatus(201, $this->post('/users', self::body(), $from('198.51.100.4'))); // autre etudiant, meme proxy
+    }
+
+    /** Piege a robots rempli : meme reponse qu'une inscription, sans compte ni mail. */
+    public function testABotLooksAcceptedButNothingIsCreated(): void
+    {
+        $body = self::body(['website' => 'https://spam.example']);
+        $response = $this->post('/users', $body);
+        $this->assertStatus(201, $response);
+        $this->assertSame([0, $body['email']], [$response->json()['data']['id'], $response->json()['data']['email']]);
+        $this->assertSame([], array_filter($this->readLog('mail'), static fn (array $m): bool => $m['to'] === $body['email']), 'no mail');
     }
 
     public function testInvalidFormIsRefusedByTheServerToo(): void

@@ -70,11 +70,19 @@ final class UserCreateDtoTest extends TestCase
             ['terms_accepted' => false], ['terms_accepted' => 'oui'], ['terms_accepted' => null],
             ['interests' => []], ['interests' => 'soiree'], ['interests' => [1, 2]], ['interests' => ['a' => 'soiree']],
             ['search_radius_km' => 0], ['search_radius_km' => 21], ['search_radius_km' => 2.5],
-            ['individual' => 'peut-etre'], ['website' => 'https://spam.example'], ['website' => ' x '],
+            ['individual' => 'peut-etre'], ['website' => ['x']],
         ] as $input) {
             $error = $this->assertThrows(ValidationException::class, fn () => UserCreateDto::fromArray(self::body($input)), json_encode($input) ?: '');
             $this->assertSame(array_keys($input), array_keys($error->errors), json_encode($input) ?: '');
         }
+    }
+
+    /** Le piege rempli n'est pas une erreur de saisie : le DTO le signale, le service fait semblant d'accepter. */
+    public function testFlagsAFilledBotTrapWithoutRejectingIt(): void
+    {
+        $this->assertFalse(UserCreateDto::fromArray(self::body())->botTrapFilled);
+        $this->assertFalse(UserCreateDto::fromArray(self::body(['website' => ' ']))->botTrapFilled);
+        $this->assertTrue(UserCreateDto::fromArray(self::body(['website' => 'https://spam.example']))->botTrapFilled);
     }
 
     public function testRequiresEveryMandatoryField(): void

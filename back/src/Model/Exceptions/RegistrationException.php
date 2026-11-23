@@ -19,9 +19,10 @@ final class RegistrationException extends BusinessException
         return new self(ErrorKind::Invalid, 'VERIFICATION_TOKEN_INVALID', 'Invalid confirmation link');
     }
 
+    /** 410 Gone, comme un lien deja utilise : il a existe mais ne servira plus jamais (un lien inconnu = 422). */
     public static function tokenExpired(): self
     {
-        return new self(ErrorKind::Invalid, 'VERIFICATION_TOKEN_EXPIRED', 'This confirmation link has expired');
+        return new self(ErrorKind::Gone, 'VERIFICATION_TOKEN_EXPIRED', 'This confirmation link has expired');
     }
 
     /** 410 Gone : le lien a existe mais ne servira plus jamais (consomme), a la difference d'un lien inconnu (422). */

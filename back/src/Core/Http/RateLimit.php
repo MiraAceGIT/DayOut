@@ -11,7 +11,7 @@ use Throwable;
 
 /**
  * Limite de debit par client (ClientIp) : au-dela de maxHits() requetes comptees dans WINDOW_SECONDS,
- * `429 TOO_MANY_REQUESTS` avec `Retry-After`. Une sous-classe par usage, declaree sur sa route ; COUNT_ONLY_SUCCESS :
+ * `429 TOO_MANY_REQUESTS` avec `Retry-After` (attente reelle avant qu'une place se libere). Une sous-classe par usage, declaree sur sa route ; COUNT_ONLY_SUCCESS :
  * seules les reponses reussies restent comptees (ex. inscriptions : un formulaire refuse ne consomme rien).
  */
 abstract class RateLimit implements Middleware
@@ -41,8 +41,9 @@ abstract class RateLimit implements Middleware
         $hitId = $this->limiter->hit(static::BUCKET, $key, static::WINDOW_SECONDS);
         if ($this->limiter->count(static::BUCKET, $key, static::WINDOW_SECONDS) > $this->maxHits()) {
             $this->limiter->cancel($hitId);
+            $wait = $this->limiter->secondsUntilFree(static::BUCKET, $key, static::WINDOW_SECONDS);
             throw new HttpException(429, 'TOO_MANY_REQUESTS', 'Too many requests, try again later',
-                ['retry_after_seconds' => static::WINDOW_SECONDS], null, ['Retry-After' => (string) static::WINDOW_SECONDS]);
+                ['retry_after_seconds' => $wait], null, ['Retry-After' => (string) $wait]);
         }
         if (!static::COUNT_ONLY_SUCCESS) {
             return $next($request);

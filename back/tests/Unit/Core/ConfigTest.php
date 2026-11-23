@@ -10,7 +10,9 @@ use Tests\TestCase;
 /** fromEnv() lit getenv() : chaque test pose ses variables, tearDown() remet l'environnement d'origine. */
 final class ConfigTest extends TestCase
 {
-    private const KEYS = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'APP_DEBUG', 'APP_TIMEZONE', 'DOCS_ENABLED', 'APP_ENV', 'MAIL_DEMO', 'FRONT_URL', 'TRUSTED_PROXIES', 'RATE_LIMIT_REGISTRATIONS_PER_HOUR'];
+    private const KEYS = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'APP_DEBUG', 'APP_TIMEZONE', 'DOCS_ENABLED', 'APP_ENV', 'MAIL_DEMO', 'FRONT_URL', 'TRUSTED_PROXIES', 'RATE_LIMIT_REGISTRATIONS_PER_HOUR', 'RATE_LIMIT_SECRET'];
+
+    private const PROD_SECRET = '0123456789abcdef0123456789abcdef';
 
     /** @var array<string, string|false> */
     private array $saved = [];
@@ -23,7 +25,7 @@ final class ConfigTest extends TestCase
         self::env([
             'DB_HOST' => '127.0.0.1', 'DB_PORT' => '3306', 'DB_NAME' => 'dayout', 'DB_USER' => 'root',
             'APP_DEBUG' => null, 'APP_TIMEZONE' => null, 'DOCS_ENABLED' => null, 'APP_ENV' => null, 'MAIL_DEMO' => null, 'FRONT_URL' => null,
-            'TRUSTED_PROXIES' => null, 'RATE_LIMIT_REGISTRATIONS_PER_HOUR' => null,
+            'TRUSTED_PROXIES' => null, 'RATE_LIMIT_REGISTRATIONS_PER_HOUR' => null, 'RATE_LIMIT_SECRET' => null,
         ]);
     }
 
@@ -78,7 +80,7 @@ final class ConfigTest extends TestCase
         $dev = Config::fromEnv('/app');
         $this->assertSame([Config::ENV_DEV, false, 'http://localhost:5500'], [$dev->appEnv, $dev->isProduction(), $dev->frontUrl]);
 
-        self::env(['APP_ENV' => 'prod', 'FRONT_URL' => 'https://app.dayout.example/']);
+        self::env(['APP_ENV' => 'prod', 'FRONT_URL' => 'https://app.dayout.example/', 'RATE_LIMIT_SECRET' => self::PROD_SECRET]);
         $prod = Config::fromEnv('/app');
         $this->assertTrue($prod->isProduction());
         $this->assertSame('https://app.dayout.example', $prod->frontUrl, 'no trailing slash');
@@ -108,5 +110,18 @@ final class ConfigTest extends TestCase
         }
         self::env(['TRUSTED_PROXIES' => null, 'RATE_LIMIT_REGISTRATIONS_PER_HOUR' => '0']);
         $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'));
+    }
+
+    public function testProductionNeedsARealRateLimitSecret(): void
+    {
+        $this->assertSame(Config::DEV_RATE_LIMIT_SECRET, Config::fromEnv('/app')->rateLimitSecret, 'dev works out of the box');
+
+        foreach ([null, 'trop-court', Config::DEV_RATE_LIMIT_SECRET] as $secret) {
+            self::env(['APP_ENV' => 'prod', 'RATE_LIMIT_SECRET' => $secret]);
+            $message = $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'), (string) $secret)->getMessage();
+            $this->assertStringContains('RATE_LIMIT_SECRET', $message);
+        }
+        self::env(['RATE_LIMIT_SECRET' => self::PROD_SECRET]);
+        $this->assertSame(self::PROD_SECRET, Config::fromEnv('/app')->rateLimitSecret);
     }
 }

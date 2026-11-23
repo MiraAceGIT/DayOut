@@ -67,7 +67,7 @@ components:
           maxLength: 120
           description: Association, club ou BDE ; obligatoire pour un createur, sauf a titre individuel
         individual: { type: boolean, default: false, description: "Createur a titre individuel" }
-        website: { type: string, nullable: true, maxLength: 0, description: "Piege a robots : champ cache du formulaire, toujours vide" }
+        website: { type: string, nullable: true, maxLength: 500, description: "Piege a robots : champ cache du formulaire, toujours vide. Rempli : 201 sans rien creer (id 0)" }
     RegisteredUser:
       type: object
       required: [id, email, first_name, role, creator_status, email_verified, demo_confirmation_url]
@@ -107,7 +107,7 @@ components:
     TooManyRequests:
       description: >-
         Trop de requetes depuis ce client (adresse IP) (`TOO_MANY_REQUESTS`, `details.retry_after_seconds`,
-        en-tete `Retry-After`)
+        en-tete `Retry-After` : secondes avant qu'une place se libere)
       headers:
         Retry-After:
           schema: { type: integer, example: 3600 }

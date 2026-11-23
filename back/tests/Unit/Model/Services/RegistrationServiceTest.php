@@ -8,6 +8,7 @@ use App\Controller\UserController;
 use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Container;
+use App\Core\ErrorKind;
 use App\Core\Mail\Mailer;
 use App\Core\Orm\Connection;
 use App\Core\Request;
@@ -26,13 +27,14 @@ use PDOStatement;
 use RuntimeException;
 use Tests\Support\FakeMailer;
 use Tests\Support\FixedClock;
+use Tests\Support\RacingPdo;
 use Tests\Support\TestContainer;
 use Tests\TestCase;
 use Tests\Unit\Model\Dto\UserCreateDtoTest;
 
 final class RegistrationServiceTest extends TestCase
 {
-    private PDO $pdo;
+    private RacingPdo $pdo;
     private FakeMailer $mailer;
     private Container $container;
     private RegistrationService $service;
@@ -41,7 +43,7 @@ final class RegistrationServiceTest extends TestCase
 
     public function setUp(): void
     {
-        $this->pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+        $this->pdo = new RacingPdo('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
         $this->pdo->exec("CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT UNIQUE, email_domain TEXT, password_hash TEXT,
             first_name TEXT, last_name TEXT, school_id INTEGER, search_radius_km INTEGER DEFAULT 3, role TEXT DEFAULT 'participant',
             creator_status TEXT DEFAULT 'none', email_verified INTEGER DEFAULT 0, email_verified_at TEXT, banned INTEGER DEFAULT 0)");
@@ -201,6 +203,24 @@ final class RegistrationServiceTest extends TestCase
         $this->assertSame(2, $this->count('email_verifications'), 'a link expired for less than a week is kept');
     }
 
+    /** Deux onglets ou deux clics : l'autre inscription arrive entre nos verifications et notre ecriture. */
+    public function testASimultaneousRegistrationWithTheSameEmailGetsEmailTaken(): void
+    {
+        $this->pdo->beforeNextTransaction = "INSERT INTO users (email, email_domain, password_hash, first_name, last_name, school_id)
+            VALUES ('lina.martin@isep.fr', 'isep.fr', 'x', 'Lina', 'Martin', 1)";
+        $error = $this->assertThrows(RegistrationException::class, fn () => $this->register());
+        $this->assertSame('EMAIL_TAKEN', $error->errorCode);
+        $this->assertSame([2, []], [$this->count('users'), $this->mailer->sent], 'only the other registration is kept');
+    }
+
+    public function testAFilledBotTrapLooksAcceptedButCreatesNothing(): void
+    {
+        $user = $this->register(['website' => 'https://spam.example', 'email' => 'deja@isep.fr']);
+        $this->assertSame([RegistrationService::BOT_TRAP_ID, 'deja@isep.fr', false], [$user->id, $user->email, $user->emailVerified],
+            'same answer as a real registration, even for an address already taken');
+        $this->assertSame([1, 0, []], [$this->count('users'), $this->count('email_verifications'), $this->mailer->sent]);
+    }
+
     public function testNothingIsKeptWhenTheMailCannotBeSent(): void
     {
         $this->mailer->fail = true;
@@ -247,7 +267,7 @@ final class RegistrationServiceTest extends TestCase
         $token = $this->mailer->lastToken();
         $this->clock->advance('PT24H');
         $error = $this->assertThrows(RegistrationException::class, fn () => $this->confirmations->confirm($token));
-        $this->assertSame('VERIFICATION_TOKEN_EXPIRED', $error->errorCode);
+        $this->assertSame(['VERIFICATION_TOKEN_EXPIRED', ErrorKind::Gone], [$error->errorCode, $error->kind], 'gone for good, like a used link');
         $this->assertSame(0, (int) $this->sql("SELECT email_verified FROM users WHERE id = $user->id")->fetchColumn());
 
         foreach ([str_repeat('a', 64), strtoupper($token), substr($token, 1), $token . 'a', '', "$token\n"] as $bad) {
