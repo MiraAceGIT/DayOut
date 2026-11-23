@@ -5,12 +5,16 @@ namespace App\Controller\Middleware;
 
 use App\Core\Http\RateLimit;
 
-/** POST /email-verifications : 30 essais par adresse IP et par heure, reussis ou non (pas d'essais de jetons en masse). */
+/**
+ * POST /email-verifications : essais par client et par heure, reussis ou non (RATE_LIMIT_EMAIL_VERIFICATIONS_PER_HOUR,
+ * 30 par defaut) : pas d'essais de jetons en masse.
+ */
 final class EmailVerificationRateLimit extends RateLimit
 {
     protected const BUCKET = 'email_verification';
 
-    protected const MAX_HITS = 30;
-
-    protected const WINDOW_SECONDS = 3600;
+    protected function maxHits(): int
+    {
+        return $this->config->rateLimitEmailVerifications;
+    }
 }

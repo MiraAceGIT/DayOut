@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Http\IpRange;
 use App\Core\Log\Level;
 use DateTimeZone;
 use RuntimeException;
@@ -10,7 +11,10 @@ use RuntimeException;
 /** Seul endroit du code qui lit getenv() : les autres classes recoivent leurs valeurs. */
 final class Config
 {
-    /** @param array<int, string> $corsOrigins */
+    /**
+     * @param array<int, string> $corsOrigins
+     * @param list<string> $trustedProxies adresses ou plages CIDR des reverse proxies devant l'API
+     */
     public function __construct(
         public readonly bool $debug = false,
         public readonly string $timezone = 'UTC',
@@ -28,6 +32,10 @@ final class Config
         public readonly string $frontUrl = 'http://localhost:5500',
         public readonly bool $mailDemo = false,
         public readonly string $appEnv = self::ENV_DEV,
+        public readonly array $trustedProxies = [],
+        public readonly int $rateLimitRegistrations = 5,
+        public readonly int $rateLimitRegistrationAttempts = 30,
+        public readonly int $rateLimitEmailVerifications = 30,
     ) {
     }
 
@@ -88,6 +96,13 @@ final class Config
             // Demo sans serveur de mail : l'API renvoie aussi le lien de confirmation. Jamais en prod.
             mailDemo: self::bool('MAIL_DEMO', false),
             appEnv: $appEnv,
+            // Vide = pas de proxy : X-Forwarded-For est ignore (voir Http\ClientIp).
+            trustedProxies: self::ipRanges('TRUSTED_PROXIES'),
+            // Limites par client et par heure. Un campus derriere une seule IP publique (NAT) les partage : a relever
+            // si besoin, sans redeployer.
+            rateLimitRegistrations: self::positiveInt('RATE_LIMIT_REGISTRATIONS_PER_HOUR', 5),
+            rateLimitRegistrationAttempts: self::positiveInt('RATE_LIMIT_REGISTRATION_ATTEMPTS_PER_HOUR', 30),
+            rateLimitEmailVerifications: self::positiveInt('RATE_LIMIT_EMAIL_VERIFICATIONS_PER_HOUR', 30),
         );
     }
 
@@ -100,6 +115,22 @@ final class Config
             throw new RuntimeException("$key must be an http(s) URL, got '$raw'");
         }
         return rtrim($raw, '/');
+    }
+
+    /**
+     * Liste separee par des virgules d'adresses IP ou de plages CIDR ; une entree illisible = erreur au demarrage.
+     *
+     * @return list<string>
+     */
+    private static function ipRanges(string $key): array
+    {
+        $ranges = array_values(array_filter(array_map('trim', explode(',', self::env($key) ?? ''))));
+        foreach ($ranges as $range) {
+            if (!IpRange::isValid($range)) {
+                throw new RuntimeException("$key must list IP addresses or CIDR ranges, got '$range'");
+            }
+        }
+        return $ranges;
     }
 
     private static function env(string $key): ?string

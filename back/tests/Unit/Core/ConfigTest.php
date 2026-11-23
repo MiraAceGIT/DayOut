@@ -10,7 +10,7 @@ use Tests\TestCase;
 /** fromEnv() lit getenv() : chaque test pose ses variables, tearDown() remet l'environnement d'origine. */
 final class ConfigTest extends TestCase
 {
-    private const KEYS = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'APP_DEBUG', 'APP_TIMEZONE', 'DOCS_ENABLED', 'APP_ENV', 'MAIL_DEMO', 'FRONT_URL'];
+    private const KEYS = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'APP_DEBUG', 'APP_TIMEZONE', 'DOCS_ENABLED', 'APP_ENV', 'MAIL_DEMO', 'FRONT_URL', 'TRUSTED_PROXIES', 'RATE_LIMIT_REGISTRATIONS_PER_HOUR'];
 
     /** @var array<string, string|false> */
     private array $saved = [];
@@ -23,6 +23,7 @@ final class ConfigTest extends TestCase
         self::env([
             'DB_HOST' => '127.0.0.1', 'DB_PORT' => '3306', 'DB_NAME' => 'dayout', 'DB_USER' => 'root',
             'APP_DEBUG' => null, 'APP_TIMEZONE' => null, 'DOCS_ENABLED' => null, 'APP_ENV' => null, 'MAIL_DEMO' => null, 'FRONT_URL' => null,
+            'TRUSTED_PROXIES' => null, 'RATE_LIMIT_REGISTRATIONS_PER_HOUR' => null,
         ]);
     }
 
@@ -87,6 +88,25 @@ final class ConfigTest extends TestCase
         self::env(['APP_ENV' => 'staging', 'MAIL_DEMO' => null]);
         $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'));
         self::env(['APP_ENV' => null, 'FRONT_URL' => 'javascript:alert(1)']);
+        $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'));
+    }
+
+    public function testTrustedProxiesAndRateLimitsAreReadAndChecked(): void
+    {
+        $default = Config::fromEnv('/app');
+        $this->assertSame([[], 5, 30, 30], [$default->trustedProxies, $default->rateLimitRegistrations,
+            $default->rateLimitRegistrationAttempts, $default->rateLimitEmailVerifications], 'no proxy trusted by default');
+
+        self::env(['TRUSTED_PROXIES' => ' 127.0.0.1, 10.0.0.0/8 ,2001:db8::/32', 'RATE_LIMIT_REGISTRATIONS_PER_HOUR' => '50']);
+        $config = Config::fromEnv('/app');
+        $this->assertSame(['127.0.0.1', '10.0.0.0/8', '2001:db8::/32'], $config->trustedProxies);
+        $this->assertSame(50, $config->rateLimitRegistrations);
+
+        foreach (['10.0.0.0/33', 'proxy.local', '10.0.0.0/'] as $invalid) {
+            self::env(['TRUSTED_PROXIES' => $invalid]);
+            $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'), "TRUSTED_PROXIES=$invalid");
+        }
+        self::env(['TRUSTED_PROXIES' => null, 'RATE_LIMIT_REGISTRATIONS_PER_HOUR' => '0']);
         $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'));
     }
 }

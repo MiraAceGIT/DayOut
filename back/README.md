@@ -133,6 +133,10 @@ manquante, un entier invalide, un booleen malforme (`true`/`false`, `1`/`0`,
 | `AUDIT_RETENTION_DAYS` | `365`             | Purge des `audit-*.log`                                             |
 | `FRONT_URL`            | `http://localhost:5500` | Adresse du front (URL http(s)) : base des liens envoyes par mail |
 | `MAIL_DEMO`            | `false`           | `true` : `POST /users` renvoie aussi le lien de confirmation (demo sans serveur de mail). **`false` en prod.** |
+| `TRUSTED_PROXIES`      | _(vide)_          | Reverse proxies devant l'API (IP ou CIDR, separees par des virgules) : `X-Forwarded-For` n'est lu que derriere eux. **A renseigner en prod derriere un proxy.** |
+| `RATE_LIMIT_REGISTRATIONS_PER_HOUR` | `5` | Inscriptions reussies par client et par heure |
+| `RATE_LIMIT_REGISTRATION_ATTEMPTS_PER_HOUR` | `30` | Tentatives d'inscription (refusees ou non) par client et par heure |
+| `RATE_LIMIT_EMAIL_VERIFICATIONS_PER_HOUR` | `30` | Essais de confirmation par client et par heure |
 
 ### Commentaires dans le `.env`
 
@@ -382,9 +386,10 @@ Regles de `POST /users` (toutes reverifiees par le serveur, meme si le front les
   il est **remplace** dans la meme transaction (`ON DELETE CASCADE` : interets, demande createur, jetons), sinon une
   adresse prise par erreur ou au nom d'un autre etudiant le resterait pour toujours (audit : `replaced_unverified_user_id`).
   Deux inscriptions simultanees : `409 CONFLICT` (cle unique).
-- **Limite** : 5 inscriptions reussies par adresse IP et par heure (`RegistrationRateLimit`), `429 TOO_MANY_REQUESTS`
-  + `Retry-After` au-dela ; un formulaire refuse ne compte pas. Par adresse e-mail, la limite existe de fait : `409`
-  tant que le compte existe, donc au plus un mail par adresse et par 24 h.
+- **Limites** par client et par heure, `429 TOO_MANY_REQUESTS` + `Retry-After` au-dela : 5 inscriptions reussies
+  (`RegistrationRateLimit`, un formulaire refuse ne compte pas) et 30 tentatives, refusees ou non
+  (`RegistrationAttemptRateLimit` : pas de sondage sans fin des adresses qui ont un compte). Par adresse e-mail, la
+  limite existe de fait : `409` tant que le compte existe, donc au plus un mail par adresse et par 24 h.
 - Mot de passe hache par `Shared\Password` (bcrypt, cost 12), jamais stocke ni journalise en clair.
 - Compte cree `role = participant`, `email_verified = 0`. Un createur a `creator_status = pending` et une ligne
   `creator_profiles` : il ne peut pas publier tant qu'un admin n'a pas valide sa demande (`User::canPublish`).
@@ -415,10 +420,18 @@ demarrage. Un vrai envoi (SMTP) = une autre classe qui implemente `Mailer`, decl
 le mail part aujourd'hui dans la transaction (un echec annule l'inscription), ce qui est instantane avec `LogMailer` :
 avec SMTP, passer par une table d'envoi (outbox) pour ne pas garder la transaction ouverte pendant l'envoi reseau.
 
-**Limitation de debit** (`Core\Http\RateLimit` + `RateLimiter`) : middleware generique par adresse IP
-(`Request::CLIENT_IP`, pose par `fromGlobals()` depuis `REMOTE_ADDR`), compteur en base (`rate_limit_hits`, IP hashee,
-purge a chaque ajout). Une sous-classe par usage dans `src/Controller/Middleware/` (constantes `BUCKET`, `MAX_HITS`,
-`WINDOW_SECONDS`, `COUNT_ONLY_SUCCESS`), declaree sur sa route. Derriere un proxy, configurer `REMOTE_ADDR`.
+**Limitation de debit** (`Core\Http\RateLimit` + `RateLimiter`) : middleware generique par client, compteur en base
+(`rate_limit_hits`, cle hashee, purge a chaque ajout). Une sous-classe par usage dans `src/Controller/Middleware/`
+(constantes `BUCKET`, `WINDOW_SECONDS`, `COUNT_ONLY_SUCCESS` ; seuil `maxHits()` lu dans la Config), declaree sur sa
+route. La requete est comptee **avant** d'etre traitee, puis retiree du compte si elle depasse la limite (ou, avec
+`COUNT_ONLY_SUCCESS`, si elle echoue) : une rafale de requetes paralleles ne passe pas. Seuils dans `.env`
+(`RATE_LIMIT_*_PER_HOUR`) : un campus derriere une seule IP publique (NAT) partage les limites, a relever si besoin.
+
+Client (`Core\Http\ClientIp`) : `REMOTE_ADDR` (`Request::REMOTE_ADDR`), sauf si elle appartient a `TRUSTED_PROXIES`
+(adresses ou plages CIDR) : `X-Forwarded-For` est alors lu de droite a gauche jusqu'a la premiere adresse qui n'est
+pas un proxy de confiance (ce qu'un client ecrit lui-meme dans l'en-tete n'est jamais lu). **En production derriere un
+reverse proxy, declarer son adresse**, sinon tous les etudiants partagent la limite du proxy. Une IPv6 compte pour
+son /64 (un abonne recoit tout un /64).
 
 ### Declarer un DAO
 
@@ -1205,12 +1218,14 @@ AUDIT_RETENTION_DAYS=365
 APP_ENV=prod
 FRONT_URL=https://app.dayout.example
 MAIL_DEMO=false
+TRUSTED_PROXIES=127.0.0.1
 ```
 
 ### Checklist avant mise en prod
 
 - [ ] `.env` genere, **jamais** committer
 - [ ] `DOCS_ENABLED=false` (coupe `/docs` et `/openapi.json`)
+- [ ] `TRUSTED_PROXIES` = adresse du reverse proxy (sinon tous les clients partagent les limites de debit)
 - [ ] `APP_DEBUG=false`
 - [ ] `CORS_ORIGIN` ne contient que les origines prod
 - [ ] `composer install --no-dev --optimize-autoloader`

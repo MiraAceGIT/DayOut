@@ -14,7 +14,7 @@ paths:
         creator_status pending, a valider par un administrateur. Les champs inconnus sont ignores.
         Adresse deja utilisee par un compte non confirme dont le lien a expire : ce compte est remplace
         (nouvelle inscription, nouveau lien).
-        5 inscriptions reussies par adresse IP et par heure (429 au-dela, en-tete Retry-After).
+        Par client et par heure : 5 inscriptions reussies et 30 tentatives (429 au-dela, en-tete Retry-After).
       operationId: createUser
       security: []
       requestBody:
@@ -106,7 +106,7 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     TooManyRequests:
       description: >-
-        Trop de requetes depuis cette adresse IP (`TOO_MANY_REQUESTS`, `details.retry_after_seconds`,
+        Trop de requetes depuis ce client (adresse IP) (`TOO_MANY_REQUESTS`, `details.retry_after_seconds`,
         en-tete `Retry-After`)
       headers:
         Retry-After:

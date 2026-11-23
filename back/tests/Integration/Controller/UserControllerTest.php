@@ -83,15 +83,19 @@ final class UserControllerTest extends HttpTestCase
         $this->assertError(409, 'EMAIL_TAKEN', $this->register(['email' => 'pending@efrei.net', 'school_id' => 13])); // compte confirme : adresse gardee
     }
 
-    public function testFiveRegistrationsPerIpAndPerHour(): void
+    /** Le serveur de test fait confiance a 127.0.0.1 (TRUSTED_PROXIES) : X-Forwarded-For joue des clients differents. */
+    public function testFiveRegistrationsPerClientAndPerHour(): void
     {
-        $this->assertError(422, 'VALIDATION_ERROR', $this->register(['website' => 'https://spam.example'])); // piege a robots
+        $from = static fn (string $ip): array => ['X-Forwarded-For' => $ip];
+        $this->assertError(422, 'VALIDATION_ERROR',
+            $this->post('/users', self::body(['website' => 'https://spam.example']), $from('203.0.113.7'))); // piege a robots
         for ($i = 0; $i < 5; $i++) {
-            $this->assertStatus(201, $this->register());
+            $this->assertStatus(201, $this->post('/users', self::body(), $from('203.0.113.7')));
         }
-        $error = $this->register();
+        $error = $this->post('/users', self::body(), $from('203.0.113.7'));
         $this->assertError(429, 'TOO_MANY_REQUESTS', $error);
         $this->assertSame('3600', $error->header('Retry-After'));
+        $this->assertStatus(201, $this->post('/users', self::body(), $from('198.51.100.4'))); // autre etudiant, meme proxy
     }
 
     public function testInvalidFormIsRefusedByTheServerToo(): void
