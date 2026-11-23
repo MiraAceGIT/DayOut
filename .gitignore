@@ -51,3 +51,7 @@ tmp/
 *.tmp
 
 docs/*
+!docs/adr/
+
+.claude/settings.json
+.claude/board/*
