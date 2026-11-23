@@ -16,7 +16,7 @@ function formValues(override = {}) {
   return {
     profile: "participant", firstName: "Lina", lastName: "Martin", email: "lina.martin@isep.fr", schoolId: "1",
     password: "Soiree2026", passwordConfirm: "Soiree2026", termsAccepted: true, interests: ["soiree"],
-    searchRadiusKm: 3, organizationName: "", individual: false, ...override,
+    searchRadiusKm: 3, organizationName: "", individual: false, website: "", ...override,
   };
 }
 
@@ -117,9 +117,9 @@ describe("inscription : controleur", () => {
     await view.handlers.onSubmit();
     assert.deepEqual(view.errors, { email: "domain_not_allowed" });
 
-    error = new ApiError("Link already sent", { status: 409, code: "EMAIL_CONFIRMATION_PENDING", details: { field: "email" } });
+    error = new ApiError("Taken", { status: 409, code: "EMAIL_TAKEN", details: { field: "email" } });
     await view.handlers.onSubmit();
-    assert.deepEqual(view.errors, { email: "pending" });
+    assert.deepEqual(view.errors, { email: "taken" }, "compte en attente : meme code, meme message");
   });
 });
 
@@ -144,7 +144,7 @@ describe("confirmation de l'adresse : controleur", () => {
     assert.equal(token, "a".repeat(64));
     assert.equal(view.outcome, "confirmed");
     assert.deepEqual(view.options, { creatorPending: true });
-    assert.deepEqual(params, [["token", ""]], "le jeton quitte l'adresse");
+    assert.deepEqual(params, [["token", ""]], "le jeton quitte l'adresse des l'arrivee");
   });
 
   it("refuse sans requete un lien sans jeton", async () => {
@@ -156,7 +156,7 @@ describe("confirmation de l'adresse : controleur", () => {
   /** @type {Array<[string, number, "expired" | "used" | "invalid"]>} */
   const cases = [
     ["VERIFICATION_TOKEN_EXPIRED", 422, "expired"],
-    ["VERIFICATION_TOKEN_USED", 409, "used"],
+    ["VERIFICATION_TOKEN_USED", 410, "used"],
     ["VERIFICATION_TOKEN_INVALID", 422, "invalid"],
   ];
   for (const [code, status, outcome] of cases) {
@@ -178,7 +178,7 @@ describe("confirmation de l'adresse : controleur", () => {
     } }).start({ token: "c".repeat(64), setParam: (name, value) => params.push([name, value]) });
     assert.equal(view.outcome, null);
     assert.match(view.error, /joindre le serveur/);
-    assert.deepEqual(params, [], "panne : le jeton reste pour reessayer apres un rechargement");
+    assert.deepEqual(params, [["token", ""]], "retire de l'adresse, garde en memoire pour reessayer");
     fail = false;
     await view.retry();
     assert.equal(view.outcome, "confirmed");

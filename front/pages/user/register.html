@@ -104,6 +104,12 @@
         </div>
       </fieldset>
 
+      <!-- Piege a robots : invisible pour un humain (hors ecran, hors tabulation), rempli par les robots -> refus. -->
+      <div class="register-form__trap" aria-hidden="true">
+        <label for="register-website">Ne pas remplir ce champ</label>
+        <input id="register-website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+
       <label class="checkbox register-form__terms">
         <input name="termsAccepted" type="checkbox" required>
         <span>J'accepte les conditions générales d'utilisation de DayOut.</span>

@@ -87,7 +87,7 @@ describe("contrat avec la spec OpenAPI du back", { skip }, () => {
     assert.deepEqual(typedefProperties("userDto.js", "UserCreateDto"), fields);
     const body = toUserCreateDto({
       profile: "creator", firstName: "A", lastName: "B", email: "a@isep.fr", schoolId: "1", password: "Soiree2026",
-      passwordConfirm: "Soiree2026", termsAccepted: true, interests: ["soiree"], searchRadiusKm: 3, organizationName: "BDE", individual: false,
+      passwordConfirm: "Soiree2026", termsAccepted: true, interests: ["soiree"], searchRadiusKm: 3, organizationName: "BDE", individual: false, website: "",
     });
     assert.deepEqual(Object.keys(body), fields, "ni plus ni moins de champs que l'API (la confirmation ne part pas)");
   });

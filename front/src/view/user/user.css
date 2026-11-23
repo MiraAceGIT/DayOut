@@ -154,3 +154,12 @@ input[type="radio"] { accent-color: var(--color-brand); }
   .profile-choice { grid-template-columns: minmax(0, 1fr); }
   .register-form__group { padding: var(--space-4); }
 }
+
+/* Piege a robots : hors ecran plutot que display:none (certains robots ignorent les champs masques). */
+.register-form__trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

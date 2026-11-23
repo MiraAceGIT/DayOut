@@ -1,3 +1,5 @@
+import { normalizeEmail } from "../../domain/registration.js";
+
 /** @typedef {import("../../dto/userDto.js").UserCreateDto} UserCreateDto */
 /** @typedef {import("../../dto/userDto.js").EmailVerificationCreateDto} EmailVerificationCreateDto */
 /** @typedef {import("../../domain/registration.js").RegistrationValues} RegistrationValues */
@@ -15,7 +17,7 @@ export function toUserCreateDto(values) {
     profile: creator ? "creator" : "participant",
     first_name: values.firstName.trim(),
     last_name: values.lastName.trim(),
-    email: values.email.trim().toLowerCase(),
+    email: normalizeEmail(values.email),
     school_id: Number(values.schoolId),
     password: values.password,
     terms_accepted: values.termsAccepted,
@@ -23,6 +25,7 @@ export function toUserCreateDto(values) {
     search_radius_km: values.searchRadiusKm,
     organization_name: creator && !individual ? values.organizationName.trim() : null,
     individual,
+    website: values.website,
   };
 }
 
@@ -44,6 +47,7 @@ const FORM_FIELDS = /** @type {const} */ ({
   search_radius_km: "searchRadiusKm",
   organization_name: "organizationName",
   individual: "individual",
+  website: "website",
 });
 
 /**

@@ -86,6 +86,7 @@ export class RegisterView {
       searchRadiusKm: Number(text("searchRadiusKm")),
       organizationName: text("organizationName"),
       individual: data.has("individual"),
+      website: text("website"),
     };
   }
 

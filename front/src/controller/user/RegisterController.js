@@ -86,14 +86,10 @@ export class RegisterController {
       }),
       onError: (error) => {
         if (!isApiError(error)) return false;
-        // EMAIL_TAKEN, ou CONFLICT (cle unique de l'e-mail) si deux inscriptions arrivent en meme temps.
+        // EMAIL_TAKEN (compte confirme ou en attente, meme code : son etat ne se devine pas),
+        // ou CONFLICT (cle unique de l'e-mail) si deux inscriptions arrivent en meme temps.
         if (error.status === 409 && (error.code === "EMAIL_TAKEN" || error.code === "CONFLICT")) {
           this.view.showFieldErrors({ email: "taken" }, { focus: true });
-          return true;
-        }
-        // Compte deja cree, pas encore confirme, lien encore valable : il suffit de l'ouvrir.
-        if (error.status === 409 && error.code === "EMAIL_CONFIRMATION_PENDING") {
-          this.view.showFieldErrors({ email: "pending" }, { focus: true });
           return true;
         }
         // Trigger de la base : l'ecole a ete desactivee pendant la saisie.

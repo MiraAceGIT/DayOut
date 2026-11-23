@@ -24,7 +24,7 @@ function values(override = {}) {
   return {
     profile: "participant", firstName: "Lina", lastName: "Martin", email: "lina.martin@isep.fr", schoolId: "1",
     password: "Soiree2026", passwordConfirm: "Soiree2026", termsAccepted: true, interests: ["soiree"],
-    searchRadiusKm: DEFAULT_RADIUS_KM, organizationName: "", individual: false, ...override,
+    searchRadiusKm: DEFAULT_RADIUS_KM, organizationName: "", individual: false, website: "", ...override,
   };
 }
 
@@ -86,7 +86,7 @@ describe("inscription : mappers", () => {
     assert.deepEqual(toUserCreateDto(values({ email: " Lina.Martin@ISEP.fr ", interests: ["soiree", "soiree", "sport"] })), {
       profile: "participant", first_name: "Lina", last_name: "Martin", email: "lina.martin@isep.fr", school_id: 1,
       password: "Soiree2026", terms_accepted: true, interests: ["soiree", "sport"], search_radius_km: 3,
-      organization_name: null, individual: false,
+      organization_name: null, individual: false, website: "",
     });
     assert.equal(toUserCreateDto(values({ profile: "creator", organizationName: " BDE " })).organization_name, "BDE");
     const solo = toUserCreateDto(values({ profile: "creator", individual: true, organizationName: "Ignore" }));

@@ -14,6 +14,7 @@
  * @property {number} search_radius_km
  * @property {string|null} organization_name   - createur, sauf a titre individuel
  * @property {boolean} individual
+ * @property {string} website                 - piege a robots, toujours vide
  */
 
 /**

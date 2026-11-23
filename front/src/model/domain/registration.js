@@ -18,6 +18,7 @@
  * @property {number} searchRadiusKm
  * @property {string} organizationName
  * @property {boolean} individual
+ * @property {string} website           - piege a robots : champ cache, toujours vide pour un humain
  */
 
 /** @typedef {Partial<Record<keyof RegistrationValues, string>>} RegistrationErrors champ -> code d'erreur */
@@ -38,8 +39,14 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** @param {string} email @returns {string} domaine en minuscules, "" sans @ */
 export function emailDomain(email) {
-  const at = email.trim().lastIndexOf("@");
-  return at < 0 ? "" : email.trim().slice(at + 1).toLowerCase();
+  const normalized = normalizeEmail(email);
+  const at = normalized.lastIndexOf("@");
+  return at < 0 ? "" : normalized.slice(at + 1);
+}
+
+/** Adresse comparee et envoyee sans espaces autour ni majuscules, comme le back (UserCreateDto). @param {string} email */
+export function normalizeEmail(email) {
+  return email.trim().toLowerCase();
 }
 
 /** @param {School[]} schools @param {string} email @returns {School|null} */
