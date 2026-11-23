@@ -23,7 +23,7 @@ function formValues(override = {}) {
 function registerView(values = formValues()) {
   return {
     isReady: true, values, handlers: null, options: null, errors: null, focus: false, strength: null, creatorSchool: undefined,
-    submitting: false, submitError: "", loadError: "", success: null,
+    submitting: false, submitError: "", loadError: "", success: null, rateLimited: undefined,
     bind(handlers) { this.handlers = handlers; },
     readValues() { return this.values; },
     showLoading() {}, endLoading() {},
@@ -36,6 +36,7 @@ function registerView(values = formValues()) {
     showSubmitting() { this.submitting = true; },
     endSubmitting() { this.submitting = false; },
     showSubmitError(message) { this.submitError = message; },
+    showRateLimited(seconds) { this.rateLimited = seconds; },
     showSuccess(result) { this.success = result; },
   };
 }
@@ -123,13 +124,9 @@ describe("inscription : controleur", () => {
     assert.match(view.submitError, /joindre le serveur/);
   });
 
-  it("met aussi sous l'e-mail les refus rares : doublon simultane, ecole desactivee", async () => {
-    let error = new ApiError("Resource already exists", { status: 409, code: "CONFLICT" });
+  it("met aussi sous l'e-mail les refus rares : ecole desactivee, compte en attente", async () => {
+    let error = new ApiError("Email domain not allowed", { status: 422, code: "EMAIL_DOMAIN_NOT_ALLOWED" });
     const { view } = await started({ register: async () => { throw error; } });
-    await view.handlers.onSubmit();
-    assert.deepEqual(view.errors, { email: "taken" });
-
-    error = new ApiError("Email domain not allowed", { status: 422, code: "EMAIL_DOMAIN_NOT_ALLOWED" });
     await view.handlers.onSubmit();
     assert.deepEqual(view.errors, { email: "domain_not_allowed" });
 
@@ -137,14 +134,27 @@ describe("inscription : controleur", () => {
     await view.handlers.onSubmit();
     assert.deepEqual(view.errors, { email: "taken" }, "compte en attente : meme code, meme message");
   });
+
+  it("annonce l'attente d'une limite atteinte, saisie conservee", async () => {
+    let error = new ApiError("Too many", { status: 429, code: "TOO_MANY_REQUESTS", details: { retry_after_seconds: 900 } });
+    const { view } = await started({ register: async () => { throw error; } });
+    await view.handlers.onSubmit();
+    assert.equal(view.rateLimited, 900);
+    assert.equal(view.success, null);
+
+    error = new ApiError("Too many", { status: 429, code: "TOO_MANY_REQUESTS" });
+    await view.handlers.onSubmit();
+    assert.equal(view.rateLimited, null, "sans attente annoncee");
+  });
 });
 
 function confirmView() {
   return {
-    isReady: true, outcome: null, options: null, error: "", retry: null,
+    isReady: true, outcome: null, options: null, error: "", retry: null, rateLimited: undefined,
     bind({ onRetry }) { this.retry = onRetry; },
     showLoading() {}, endLoading() {},
     showError(message) { this.error = message; },
+    showRateLimited(seconds) { this.rateLimited = seconds; },
     showOutcome(outcome, options) { this.outcome = outcome; this.options = options; },
   };
 }
@@ -171,7 +181,7 @@ describe("confirmation de l'adresse : controleur", () => {
 
   /** @type {Array<[string, number, "expired" | "used" | "invalid"]>} */
   const cases = [
-    ["VERIFICATION_TOKEN_EXPIRED", 422, "expired"],
+    ["VERIFICATION_TOKEN_EXPIRED", 410, "expired"],
     ["VERIFICATION_TOKEN_USED", 410, "used"],
     ["VERIFICATION_TOKEN_INVALID", 422, "invalid"],
   ];
@@ -182,6 +192,15 @@ describe("confirmation de l'adresse : controleur", () => {
       assert.equal(view.outcome, outcome);
     });
   }
+
+  it("annonce l'attente si trop d'essais, lien garde pour reessayer", async () => {
+    const view = confirmView();
+    await new ConfirmEmailController({ view, confirm: async () => {
+      throw new ApiError("Too many", { status: 429, code: "TOO_MANY_REQUESTS", details: { retry_after_seconds: 120 } });
+    } }).start({ token: "d".repeat(64) });
+    assert.equal(view.rateLimited, 120);
+    assert.equal(view.outcome, null);
+  });
 
   it("propose de reessayer apres une panne", async () => {
     const view = confirmView();

@@ -26,6 +26,16 @@ export function rejectedRegistrationFields(error) {
 }
 
 /**
+ * Attente annoncee par une 429 (`details.retry_after_seconds`, comme l'en-tete Retry-After), null si absente.
+ * @param {import("../../core/api.js").ApiError} error
+ * @returns {number|null}
+ */
+export function retryAfterSeconds(error) {
+  const seconds = /** @type {Record<string, unknown> | null} */ (error.details)?.retry_after_seconds;
+  return typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+/**
  * POST /email-verifications : confirme l'adresse avec le jeton du lien recu par mail.
  * @param {string} token
  * @param {{ signal?: AbortSignal }} [options]

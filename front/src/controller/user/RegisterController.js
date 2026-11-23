@@ -2,7 +2,7 @@ import { isApiError } from "../../core/errors.js";
 import { passwordStrength, schoolForEmail, validateRegistration } from "../../model/domain/registration.js";
 import { fetchCategories } from "../../model/services/categoryService.js";
 import { fetchSchools } from "../../model/services/schoolService.js";
-import { registerUser, rejectedRegistrationFields } from "../../model/services/userService.js";
+import { registerUser, rejectedRegistrationFields, retryAfterSeconds } from "../../model/services/userService.js";
 import { RegisterView } from "../../view/user/RegisterView.js";
 import { PageLoader } from "../PageLoader.js";
 
@@ -12,7 +12,7 @@ import { PageLoader } from "../PageLoader.js";
 export class RegisterController {
   /** @param {{ view?: Pick<RegisterView, "isReady" | "bind" | "readValues" | "showLoading" | "endLoading" | "showError"
    *   | "showOptions" | "showFieldErrors" | "showPasswordStrength" | "showCreatorSchool" | "selectSchool" | "showSubmitting"
-   *   | "endSubmitting" | "showSubmitError" | "showSuccess">,
+   *   | "endSubmitting" | "showSubmitError" | "showRateLimited" | "showSuccess">,
    * loadSchools?: typeof fetchSchools, loadCategories?: typeof fetchCategories, register?: typeof registerUser }} [options] */
   constructor({ view = new RegisterView(), loadSchools = fetchSchools, loadCategories = fetchCategories, register = registerUser } = {}) {
     this.view = view;
@@ -99,9 +99,8 @@ export class RegisterController {
       }),
       onError: (error) => {
         if (!isApiError(error)) return false;
-        // EMAIL_TAKEN (compte confirme ou en attente, meme code : son etat ne se devine pas),
-        // ou CONFLICT (cle unique de l'e-mail) si deux inscriptions arrivent en meme temps.
-        if (error.status === 409 && (error.code === "EMAIL_TAKEN" || error.code === "CONFLICT")) {
+        // Compte confirme, en attente, ou inscription simultanee : meme code, l'etat du compte ne se devine pas.
+        if (error.code === "EMAIL_TAKEN") {
           this.view.showFieldErrors({ email: "taken" }, { focus: true });
           return true;
         }
@@ -113,6 +112,10 @@ export class RegisterController {
         if (error.isValidation) {
           const fields = rejectedRegistrationFields(error);
           this.view.showFieldErrors(Object.fromEntries(fields.map((field) => [field, "rejected"])), { focus: true });
+          return true;
+        }
+        if (error.status === 429) {
+          this.view.showRateLimited(retryAfterSeconds(error));
           return true;
         }
         return false;

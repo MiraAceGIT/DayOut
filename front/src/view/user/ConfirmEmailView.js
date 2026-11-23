@@ -1,5 +1,6 @@
 import { routeUrl } from "../../core/routes.js";
 import { CONFIRM_LOADING, confirmOutcome, REGISTER, REGISTER_AGAIN } from "./confirmEmailMessages.js";
+import { rateLimitedText } from "./registerMessages.js";
 
 /** @typedef {import("./confirmEmailMessages.js").ConfirmOutcome} ConfirmOutcome */
 
@@ -41,6 +42,11 @@ export class ConfirmEmailView {
     this.status.textContent = "";
     this.error.textContent = message;
     this.retry.hidden = false;
+  }
+
+  /** Limite d'essais atteinte (429) : le lien n'a pas ete consomme, « Reessayer » reste propose. @param {number|null} retryAfterSeconds */
+  showRateLimited(retryAfterSeconds) {
+    this.showError(rateLimitedText(retryAfterSeconds));
   }
 
   /** @param {ConfirmOutcome} outcome @param {{ creatorPending?: boolean }} [options] */

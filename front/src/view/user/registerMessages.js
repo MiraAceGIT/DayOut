@@ -86,6 +86,18 @@ export function creatorSchoolText(schoolName) {
   return schoolName ?? "celle choisie plus haut";
 }
 
+/**
+ * 429 de l'API : attente annoncee par le serveur (Retry-After), arrondie a la minute superieure.
+ * Partage avec la page de confirmation. @param {number|null} seconds
+ */
+export function rateLimitedText(seconds) {
+  if (!Number.isFinite(seconds) || seconds === null || seconds <= 0) {
+    return "Trop de tentatives depuis ce réseau. Réessaie un peu plus tard.";
+  }
+  const minutes = Math.ceil(seconds / 60);
+  return `Trop de tentatives depuis ce réseau. Réessaie dans ${minutes} minute${minutes > 1 ? "s" : ""}.`;
+}
+
 /** École choisie d'après le domaine de l'adresse e-mail. @param {string} schoolName */
 export function schoolDetectedText(schoolName) {
   return schoolName ? `École sélectionnée d'après ton adresse : ${schoolName}.` : "";

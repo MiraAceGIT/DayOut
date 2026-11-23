@@ -1,5 +1,5 @@
 import { isApiError } from "../../core/errors.js";
-import { confirmEmail } from "../../model/services/userService.js";
+import { confirmEmail, retryAfterSeconds } from "../../model/services/userService.js";
 import { ConfirmEmailView } from "../../view/user/ConfirmEmailView.js";
 import { PageLoader } from "../PageLoader.js";
 
@@ -12,7 +12,7 @@ const OUTCOME_BY_CODE = /** @type {const} */ ({
 });
 
 export class ConfirmEmailController {
-  /** @param {{ view?: Pick<ConfirmEmailView, "isReady" | "bind" | "showLoading" | "endLoading" | "showError" | "showOutcome">,
+  /** @param {{ view?: Pick<ConfirmEmailView, "isReady" | "bind" | "showLoading" | "endLoading" | "showError" | "showRateLimited" | "showOutcome">,
    * confirm?: typeof confirmEmail }} [options] */
   constructor({ view = new ConfirmEmailView(), confirm = confirmEmail } = {}) {
     this.view = view;
@@ -46,6 +46,10 @@ export class ConfirmEmailController {
     await this.loader.run((signal) => this.confirm(token, { signal }), {
       onSuccess: (result) => this.view.showOutcome("confirmed", { creatorPending: result.creatorPending }),
       onError: (error) => {
+        if (isApiError(error) && error.status === 429) {
+          this.view.showRateLimited(retryAfterSeconds(error));
+          return true;
+        }
         const outcome = isApiError(error) && error.code ? OUTCOME_BY_CODE[/** @type {keyof typeof OUTCOME_BY_CODE} */ (error.code)] : undefined;
         if (!outcome) return false;
         this.view.showOutcome(outcome);

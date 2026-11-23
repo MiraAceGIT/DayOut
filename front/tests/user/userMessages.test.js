@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { fieldMessage, fieldMessages, passwordStrengthLabel, successText } from "../../src/view/user/registerMessages.js";
+import { fieldMessage, fieldMessages, passwordStrengthLabel, rateLimitedText, successText } from "../../src/view/user/registerMessages.js";
 import { confirmOutcome } from "../../src/view/user/confirmEmailMessages.js";
 
 describe("inscription : textes", () => {
@@ -9,6 +9,12 @@ describe("inscription : textes", () => {
     assert.match(fieldMessage("email", "school_mismatch"), /ne correspond pas à l'école choisie/);
     assert.match(fieldMessage("password", "missing_digit"), /chiffre/);
     assert.deepEqual(fieldMessages({ termsAccepted: "required" }), { termsAccepted: "Tu dois accepter les conditions générales d'utilisation." });
+  });
+
+  it("annonce l'attente d'une limite en minutes", () => {
+    assert.match(rateLimitedText(900), /dans 15 minutes\./);
+    assert.match(rateLimitedText(30), /dans 1 minute\./, "arrondi a la minute superieure");
+    assert.match(rateLimitedText(null), /un peu plus tard/);
   });
 
   it("retombe sur le refus du champ, puis sur un message generique", () => {

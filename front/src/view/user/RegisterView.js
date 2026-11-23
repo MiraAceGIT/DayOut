@@ -1,7 +1,7 @@
 import { h } from "../../shared/dom.js";
 import { clearFieldErrors, showFieldErrors } from "../../shared/forms.js";
 import {
-  creatorSchoolText, DEMO_LINK_INTRO, DEMO_LINK_LABEL, fieldMessages, passwordStrengthLabel, radiusLabel, schoolDetectedText,
+  creatorSchoolText, DEMO_LINK_INTRO, DEMO_LINK_LABEL, fieldMessages, passwordStrengthLabel, radiusLabel, rateLimitedText, schoolDetectedText,
   REGISTER_INVALID, REGISTER_LOADING, REGISTER_SUBMITTING, SUCCESS_CREATOR, successText,
 } from "./registerMessages.js";
 
@@ -166,6 +166,11 @@ export class RegisterView {
   showSubmitError(message) {
     this.status.textContent = "";
     this.submitError.textContent = message;
+  }
+
+  /** Limite de tentatives atteinte (429) ; la saisie reste en place. @param {number|null} retryAfterSeconds */
+  showRateLimited(retryAfterSeconds) {
+    this.showSubmitError(rateLimitedText(retryAfterSeconds));
   }
 
   /** @param {{ email: string, creatorPending: boolean, demoUrl: string|null }} result */
