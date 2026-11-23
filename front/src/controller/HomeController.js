@@ -80,6 +80,23 @@ export class HomeController {
     this.view.setRadius(radiusKm);
 
     await this.load();
+    // CdC D1 : tenter la geoloc au demarrage. Le browser gere le consentement ; on evite d'appeler locate()
+    // si l'utilisateur a deja refuse, pour ne pas reafficher le message d'erreur a chaque navigation.
+    void this.maybeAutoLocate();
+  }
+
+  async maybeAutoLocate() {
+    if (!navigator.geolocation) return;
+    const perms = navigator.permissions;
+    if (perms?.query) {
+      try {
+        const status = await perms.query({ name: "geolocation" });
+        if (status.state === "denied") return;
+      } catch {
+        // Safari ancien : pas de Permissions API pour geolocation -> on tente quand meme, le browser decide.
+      }
+    }
+    this.origin.locate();
   }
 
   async load() {
