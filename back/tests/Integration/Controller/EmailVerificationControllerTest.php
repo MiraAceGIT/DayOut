@@ -24,7 +24,7 @@ final class EmailVerificationControllerTest extends HttpTestCase
         $this->assertStatus(200, $response);
         $this->assertSame(['email_verified' => true, 'creator_status' => 'none'], $response->json()['data']);
 
-        $this->assertError(409, 'VERIFICATION_TOKEN_USED', $this->post('/email-verifications', ['token' => $token]));
+        $this->assertError(410, 'VERIFICATION_TOKEN_USED', $this->post('/email-verifications', ['token' => $token]));
     }
 
     public function testCreatorIsConfirmedWithItsRequestStillPending(): void

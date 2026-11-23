@@ -10,6 +10,8 @@ paths:
       description: >-
         Le jeton vient du lien du mail (page front /confirm-email?token=...). Usage unique, valable 24 h.
         Un participant est actif des la confirmation ; un createur aussi, avec sa demande toujours en attente.
+        Action de consommation du jeton, pas creation d une ressource : 200 et non 201. Jeton dans le corps (jamais
+        dans l URL ni les logs d acces). 30 essais par adresse IP et par heure (429 au-dela).
       operationId: confirmEmail
       security: []
       requestBody:
@@ -28,9 +30,10 @@ paths:
                 properties:
                   data: { $ref: "#/components/schemas/EmailVerification" }
         "400": { $ref: "#/components/responses/UserBadRequest" }
-        "409": { $ref: "#/components/responses/VerificationTokenUsed" }
+        "410": { $ref: "#/components/responses/VerificationTokenUsed" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "422": { $ref: "#/components/responses/VerificationTokenRejected" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "500": { $ref: "#/components/responses/InternalError" }
 
 components:
@@ -44,11 +47,11 @@ components:
       type: object
       required: [email_verified, creator_status]
       properties:
-        email_verified: { type: boolean, enum: [true] }
-        creator_status: { type: string, enum: [none, pending, approved, rejected] }
+        email_verified: { type: boolean, description: "Toujours true en cas de succes" }
+        creator_status: { type: string, enum: [none, pending], description: "pending : demande createur a valider par un admin" }
   responses:
     VerificationTokenUsed:
-      description: Lien deja utilise (`VERIFICATION_TOKEN_USED`)
+      description: Lien deja utilise, il ne servira plus jamais (`VERIFICATION_TOKEN_USED`, 410 Gone)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

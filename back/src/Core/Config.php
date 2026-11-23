@@ -27,7 +27,18 @@ final class Config
         public readonly bool $docsEnabled = false,
         public readonly string $frontUrl = 'http://localhost:5500',
         public readonly bool $mailDemo = false,
+        public readonly string $appEnv = self::ENV_DEV,
     ) {
+    }
+
+    public const ENV_DEV = 'dev';
+
+    public const ENV_PROD = 'prod';
+
+    /** Production : liens a usage unique jamais renvoyes ni journalises (voir fromEnv et LogMailer). */
+    public function isProduction(): bool
+    {
+        return $this->appEnv === self::ENV_PROD;
     }
 
     /** Variables BDD obligatoires : pas de repli silencieux sur root sans mot de passe en prod. */
@@ -43,6 +54,15 @@ final class Config
 
         $logLevel = self::env('LOG_LEVEL') ?? 'info';
         $timezone = self::env('APP_TIMEZONE') ?? 'UTC';
+        $appEnv = self::env('APP_ENV') ?? self::ENV_DEV;
+        if (!in_array($appEnv, [self::ENV_DEV, self::ENV_PROD], true)) {
+            throw new RuntimeException("APP_ENV must be dev or prod, got '$appEnv'");
+        }
+        // MAIL_DEMO renvoie le lien de confirmation dans la reponse HTTP : en prod, n'importe qui confirmerait
+        // l'adresse d'un autre. Refus au demarrage plutot qu'une faille silencieuse.
+        if ($appEnv === self::ENV_PROD && self::bool('MAIL_DEMO', false)) {
+            throw new RuntimeException('MAIL_DEMO=true is forbidden when APP_ENV=prod');
+        }
         if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
             throw new RuntimeException("Invalid APP_TIMEZONE: $timezone");
         }
@@ -67,6 +87,7 @@ final class Config
             frontUrl: self::httpUrl('FRONT_URL', 'http://localhost:5500'),
             // Demo sans serveur de mail : l'API renvoie aussi le lien de confirmation. Jamais en prod.
             mailDemo: self::bool('MAIL_DEMO', false),
+            appEnv: $appEnv,
         );
     }
 

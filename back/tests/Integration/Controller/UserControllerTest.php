@@ -73,7 +73,7 @@ final class UserControllerTest extends HttpTestCase
     {
         $body = self::body();
         $first = $this->post('/users', $body)->json()['data'];
-        $this->assertError(409, 'EMAIL_CONFIRMATION_PENDING', $this->post('/users', $body));
+        $this->assertError(409, 'EMAIL_TAKEN', $this->post('/users', $body)); // meme code qu'un compte confirme
 
         TestDatabase::pdo()->prepare('UPDATE email_verifications SET expires_at = UTC_TIMESTAMP() - INTERVAL 1 MINUTE WHERE user_id = ?')
             ->execute([$first['id']]);
@@ -81,6 +81,17 @@ final class UserControllerTest extends HttpTestCase
         $this->assertStatus(201, $second);
         $this->assertNotSame($first['id'], $second->json()['data']['id']);
         $this->assertError(409, 'EMAIL_TAKEN', $this->register(['email' => 'pending@efrei.net', 'school_id' => 13])); // compte confirme : adresse gardee
+    }
+
+    public function testFiveRegistrationsPerIpAndPerHour(): void
+    {
+        $this->assertError(422, 'VALIDATION_ERROR', $this->register(['website' => 'https://spam.example'])); // piege a robots
+        for ($i = 0; $i < 5; $i++) {
+            $this->assertStatus(201, $this->register());
+        }
+        $error = $this->register();
+        $this->assertError(429, 'TOO_MANY_REQUESTS', $error);
+        $this->assertSame('3600', $error->header('Retry-After'));
     }
 
     public function testInvalidFormIsRefusedByTheServerToo(): void

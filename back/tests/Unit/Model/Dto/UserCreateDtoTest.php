@@ -70,7 +70,7 @@ final class UserCreateDtoTest extends TestCase
             ['terms_accepted' => false], ['terms_accepted' => 'oui'], ['terms_accepted' => null],
             ['interests' => []], ['interests' => 'soiree'], ['interests' => [1, 2]], ['interests' => ['a' => 'soiree']],
             ['search_radius_km' => 0], ['search_radius_km' => 21], ['search_radius_km' => 2.5],
-            ['individual' => 'peut-etre'],
+            ['individual' => 'peut-etre'], ['website' => 'https://spam.example'], ['website' => ' x '],
         ] as $input) {
             $error = $this->assertThrows(ValidationException::class, fn () => UserCreateDto::fromArray(self::body($input)), json_encode($input) ?: '');
             $this->assertSame(array_keys($input), array_keys($error->errors), json_encode($input) ?: '');

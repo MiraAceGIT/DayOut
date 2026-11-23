@@ -11,6 +11,7 @@ final class SchoolControllerTest extends HttpTestCase
     {
         $response = $this->get('/schools');
         $this->assertStatus(200, $response);
+        $this->assertSame('public, max-age=3600', $response->header('Cache-Control'));
         $schools = $response->json()['data'];
         $this->assertCount(15, $schools);
         $names = array_column($schools, 'name');

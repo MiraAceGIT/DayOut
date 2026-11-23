@@ -16,6 +16,7 @@ final class SchoolController extends Controller
 
     public function findMany(Request $request): Response
     {
-        return $this->ok($this->schools->findActive());
+        // Referentiel stable : cache partage 1 h (une modification du back-office, SCRUM-78, se voit au plus 1 h apres).
+        return $this->ok($this->schools->findActive())->withHeader('Cache-Control', 'public, max-age=3600');
     }
 }

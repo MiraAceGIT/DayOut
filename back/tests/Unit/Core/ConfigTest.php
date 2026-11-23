@@ -10,7 +10,7 @@ use Tests\TestCase;
 /** fromEnv() lit getenv() : chaque test pose ses variables, tearDown() remet l'environnement d'origine. */
 final class ConfigTest extends TestCase
 {
-    private const KEYS = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'APP_DEBUG', 'APP_TIMEZONE', 'DOCS_ENABLED'];
+    private const KEYS = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'APP_DEBUG', 'APP_TIMEZONE', 'DOCS_ENABLED', 'APP_ENV', 'MAIL_DEMO', 'FRONT_URL'];
 
     /** @var array<string, string|false> */
     private array $saved = [];
@@ -22,7 +22,7 @@ final class ConfigTest extends TestCase
         }
         self::env([
             'DB_HOST' => '127.0.0.1', 'DB_PORT' => '3306', 'DB_NAME' => 'dayout', 'DB_USER' => 'root',
-            'APP_DEBUG' => null, 'APP_TIMEZONE' => null, 'DOCS_ENABLED' => null,
+            'APP_DEBUG' => null, 'APP_TIMEZONE' => null, 'DOCS_ENABLED' => null, 'APP_ENV' => null, 'MAIL_DEMO' => null, 'FRONT_URL' => null,
         ]);
     }
 
@@ -70,5 +70,23 @@ final class ConfigTest extends TestCase
 
         self::env(['APP_TIMEZONE' => 'Europe/Paris']);
         $this->assertSame('Europe/Paris', Config::fromEnv('/app')->timezone);
+    }
+
+    public function testDemoLinksAreForbiddenInProduction(): void
+    {
+        $dev = Config::fromEnv('/app');
+        $this->assertSame([Config::ENV_DEV, false, 'http://localhost:5500'], [$dev->appEnv, $dev->isProduction(), $dev->frontUrl]);
+
+        self::env(['APP_ENV' => 'prod', 'FRONT_URL' => 'https://app.dayout.example/']);
+        $prod = Config::fromEnv('/app');
+        $this->assertTrue($prod->isProduction());
+        $this->assertSame('https://app.dayout.example', $prod->frontUrl, 'no trailing slash');
+
+        self::env(['MAIL_DEMO' => 'true']);
+        $this->assertStringContains('MAIL_DEMO', $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'))->getMessage());
+        self::env(['APP_ENV' => 'staging', 'MAIL_DEMO' => null]);
+        $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'));
+        self::env(['APP_ENV' => null, 'FRONT_URL' => 'javascript:alert(1)']);
+        $this->assertThrows(RuntimeException::class, fn () => Config::fromEnv('/app'));
     }
 }

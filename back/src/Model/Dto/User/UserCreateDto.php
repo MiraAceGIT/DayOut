@@ -34,6 +34,8 @@ final readonly class UserCreateDto
         'search_radius_km'  => 'int|min:' . self::RADIUS_MIN . '|max:' . self::RADIUS_MAX,
         'organization_name' => 'nullable|string|max:120',
         'individual'        => 'bool',
+        // Piege a robots : champ cache du formulaire, qu'un humain ne remplit jamais ; rempli = 422.
+        'website'           => 'nullable|string|max:0',
     ];
 
     /** @param list<string> $interests slugs de categories, sans doublon */

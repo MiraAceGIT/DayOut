@@ -13,6 +13,9 @@ paths:
       responses:
         "200":
           description: Categories actives
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "public, max-age=3600" }
           content:
             application/json:
               schema:
