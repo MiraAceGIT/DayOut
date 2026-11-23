@@ -31,7 +31,8 @@ final class ExceptionRendererTest extends TestCase
 
     public function testBusinessExceptionKindSetsStatusAndHidesContext(): void
     {
-        $expected = [404 => ErrorKind::NotFound, 403 => ErrorKind::Forbidden, 409 => ErrorKind::Conflict, 422 => ErrorKind::Invalid];
+        $expected = [404 => ErrorKind::NotFound, 403 => ErrorKind::Forbidden, 409 => ErrorKind::Conflict, 422 => ErrorKind::Invalid,
+            410 => ErrorKind::Gone];
         foreach ($expected as $status => $kind) {
             $response = ExceptionRenderer::render(SampleException::of($kind));
             $this->assertSame($status, $response->status, $kind->name);

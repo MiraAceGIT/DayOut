@@ -21,8 +21,10 @@ pas de build, pas de npm : modules ES natifs servis tels quels.
 - `index.html` : carte interactive "Que faire autour de toi ?" (plein ecran)
 - `/events` (`pages/event/events.html`) : liste des evenements a venir (cartes + footer)
 - `/event?id=1` (`pages/event/event.html`) : detail dynamique et ecran 404 pour un evenement inaccessible
+- `/register` (`pages/user/register.html`) : creation de compte participant ou createur (SCRUM-41)
+- `/confirm-email?token=...` (`pages/user/confirm-email.html`) : confirmation de l'adresse par le lien recu
 
-L'auth (login, pages protegees), les inscriptions et l'admin sont en cours
+La connexion (login, pages protegees), les inscriptions aux evenements et l'admin sont en cours
 (infrastructure deja en place : `app/boot.js` installe un handler `401`, `loginUrl()` genere l'URL de connexion).
 
 ### Perimetre exact
@@ -149,6 +151,8 @@ Ouvrir `index.html` directement par `file://` **ne marchera pas**.
 - **`/`** (`index.html`) : carte "Que faire autour de toi ?" (accueil plein ecran)
 - **`/events`** (`pages/event/events.html`) : liste des evenements a venir (cartes + footer)
 - **`/event?id=1`** (`pages/event/event.html`) : detail dynamique via `GET /events/1`, d'apres l'ecran 02 des maquettes. Le header et le footer utilisent le gabarit partage ; les blocs meteo/transports/mini-carte/discussion restent reserves et les actions desactivees.
+- **`/register`** (`pages/user/register.html`) : inscription (voir *Inscription* en section 7)
+- **`/confirm-email?token=...`** (`pages/user/confirm-email.html`) : page ouverte par le lien du mail de confirmation
 
 ---
 
@@ -161,7 +165,8 @@ front/
 ├── index.html                    ← carte "Que faire autour de toi ?" (plein ecran, sans footer)
 ├── pages/                        ← HTML des pages (seul le <main> est affiche, par le routeur)
 │   ├── home.html, faq.html, not-found.html
-│   └── event/                    ← events.html (liste), event.html (detail)
+│   ├── event/                    ← events.html (liste), event.html (detail)
+│   └── user/                     ← register.html (inscription), confirm-email.html (lien du mail)
 ├── assets/
 │   ├── img/dayout-logo-light.svg ← logo (blanc + orange, pour fond violet nuit)
 │   └── css/                      ← CSS global (sans JS proprietaire)
@@ -176,18 +181,20 @@ front/
 │   ├── config.local.js           ← surcharge locale optionnelle (ignore git)
 │   ├── core/                     ← infrastructure : config, api, apiLimits (plafonds de l'API), errors, geolocation, routes
 │   ├── app/                      ← boot.js (header + footer + handler 401), router.js, navigation.js (decisions du routeur, pures), appRoutes.js (liste des pages)
-│   ├── shared/                   ← utilitaires purs sans dependance : dom (h), format, geo, highlight, text (normalize), LatestTask (derniere tache)
+│   ├── shared/                   ← utilitaires purs sans dependance : dom (h), format, geo, highlight, text (normalize), LatestTask (derniere tache),
+│   │                               forms (erreurs sous les champs d'un formulaire)
 │   ├── model/                    ← M : sans DOM
 │   │   ├── dto/                  ← typedefs JSDoc du JSON API (snake_case), un fichier par ressource
 │   │   ├── mappers/              ← DTO <-> modele (camelCase), seuls a lire les noms JSON ;
 │   │   │   ├── event/            ← eventMapper, eventRequestMapper (requetes GET /events)
 │   │   │   ├── faq/              ← faqMapper, faqRequestMapper (requetes GET /faq)
-│   │   │   └── categoryMapper, creatorMapper, pageQueryMapper (limit/offset)
+│   │   │   ├── user/             ← userMapper (compte cree, confirmation), userRequestMapper (corps de POST /users)
+│   │   │   └── categoryMapper, creatorMapper, schoolMapper, pageQueryMapper (limit/offset)
 │   │   ├── services/             ← appels API REST via core/api.js, retournent des modeles ; ne construisent aucune URL
 │   │   ├── domain/               ← regles metier pures (ni reseau, ni DOM, ni etat)
 │   │   │   ├── event/            ← event (type Event, places), eventFilters, eventSearch, eventSuggestions
 │   │   │   ├── coverageArea/     ← coverageArea, ileDeFranceOutline (contour)
-│   │   │   └── category, faqSearch, keyword
+│   │   │   └── category, faqSearch, keyword, registration (regles du formulaire d'inscription)
 │   │   └── state/                ← etat d'une page (ex. MapSearch : criteres, chargement, selection)
 │   ├── view/                     ← V : construisent et mettent a jour le DOM
 │   │   ├── layout/header/        ← renderHeader()
@@ -196,12 +203,14 @@ front/
 │   │   │   └── event/            ← eventCard, eventMeta, eventRow, eventPopup
 │   │   ├── home/                 ← HomeView, homeMessages, PointCard, FilterChips, ResultsList, MapView (LeafletMap + MapLegend + MapStatus)
 │   │   ├── event/                ← liste (EventsView, eventsMessages) et detail (EventDetailView, eventDetailPresenter)
-│   │   └── faq/                  ← FaqView, faqMessages
-│   ├── controller/               ← C : mediateurs minces (Home, Faq ; event/ : Events, EventDetail) ;
+│   │   ├── faq/                  ← FaqView, faqMessages
+│   │   └── user/                 ← RegisterView, registerMessages, ConfirmEmailView, confirmEmailMessages, user.css
+│   ├── controller/               ← C : mediateurs minces (Home, Faq ; event/ : Events, EventDetail ; user/ : Register, ConfirmEmail) ;
 │   │                               PageLoader (cycle de chargement), OriginPicker (point de depart)
-│   ├── pages/                    ← points d'entree minces (un par page HTML), appeles par le routeur ; event/ : event, events
+│   ├── pages/                    ← points d'entree minces (un par page HTML), appeles par le routeur ; event/ : event, events ;
+│   │                               user/ : register, confirmEmail
 │   └── types/globals.d.ts        ← declarations globales (DAYOUT_CONFIG, Leaflet)
-├── tests/                        ← node:test, aucune dependance npm ; event/ : tests de la ressource event
+├── tests/                        ← node:test, aucune dependance npm ; event/, user/ : tests de ces ressources
 ├── tools/typecheck.sh            ← installe TypeScript dans .cache/ et verifie les JSDoc
 ├── jsconfig.json                 ← verification JSDoc de src/ (VS Code + tsc en CI) ; tests/jsconfig.json pour les tests
 └── README.md
@@ -284,6 +293,40 @@ shared/          -> shared/ uniquement (utilitaires purs)
 - Pas de filtres ni de carte
 - Footer visible
 
+### Inscription (`pages/user/register.html`)
+
+- Profil **participant** ou **createur** (cartes radio) ; createur : message « compte soumis a validation », nom de
+  l'association / du club / du BDE ou case « a titre individuel », ecole de rattachement = l'ecole choisie.
+- Champs : nom, prenom, e-mail de l'ecole, ecole (liste de `GET /schools`, choisie automatiquement des que le domaine de
+  l'e-mail est celui d'une ecole, annonce dans la zone de statut), mot de passe + confirmation (jamais envoyee),
+  centres d'interet (cases de `GET /categories`, au moins une), rayon de recherche (1-20 km, 3 par defaut), CGU.
+- **Validation en direct** (`model/domain/registration.js`, fonctions pures) : un champ est verifie des qu'on l'a quitte,
+  puis a chaque frappe ; tous apres un premier envoi. Format de l'e-mail, domaine d'une ecole partenaire, coherence
+  domaine <-> ecole choisie, mot de passe (8 caracteres, une majuscule, un chiffre), confirmation identique, CGU, au
+  moins un interet. Jauge de force du mot de passe (texte + barre, jamais la couleur seule).
+- Les regles renvoient des **codes** (`domain_not_allowed`, `too_short`...) ; les textes sont dans `view/user/registerMessages.js`.
+- Erreurs sous chaque champ (`aria-invalid` + `aria-describedby`, `shared/forms.js`), focus sur la premiere a l'envoi.
+  Le formulaire a `novalidate` : ce sont ces messages, pas ceux du navigateur, qui s'affichent.
+- Le serveur reverifie tout : une `422` met les champs refuses en erreur, `409 EMAIL_TAKEN` s'affiche sous l'e-mail,
+  une panne sous le bouton ; la saisie reste en place.
+- Succes : « Verifie ta boite mail » (lien valable 24 h ; demande createur examinee par un admin). Avec `MAIL_DEMO=true`
+  cote back, le lien de confirmation s'affiche aussi (demo sans serveur de mail).
+- **Confirmation** (`/confirm-email?token=`) : la page envoie le jeton en `POST /email-verifications` (jamais un `GET`
+  qui modifie) et affiche compte active, demande createur en attente, lien expire ou deja utilise (`410`)
+  ou invalide ; une panne ou un `429` (trop d'essais, attente annoncee en minutes) propose « Reessayer » (le lien
+  n'a pas ete consomme). Le jeton quitte l'adresse des l'arrivee
+  sur la page (`setParam`) : il n'est ni dans l'historique ni dans l'en-tete Referer d'un lien suivi ; il reste en
+  memoire pour « Reessayer ». Lien expire : bouton « Refaire mon inscription » (le back remplace le compte non
+  confirme dont le lien a expire et envoie un nouveau lien).
+- Refus du serveur affiches sous l'e-mail : `409 EMAIL_TAKEN` (adresse deja utilisee, compte confirme ou en attente :
+  un seul code et un seul message, l'etat du compte ne se devine pas, y compris pour deux inscriptions simultanees)
+  et `422 EMAIL_DOMAIN_NOT_ALLOWED` (ecole desactivee pendant la saisie, refusee par le trigger). `429` (limite
+  d'inscriptions par client atteinte) : sous le bouton, « Reessaie dans N minutes » d'apres
+  `details.retry_after_seconds` (`retryAfterSeconds`, `rateLimitedText`).
+- Piege a robots : champ `website` hors ecran et hors tabulation (`register-form__trap`) ; un humain le laisse vide.
+  Un robot qui le remplit recoit la meme reponse qu'une inscription, mais rien n'est cree cote serveur.
+- Page sans lien dans le header pour l'instant : on y arrive par `/register` (lien a ajouter avec la connexion, SCRUM-42).
+
 ### Composants reutilisables (`src/view/components/`)
 
 | Composant     | Role                                                                 |
@@ -365,6 +408,8 @@ HTTP 200 et affiche l'ecran 404 en JavaScript ; l'API renvoie bien le statut HTT
 - **`eventFilters.js`** : un predicat par critere (gratuit, places, categories, week-end, texte), `USER_FILTERS`, `matchesCriteria`, `weekendRange`
 - **`eventSearch.js`** : `searchEvents` — a venir + criteres + distance/rayon + tri + comptes ; typedef `SearchItem` (`{ event, distanceKm }`)
 - **`eventSuggestions.js`** : `suggestEvents` — selection publique de trois evenements a venir non complets, issue du meme chargement que l'accueil
+- **`registration.js`** : regles du formulaire d'inscription, miroir de `UserCreateDto` (back) : `normalizeEmail` (seule normalisation de l'e-mail, reprise par le mapper), `emailDomain`, `schoolForEmail`,
+  `passwordIssue`, `passwordStrength` (0-4, pour la jauge), `validateRegistration(values, schools)` -> `{ champ: code }`
 
 ### Regle d'or
 
@@ -497,6 +542,8 @@ front/tools/typecheck.sh
 - [`src/model/mappers/pageQueryMapper.js`](src/model/mappers/pageQueryMapper.js) : `toPageQuery({ limit, offset })` (pagination commune a toutes les listes, bornes de `core/apiLimits.js`)
 - [`src/model/mappers/event/eventRequestMapper.js`](src/model/mappers/event/eventRequestMapper.js) : `toEventQuery({ limit, offset, from, keyword })` (query string de `GET /events`), `toEventPath(id)` (`/events/{id}`, identifiant encode)
 - [`src/model/mappers/faq/faqRequestMapper.js`](src/model/mappers/faq/faqRequestMapper.js) : `toFaqQuery({ limit, offset })` (query string de `GET /faq`)
+- [`src/model/mappers/user/userRequestMapper.js`](src/model/mappers/user/userRequestMapper.js) : `toUserCreateDto(values)` (corps de `POST /users`, sans la confirmation du mot de passe), `toEmailVerificationCreateDto(token)`, `toFormFields(details)` (champs d'une 422 -> champs du formulaire)
+- [`src/model/mappers/user/userMapper.js`](src/model/mappers/user/userMapper.js) : `toRegisteredUser(dto)`, `toEmailVerification(dto)` ; [`schoolMapper.js`](src/model/mappers/schoolMapper.js) : `toSchool(dto)`
 
 ### Operations
 
@@ -531,12 +578,14 @@ Fichiers dans [`src/model/services/`](src/model/services/) :
 
 - [`eventService.js`](src/model/services/eventService.js) : `fetchUpcomingEventPage` (une page de `GET /events`), `fetchUpcomingEvents` (ses elements), `fetchEvent(id)` (`GET /events/{id}` ; l'API repond 404, donc une `ApiError` 404, pour un identifiant invalide)
 - [`faqService.js`](src/model/services/faqService.js) : `fetchFaq()` (toutes les questions actives, page par page)
+- [`userService.js`](src/model/services/userService.js) : `registerUser(values)` (`POST /users`), `confirmEmail(token)` (`POST /email-verifications`), `rejectedRegistrationFields(error)`
+- [`schoolService.js`](src/model/services/schoolService.js) : `fetchSchools()` (`GET /schools`) ; [`categoryService.js`](src/model/services/categoryService.js) : `fetchCategories()` (`GET /categories`)
 - Plafonds de l'API (`MAX_PAGE_LIMIT`, `MAX_PAGE_OFFSET`, `MAX_KEYWORD_LENGTH`) : [`core/apiLimits.js`](src/core/apiLimits.js)
 
 ### Regle
 
 **Un service par ressource appelee** (`/events` -> `eventService.js`), **pas par modele** :
-les categories arrivent dans les evenements, donc pas de `categoryService` pour l'instant.
+les categories d'un evenement arrivent avec lui ; `categoryService` ne sert qu'a `GET /categories` (inscription).
 
 ### Exemple
 
@@ -674,10 +723,12 @@ C'est le **controleur** qui calcule le message et le passe a la view (la view ga
 
 ### Erreurs de formulaire
 
-Aucune page n'envoie encore de formulaire. Une erreur 422 arrive en `ApiError` avec `isValidation === true`
-et `details` = champ -> message : la view du formulaire pose `aria-invalid="true"` et un message relie par
-`aria-describedby`. Les helpers `showFieldErrors` / `clearFieldErrors` (retires car inutilises) sont dans
-l'historique git (`shared/forms.js`) si on veut les reprendre avec le premier formulaire.
+Une erreur 422 arrive en `ApiError` avec `isValidation === true` et `details` = champ -> message.
+`shared/forms.js` (repris de l'historique git avec le premier formulaire, l'inscription) affiche les erreurs :
+`showFieldErrors(form, { champ: message }, { focus })` pose `aria-invalid="true"` et un `<p class="field-error">`
+relie par `aria-describedby` sous chaque champ (sous le dernier d'un groupe de cases), et renvoie les erreurs sans
+champ correspondant ; `clearFieldErrors(form)` les retire. Les messages du back sont en anglais : la view affiche
+ses propres textes, choisis par le controleur avec un code par champ (`registerMessages.js`).
 
 ### Redirection 401
 
@@ -706,6 +757,10 @@ Voir [`../back/README.md`](../back/README.md) pour la liste complete.
 | GET     | `/events`      | `fetchUpcomingEventPage` (liste), `fetchUpcomingEvents` (carte) |
 | GET     | `/events/{id}` | `fetchEvent` (detail)         |
 | GET     | `/faq`         | `fetchFaq` (FAQ)              |
+| GET     | `/schools`     | `fetchSchools` (inscription)  |
+| GET     | `/categories`  | `fetchCategories` (inscription) |
+| POST    | `/users`       | `registerUser` (inscription)  |
+| POST    | `/email-verifications` | `confirmEmail` (lien du mail) |
 | GET     | `/health`      | (non utilise)                 |
 
 ### Conventions
@@ -741,6 +796,10 @@ tests/
 │   ├── eventDetail.test.js          ← mapper du detail (organisateur)
 │   ├── eventDetailController.test.js, eventsPagination.test.js ← controleurs avec doubles de view
 │   └── eventNavigation.test.js      ← routeur complet : changement de page, Precedent/Suivant, setParam, erreur de mount
+├── user/
+│   ├── registration.test.js         ← regles du formulaire, mappers, services (fetch simule)
+│   ├── registerController.test.js   ← inscription et confirmation avec doubles de view
+│   └── userMessages.test.js         ← textes des erreurs, de la jauge et des issues de confirmation
 ├── shared.test.js           ← dom (h), format (dates/prix/distance), geo (haversine)
 ├── keywordSearch.test.js    ← recherche par mot-cle, surlignage
 ├── pageLoader.test.js       ← cycle de chargement, depart de la page
@@ -765,6 +824,7 @@ tests/
 
 - La spec OpenAPI du back (assemblee par PHP) est la **reference**
 - Echoue si un champ de `Event` / `Category` **manque** au typedef de `src/model/dto/`, **n'est pas lu** par `toEvent` ou **pas renvoye** par `toEventDto`
+- Inscription : le corps de `toUserCreateDto` a exactement les champs de `UserCreate` ; `RegisteredUser`, `EmailVerification` et `School` suivent leurs typedefs et sont lus par leurs mappers
 - **Ignore sans PHP**, sauf avec `REQUIRE_CONTRACT=1` (force l'echec si PHP manque — utilise en CI)
 
 ### Ajouter un test

@@ -1,0 +1,28 @@
+tags:
+  - name: categories
+    description: Categories d'evenements (centres d'interet)
+
+paths:
+  /categories:
+    get:
+      tags: [categories]
+      summary: Lister les categories actives
+      description: Petit referentiel, sans pagination, trie par libelle. Une categorie inactive n'est pas listee.
+      operationId: listCategories
+      security: []
+      responses:
+        "200":
+          description: Categories actives
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "public, max-age=3600" }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Category" }
+        "500": { $ref: "#/components/responses/InternalError" }

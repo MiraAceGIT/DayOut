@@ -56,6 +56,8 @@ try {
             'APP_DEBUG'    => 'false',
             'DOCS_ENABLED' => 'false',
             'CORS_ORIGIN'  => Tests\HttpTestCase::ALLOWED_ORIGIN,
+            // Les tests jouent le reverse proxy : X-Forwarded-For simule des clients differents.
+            'TRUSTED_PROXIES' => '127.0.0.1',
         ], "$tmpDir/server.out");
         putenv('TEST_BASE_URL=' . $server->baseUrl);
     }

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Créer un compte — DayOut</title>
+</head>
+<body>
+  <main id="app-root" class="container register-page">
+    <h1>Créer ton compte</h1>
+    <p class="register-page__intro">DayOut est réservé aux étudiants des écoles partenaires : inscris-toi avec l'adresse e-mail fournie par ton école.</p>
+
+    <p id="register-status" class="status-message" role="status"></p>
+    <p id="register-error" class="alert alert--error" role="alert"></p>
+    <button id="register-retry" class="button button--primary" type="button" hidden>Réessayer</button>
+
+    <form id="register-form" class="register-form" method="post" novalidate aria-busy="false" hidden>
+      <fieldset class="register-form__group">
+        <legend>Je m'inscris en tant que</legend>
+        <div class="profile-choice">
+          <label class="profile-choice__card">
+            <input type="radio" name="profile" value="participant" checked>
+            <span class="profile-choice__title">Participant</span>
+            <span class="profile-choice__text">Je découvre et je rejoins des événements.</span>
+          </label>
+          <label class="profile-choice__card">
+            <input type="radio" name="profile" value="creator">
+            <span class="profile-choice__title">Créateur</span>
+            <span class="profile-choice__text">J'organise des événements pour mon association, mon club, mon BDE ou à titre individuel.</span>
+          </label>
+        </div>
+        <p id="register-creator-notice" class="register-form__notice" hidden>
+          Ton compte sera soumis à validation : un administrateur examinera ta demande avant que tu puisses publier.
+        </p>
+      </fieldset>
+
+      <fieldset class="register-form__group">
+        <legend>Tes informations</legend>
+        <div class="register-form__row">
+          <div class="field">
+            <label for="register-last-name">Nom</label>
+            <input id="register-last-name" class="input" name="lastName" type="text" autocomplete="family-name" maxlength="80" required>
+          </div>
+          <div class="field">
+            <label for="register-first-name">Prénom</label>
+            <input id="register-first-name" class="input" name="firstName" type="text" autocomplete="given-name" maxlength="80" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="register-email">Adresse e-mail de ton école</label>
+          <input id="register-email" class="input" name="email" type="email" autocomplete="email" maxlength="190" required
+            aria-describedby="register-email-hint" placeholder="prenom.nom@ecole.fr">
+          <p id="register-email-hint" class="field__hint">Les adresses personnelles (Gmail, Outlook…) ne sont pas acceptées.</p>
+        </div>
+        <div class="field">
+          <label for="register-school">École</label>
+          <select id="register-school" class="input" name="schoolId" required>
+            <option value="">Choisis ton école</option>
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset id="register-creator" class="register-form__group" hidden>
+        <legend>Ton profil de créateur</legend>
+        <div class="field">
+          <label for="register-organization">Nom de l'association, du club ou du BDE</label>
+          <input id="register-organization" class="input" name="organizationName" type="text" maxlength="120" autocomplete="organization">
+        </div>
+        <label class="checkbox">
+          <input name="individual" type="checkbox">
+          <span>J'organise à titre individuel</span>
+        </label>
+        <p class="field__hint">École de rattachement : <span id="register-creator-school">celle choisie plus haut</span></p>
+      </fieldset>
+
+      <fieldset class="register-form__group">
+        <legend>Ton mot de passe</legend>
+        <div class="field">
+          <label for="register-password">Mot de passe</label>
+          <input id="register-password" class="input" name="password" type="password" autocomplete="new-password" required
+            aria-describedby="register-password-hint register-password-strength">
+          <p id="register-password-hint" class="field__hint">8 caractères minimum, dont une majuscule et un chiffre.</p>
+          <div class="password-strength" aria-hidden="true">
+            <span class="password-strength__bar" data-level="0"></span>
+          </div>
+          <p id="register-password-strength" class="field__hint password-strength__label"></p>
+        </div>
+        <div class="field">
+          <label for="register-password-confirm">Confirmation du mot de passe</label>
+          <input id="register-password-confirm" class="input" name="passwordConfirm" type="password" autocomplete="new-password" required>
+        </div>
+      </fieldset>
+
+      <fieldset class="register-form__group">
+        <legend>Tes centres d'intérêt</legend>
+        <p class="field__hint">Choisis au moins une catégorie : elles serviront à te proposer des événements.</p>
+        <div id="register-interests" class="interest-list"></div>
+      </fieldset>
+
+      <fieldset class="register-form__group">
+        <legend>Ton rayon de recherche</legend>
+        <div class="field">
+          <label for="register-radius">Événements autour de toi, jusqu'à <output id="register-radius-value" for="register-radius">3 km</output></label>
+          <input id="register-radius" class="range" name="searchRadiusKm" type="range" min="1" max="20" step="1" value="3">
+        </div>
+      </fieldset>
+
+      <!-- Piege a robots : invisible pour un humain (hors ecran, hors tabulation), rempli par les robots -> refus. -->
+      <div class="register-form__trap" aria-hidden="true">
+        <label for="register-website">Ne pas remplir ce champ</label>
+        <input id="register-website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+
+      <label class="checkbox register-form__terms">
+        <input name="termsAccepted" type="checkbox" required>
+        <span>J'accepte les conditions générales d'utilisation de DayOut.</span>
+      </label>
+
+      <p id="register-submit-error" class="alert alert--error" role="alert"></p>
+      <button id="register-submit" class="button button--primary register-form__submit" type="submit">Créer mon compte</button>
+    </form>
+
+    <section id="register-success" class="register-success" tabindex="-1" hidden aria-labelledby="register-success-title">
+      <h2 id="register-success-title">Vérifie ta boîte mail</h2>
+      <p id="register-success-text"></p>
+      <p id="register-success-creator" hidden></p>
+      <p id="register-success-demo" class="register-success__demo" hidden></p>
+    </section>
+  </main>
+</body>
+</html>

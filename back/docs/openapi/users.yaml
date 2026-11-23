@@ -1,0 +1,116 @@
+tags:
+  - name: users
+    description: Inscription des etudiants (participant ou createur)
+
+paths:
+  /users:
+    post:
+      tags: [users]
+      summary: Creer un compte (inscription)
+      description: >-
+        Public, sans session. Le domaine de l'e-mail doit etre celui d'une ecole active et de l'ecole choisie.
+        Le compte est cree non confirme (email_verified false) avec un lien de confirmation valable 24 h, envoye
+        par mail (ecrit dans LOG_PATH/mail-AAAA-MM-JJ.log). Un createur reste participant avec une demande
+        creator_status pending, a valider par un administrateur. Les champs inconnus sont ignores.
+        Adresse deja utilisee par un compte non confirme dont le lien a expire : ce compte est remplace
+        (nouvelle inscription, nouveau lien).
+        Par client et par heure : 5 inscriptions reussies et 30 tentatives (429 au-dela, en-tete Retry-After).
+      operationId: createUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserCreate" }
+      responses:
+        "201":
+          description: Compte cree, en attente de confirmation de l'adresse
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/RegisteredUser" }
+        "400": { $ref: "#/components/responses/UserBadRequest" }
+        "409": { $ref: "#/components/responses/EmailTaken" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/UserRejected" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  schemas:
+    UserCreate:
+      type: object
+      description: >-
+        E-mail compare sans espaces ni majuscules. Mot de passe de 8 caracteres au moins avec une majuscule et un chiffre.
+        Un domaine refuse ou different de celui de l'ecole donne une erreur sur `email`.
+      required: [profile, first_name, last_name, email, school_id, password, terms_accepted, interests]
+      properties:
+        profile: { type: string, enum: [participant, creator] }
+        first_name: { type: string, minLength: 1, maxLength: 80 }
+        last_name: { type: string, minLength: 1, maxLength: 80 }
+        email: { type: string, format: email, maxLength: 190, example: prenom.nom@isep.fr }
+        school_id: { type: integer, minimum: 1, description: "Ecole active (GET /schools)" }
+        password: { type: string, format: password, minLength: 8, maxLength: 72, description: "72 octets au plus" }
+        terms_accepted: { type: boolean, description: "Doit valoir true" }
+        interests:
+          type: array
+          minItems: 1
+          description: Slugs de categories actives (GET /categories)
+          items: { type: string, example: soiree }
+        search_radius_km: { type: integer, minimum: 1, maximum: 20, default: 3 }
+        organization_name:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Association, club ou BDE ; obligatoire pour un createur, sauf a titre individuel
+        individual: { type: boolean, default: false, description: "Createur a titre individuel" }
+        website: { type: string, nullable: true, maxLength: 500, description: "Piege a robots : champ cache du formulaire, toujours vide. Rempli : 201 sans rien creer (id 0)" }
+    RegisteredUser:
+      type: object
+      required: [id, email, first_name, role, creator_status, email_verified, demo_confirmation_url]
+      properties:
+        id: { type: integer, minimum: 1 }
+        email: { type: string, format: email }
+        first_name: { type: string }
+        role: { type: string, enum: [participant] }
+        creator_status: { type: string, enum: [none, pending] }
+        email_verified: { type: boolean, enum: [false] }
+        demo_confirmation_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Lien de confirmation, seulement si MAIL_DEMO=true (demo sans serveur de mail) ; sinon null
+  responses:
+    UserBadRequest:
+      description: JSON invalide (`BAD_REQUEST`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    EmailTaken:
+      description: >-
+        Adresse deja utilisee (`EMAIL_TAKEN`, `details.field` = email) par un compte confirme ou par un compte non
+        confirme dont le lien est encore valable : un seul code, l etat du compte ne se devine pas ;
+        deux inscriptions simultanees de la meme adresse (`CONFLICT`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UserRejected:
+      description: >-
+        Champ invalide (`VALIDATION_ERROR`, `details` = champ -> message ; domaine refuse ou ecole differente sur `email`),
+        ou ecole desactivee pendant la saisie, refusee par la base (`EMAIL_DOMAIN_NOT_ALLOWED`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: >-
+        Trop de requetes depuis ce client (adresse IP) (`TOO_MANY_REQUESTS`, `details.retry_after_seconds`,
+        en-tete `Retry-After` : secondes avant qu'une place se libere)
+      headers:
+        Retry-After:
+          schema: { type: integer, example: 3600 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

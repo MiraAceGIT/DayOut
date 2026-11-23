@@ -118,6 +118,7 @@ manquante, un entier invalide, un booleen malforme (`true`/`false`, `1`/`0`,
 | Variable               | Defaut            | Description                                                         |
 | ---------------------- | ----------------- | ------------------------------------------------------------------- |
 | `APP_DEBUG`            | `false`           | Journalise aussi notices et deprecations (jamais affiche au client) |
+| `APP_ENV`              | `dev`             | `dev` ou `prod`. `prod` : `MAIL_DEMO` refuse au demarrage, mails journalises sans leur contenu |
 | `APP_TIMEZONE`         | `UTC`             | Fuseau PHP (whitelist)                                              |
 | `DOCS_ENABLED`         | `true` (dev)      | Active `/docs` et `/openapi.json`. **Mettre `false` en prod.**      |
 | `DB_HOST`              | **obligatoire**   | Hote MariaDB (XAMPP : `127.0.0.1`)                                  |
@@ -130,6 +131,13 @@ manquante, un entier invalide, un booleen malforme (`true`/`false`, `1`/`0`,
 | `LOG_PATH`             | `storage/logs`    | Relatif a `back/` ou absolu                                         |
 | `LOG_RETENTION_DAYS`   | `30`              | Purge des `error-*.log` et `info-*.log`                             |
 | `AUDIT_RETENTION_DAYS` | `365`             | Purge des `audit-*.log`                                             |
+| `FRONT_URL`            | `http://localhost:5500` | Adresse du front (URL http(s)) : base des liens envoyes par mail |
+| `MAIL_DEMO`            | `false`           | `true` : `POST /users` renvoie aussi le lien de confirmation (demo sans serveur de mail). **`false` en prod.** |
+| `TRUSTED_PROXIES`      | _(vide)_          | Reverse proxies devant l'API (IP ou CIDR, separees par des virgules) : `X-Forwarded-For` n'est lu que derriere eux. **A renseigner en prod derriere un proxy.** |
+| `RATE_LIMIT_REGISTRATIONS_PER_HOUR` | `5` | Inscriptions reussies par client et par heure |
+| `RATE_LIMIT_REGISTRATION_ATTEMPTS_PER_HOUR` | `30` | Tentatives d'inscription (refusees ou non) par client et par heure |
+| `RATE_LIMIT_EMAIL_VERIFICATIONS_PER_HOUR` | `30` | Essais de confirmation par client et par heure |
+| `RATE_LIMIT_SECRET`    | _(secret de dev)_ | Cle HMAC des compteurs par IP (aucune adresse retrouvable depuis la base). **Obligatoire en prod**, 32 caracteres au moins (`openssl rand -hex 32`) |
 
 ### Commentaires dans le `.env`
 
@@ -199,11 +207,12 @@ back/
 │   ├── index.php       ← front controller unique
 │   └── .htaccess       ← rewrite + blocage des fichiers sensibles
 ├── src/
-│   ├── Core/           ← infrastructure : Config, Env, Container, Router, RouteCompiler, Request, Response, Controller,
+│   ├── Core/           ← infrastructure : Config, Env, Container, Clock (SystemClock), Router, RouteCompiler, Request, Response, Controller,
 │   │                     Database, Validator, HttpException, BusinessException, ErrorKind
 │   │   ├── Http/       ← Kernel, Middleware, ExceptionRenderer, DbErrorMapper,
-│   │   │                 Cors, SecurityHeaders
+│   │   │                 Cors, SecurityHeaders, RateLimit + RateLimiter (limitation de debit par IP)
 │   │   ├── Log/        ← journalisation (error / info / audit) + ErrorHandler
+│   │   ├── Mail/       ← Mailer (interface commune des mails) + LogMailer (mails ecrits dans mail-AAAA-MM-JJ.log)
 │   │   └── Orm/        ← moteur ORM maison (Connection, Caster, QueryBuilder, Compiler, Grammar)
 │   ├── Shared/         ← petits utilitaires purs, sans dependance a Core ni Model :
 │   │                     Password, Yaml (lecteur YAML minimal)
@@ -219,12 +228,13 @@ back/
 │   │   ├── Assemblers/ ← lignes -> DTO complets avec leurs relations en une requete chacune (EventAssembler)
 │   │   ├── Exceptions/ ← une classe par ressource (EventException, FaqException), heritant de Core\BusinessException
 │   │   ├── Dto/        ← contrat JSON, un dossier par ressource (Event/EventDto.php...) ; PageDto (commun)
+│   │   ├── Mails/      ← texte des mails envoyes (ConfirmationMail)
 │   │   └── Mappers/    ← ligne du DAO <-> DTO (toDto / toDtos / toRow / toUpdateRow)
 │   ├── Docs/           ← OpenApiSpec : assemble docs/openapi/*.yaml
-│   └── Controller/     ← C : logique HTTP, une classe par ressource
+│   └── Controller/     ← C : logique HTTP, une classe par ressource ; Middleware/ : limites de debit par route
 ├── config/
 │   ├── config.php      ← charge le .env (Core\Env), construit la Config
-│   └── container.php   ← racine de composition (Container : Config, Connection)
+│   └── container.php   ← racine de composition (Container : Config, Connection, Mailer)
 ├── routes/             ← un fichier par ressource (charges par api.php)
 ├── docs/openapi/       ← spec OpenAPI 3 en YAML, un fichier par controller
 ├── storage/logs/       ← logs (crees a la volee, ignores par git)
@@ -279,7 +289,7 @@ back/
 
 - **`HttpException`** (Core) : reservee a la couche HTTP (routeur, `Request`, middlewares)
 - **`ValidationException`** (Core) : levee par `Validator`, mappers et DAO -> 422 avec `details = champ -> message`
-- **`BusinessException`** (Core, heritee par `Model/Exceptions`) : regle metier levee par un service ; une classe par ressource, un cas par factory nommee ; `ErrorKind` fixe le statut (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Invalid` 422)
+- **`BusinessException`** (Core, heritee par `Model/Exceptions`) : regle metier levee par un service ; une classe par ressource, un cas par factory nommee ; `ErrorKind` fixe le statut (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Gone` 410, `Invalid` 422)
 
 ### Flux d'une requete
 
@@ -340,6 +350,95 @@ Les ecrans d'administration FAQ restent dans SCRUM-79, la gestion des utilisateu
 dans SCRUM-44 et l'authentification commune dans SCRUM-42. `User::isAdmin()` se limite
 a la verification du droit d'ecriture FAQ ; aucun compte utilisateur n'est modifie.
 
+### Inscription et confirmation de l'adresse
+
+Un etudiant cree son compte avec l'adresse e-mail de son ecole (SCRUM-41), puis le confirme par un lien a usage
+unique. Chaque classe a un role :
+
+| Classe | Role |
+| --- | --- |
+| `Dto/User/UserCreateDto` | corps de `POST /users` : normalisation (e-mail en minuscules, espaces), regles simples et regles multi-champs (meme modele que les autres DTO d'ecriture) |
+| `Policies/RegistrationPolicy` | ecole et domaine de l'e-mail, adresse deja prise ou compte a remplacer, slugs des centres d'interet |
+| `Services/RegistrationService` | ecrit le compte, ses interets et la demande createur dans **une transaction**, puis demande le lien |
+| `Services/EmailConfirmationService` | envoie le lien (jeton + mail) et confirme l'adresse (`POST /email-verifications`) |
+| `DomainServices/ConfirmationTokenIssuer` | jeton (32 octets, 64 hex), son SHA-256, expiration 24 h ; reutilisable (mot de passe oublie) |
+| `DomainServices/CreatorDisplayName` | nom public de la demande : l'association, ou « Prenom N. » a titre individuel |
+| `Mails/ConfirmationMail` | sujet et texte du mail de confirmation (hors du service qui l'envoie) |
+| `Core\Clock` | heure courante injectee (`SystemClock`, horloge fixe en test) : expirations testees sans SQL |
+
+| Methode | Route | Comportement |
+| --- | --- | --- |
+| POST | `/users` | Inscription publique : 201 avec le compte cree (`email_verified: false`) |
+| POST | `/email-verifications` | Confirme l'adresse avec `{ "token": "..." }` du lien, 200 |
+| GET | `/schools` | Ecoles actives, triees par nom (liste du formulaire, domaines autorises) ; cache 1 h |
+| GET | `/categories` | Categories actives, triees par libelle (centres d'interet) ; cache 1 h |
+
+Regles de `POST /users` (toutes reverifiees par le serveur, meme si le front les controle deja) :
+
+- `profile` : `participant` ou `creator` ; `first_name`, `last_name` (80 caracteres), `email` (sans espaces, stocke
+  en minuscules), `school_id`, `password` (8 caracteres au moins, une majuscule et un chiffre, 72 octets au plus pour bcrypt),
+  `terms_accepted` (doit valoir `true`), `interests` (au moins un slug de categorie active), `search_radius_km` (1 a 20, defaut 3).
+- Createur : `organization_name` (association, club ou BDE, 120 caracteres), sauf `individual: true`.
+- `website` : piege a robots, champ cache du formulaire. Rempli : `201` comme une vraie inscription (`id` 0), sans
+  compte ni mail, audit `user.register` `blocked` : le robot n'apprend ni quel champ l'a trahi ni si l'adresse a un compte.
+- Le domaine de l'e-mail doit etre celui d'une ecole **active** (sinon `422`, erreur sur `email`) et celui de
+  l'ecole choisie (`422` sur `email`) ; ecole inconnue ou inactive : `422` sur `school_id`. Le trigger
+  `trg_users_bi_whitelist` (`50101`, `422 EMAIL_DOMAIN_NOT_ALLOWED`) reste le dernier filet.
+- Adresse deja utilisee, par un compte confirme ou par un compte non confirme dont le lien est encore valable :
+  `409 EMAIL_TAKEN` (`details.field = email`). Un seul code pour les deux : l'existence du compte est revelee
+  (le ticket demande de refuser un e-mail deja utilise), mais pas son etat. Compte non confirme dont le lien a expire :
+  il est **remplace** dans la meme transaction (`ON DELETE CASCADE` : interets, demande createur, jetons), sinon une
+  adresse prise par erreur ou au nom d'un autre etudiant le resterait pour toujours (audit : `replaced_unverified_user_id`).
+  Deux inscriptions simultanees avec la meme adresse : la cle unique refuse la seconde, qui recoit aussi `409 EMAIL_TAKEN`.
+- **Limites** par client et par heure, `429 TOO_MANY_REQUESTS` + `Retry-After` au-dela : 5 inscriptions reussies
+  (`RegistrationRateLimit`, un formulaire refuse ne compte pas) et 30 tentatives, refusees ou non
+  (`RegistrationAttemptRateLimit` : pas de sondage sans fin des adresses qui ont un compte). Par adresse e-mail, la
+  limite existe de fait : `409` tant que le compte existe, donc au plus un mail par adresse et par 24 h. `Retry-After`
+  donne l'attente reelle avant qu'une place se libere (pas toute la fenetre).
+- Mot de passe hache par `Shared\Password` (bcrypt, cost 12), jamais stocke ni journalise en clair.
+- Compte cree `role = participant`, `email_verified = 0`. Un createur a `creator_status = pending` et une ligne
+  `creator_profiles` : il ne peut pas publier tant qu'un admin n'a pas valide sa demande (`User::canPublish`).
+  **La liste des demandes a valider (SCRUM-45) doit ne garder que les comptes `email_verified = 1`.**
+- Lien `FRONT_URL/confirm-email?token=...` ; seul le SHA-256 du jeton est stocke (`email_verifications`), valable 24 h,
+  usage unique. Les jetons expires depuis plus de 7 jours sont purges apres chaque inscription, hors de sa transaction
+  (pas de cron). Texte du mail : `Model/Mails/ConfirmationMail`.
+- 201 sans en-tete `Location` : aucune route `GET /users/{id}` n'existe (le profil est SCRUM-43).
+- Audit : `user.register`, `user.email_verified` (sans e-mail, mot de passe ni jeton).
+
+`POST /email-verifications` : jeton mal forme ou inconnu `422 VERIFICATION_TOKEN_INVALID`, expire
+`410 VERIFICATION_TOKEN_EXPIRED`, deja utilise `410 VERIFICATION_TOKEN_USED` (le lien a existe mais ne servira plus ;
+`UPDATE ... WHERE used_at IS NULL`, atomique : deux clics simultanes ne confirment qu'une fois). 30 essais par adresse
+IP et par heure (`EmailVerificationRateLimit`). Reponse : `{ email_verified: true, creator_status }` (`none` ou
+`pending`). **Choix REST assume** : c'est la consommation d'un jeton, pas la creation d'une ressource, d'ou `200` et
+non `201`. `POST` et non `GET` : un antivirus ou un apercu de messagerie qui ouvre le lien ne consomme rien (la page
+front `/confirm-email` fait l'appel) ; jeton dans le corps et non dans l'URL : absent des logs d'acces.
+
+Securite : route publique sans session, donc sans jeton CSRF. Un formulaire HTML d'un autre site ne peut envoyer que
+du texte ou du multipart (`415`, corps JSON obligatoire) ; un `fetch` JSON d'un autre site passe par une
+verification CORS refusee hors de `CORS_ORIGIN`. La connexion (SCRUM-42) devra refuser un compte `email_verified = 0`.
+
+**Mails** : `App\Core\Mail\Mailer` (`send($to, $subject, $body)`) est l'interface commune, a reutiliser pour le
+mot de passe oublie (SCRUM-56). Sans serveur de mail dans le projet, `LogMailer` ecrit chaque mail (une ligne JSON :
+destinataire, sujet, corps) dans `LOG_PATH/mail-AAAA-MM-JJ.log`, a part des logs `info` / `audit`. En production
+(`APP_ENV=prod`), le corps (qui contient le lien) n'est **pas** ecrit. En demo, `MAIL_DEMO=true` renvoie aussi le
+lien dans `demo_confirmation_url` pour l'afficher a l'ecran ; `APP_ENV=prod` avec `MAIL_DEMO=true` est refuse au
+demarrage. Un vrai envoi (SMTP) = une autre classe qui implemente `Mailer`, declaree dans `config/container.php` ;
+le mail part aujourd'hui dans la transaction (un echec annule l'inscription), ce qui est instantane avec `LogMailer` :
+avec SMTP, passer par une table d'envoi (outbox) pour ne pas garder la transaction ouverte pendant l'envoi reseau.
+
+**Limitation de debit** (`Core\Http\RateLimit` + `RateLimiter`) : middleware generique par client, compteur en base
+(`rate_limit_hits`, cle en HMAC-SHA256 avec `RATE_LIMIT_SECRET`, purge a chaque ajout). Une sous-classe par usage dans `src/Controller/Middleware/`
+(constantes `BUCKET`, `WINDOW_SECONDS`, `COUNT_ONLY_SUCCESS` ; seuil `maxHits()` lu dans la Config), declaree sur sa
+route. La requete est comptee **avant** d'etre traitee, puis retiree du compte si elle depasse la limite (ou, avec
+`COUNT_ONLY_SUCCESS`, si elle echoue) : une rafale de requetes paralleles ne passe pas. Seuils dans `.env`
+(`RATE_LIMIT_*_PER_HOUR`) : un campus derriere une seule IP publique (NAT) partage les limites, a relever si besoin.
+
+Client (`Core\Http\ClientIp`) : `REMOTE_ADDR` (`Request::REMOTE_ADDR`), sauf si elle appartient a `TRUSTED_PROXIES`
+(adresses ou plages CIDR) : `X-Forwarded-For` est alors lu de droite a gauche jusqu'a la premiere adresse qui n'est
+pas un proxy de confiance (ce qu'un client ecrit lui-meme dans l'en-tete n'est jamais lu). **En production derriere un
+reverse proxy, declarer son adresse**, sinon tous les etudiants partagent la limite du proxy. Une IPv6 compte pour
+son /64 (un abonne recoit tout un /64).
+
 ### Declarer un DAO
 
 ```php
@@ -369,7 +468,9 @@ final class User extends Dao
 
 ### Entites principales (voir `infra/sql/schema/`)
 
-- **users** : id, email, first_name, last_name, school_id, role, banned, reliability_score, created_at
+- **users** : id, email, first_name, last_name, school_id, search_radius_km, role, creator_status, email_verified, banned, reliability_score, created_at
+- **email_verifications** : user_id, token_hash (SHA-256), expires_at, used_at ; **user_interests** : user_id, category_id ;
+  **creator_profiles** : user_id, display_name (demande createur)
 - **schools** : id, name, email_domain (whitelist des domaines d'inscription)
 - **events** : id, creator_id, title, slug, description, cover_image_url, start_at, end_at,
   venue_name, address_line, city, postal_code, latitude, longitude, capacity, registered_count,
@@ -631,6 +732,10 @@ $items   = array_map(fn ($e) => $e + ['categories' => $byEvent[$e['id']] ?? []],
 | PATCH   | `/events/{id}`       | — ; body `EventUpdate` (partiel, ou `{"status": ...}` seul) ; **auth** | `Event`                               | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` / `EVENT_FIELDS_LOCKED`, `415`, `422` |
 | DELETE  | `/events/{id}`       | — ; **auth** ; brouillons uniquement           | `204`                                 | `401`, `403`, `404`, `409 EVENT_INVALID_STATUS` |
 | GET     | `/creators`          | `q`, `school_id`, `ids` (CSV), `has_upcoming_events`, `from`, `sort_by` (`display_name`, `created_at`), `sort_dir`, `limit`, `offset` (`CreatorFindQuery`) | `{ items: Creator[], limit, offset, has_more, total }` (approuves, non bannis) | `422 VALIDATION_ERROR` |
+| POST    | `/users`             | — ; body `UserCreate` ; public                 | `201` `RegisteredUser` (non confirme) | `409 EMAIL_TAKEN` / `EMAIL_CONFIRMATION_PENDING` / `CONFLICT`, `415`, `422` (dont domaine refuse sur `email`, `EMAIL_DOMAIN_NOT_ALLOWED`) |
+| POST    | `/email-verifications` | — ; body `{ token }` ; public                | `{ email_verified, creator_status }`  | `410 VERIFICATION_TOKEN_USED` / `_EXPIRED`, `415`, `422 VERIFICATION_TOKEN_INVALID`, `429` |
+| GET     | `/schools`           | —                                              | `School[]` (actives, par nom), cache 1 h | —                                                  |
+| GET     | `/categories`        | —                                              | `Category[]` (actives, par libelle), cache 1 h | —                                            |
 | GET     | `/docs`              | —                                              | Swagger UI (hors enveloppe)           | `404` si `DOCS_ENABLED=false`                         |
 | GET     | `/openapi.json`      | —                                              | spec OpenAPI 3 brute (hors enveloppe) | `404` si `DOCS_ENABLED=false`                         |
 
@@ -800,7 +905,7 @@ a `App\Core\Http\ExceptionRenderer`.
   throw ValidationException::field('end_at', 'Must be after start_at');
   ```
 - **`BusinessException`** -> regle metier levee par un service. `ErrorKind` fixe le statut
-  (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Invalid` 422) ; `details` part au client,
+  (`NotFound` 404, `Forbidden` 403, `Conflict` 409, `Gone` 410, `Invalid` 422) ; `details` part au client,
   `context` reste dans `info-*.log` avec le `requestId` :
   ```php
   // src/Model/Exceptions/EventException.php
@@ -846,7 +951,7 @@ Chaque erreur SQL traduite est journalisee en `info` (`Database rule violated`, 
 ### Codes emis globalement
 
 `BAD_REQUEST`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `VALIDATION_ERROR`, `CONFLICT`,
-codes metier (`EVENT_NOT_FOUND`...), codes triggers (`EVENT_FULL`...),
+codes metier (`EVENT_NOT_FOUND`, `EMAIL_TAKEN`, `VERIFICATION_TOKEN_*`...), `TOO_MANY_REQUESTS`, codes triggers (`EVENT_FULL`...),
 `INTERNAL_ERROR`, `ENCODING_ERROR`.
 
 ---
@@ -919,7 +1024,8 @@ tests/
 ├── Unit/                       ← classe testee directement, sans serveur ni MariaDB
 │   ├── Controller/             ← DocsControllerTest
 │   ├── Core/                   ← ConfigTest, ContainerTest, EnvTest, RequestTest, ResponseTest, RouterTest, ValidatorTest
-│   │   ├── Http/               ← KernelTest, ExceptionRendererTest
+│   │   ├── Http/               ← KernelTest, ExceptionRendererTest, RateLimitTest
+│   │   ├── Mail/               ← LogMailerTest (contenu jamais journalise en production)
 │   │   ├── Log/                ← ContextSanitizerTest, ErrorHandlerTest (processus a part)
 │   │   └── Orm/                ← CasterTest, ConnectionTest (transactions), Query/QueryBuilderTest
 │   ├── Docs/                   ← OpenApiSpecTest, OpenApiContractTest
@@ -928,12 +1034,14 @@ tests/
 │       ├── Enums/              ← EventStatusTest
 │       ├── Mappers/            ← EventMapperTest, CategoryMapperTest
 │       ├── DomainServices/     ← EventDomainServiceTest (regles pures, sans base)
-│       └── Services/           ← EventServiceTest (SQLite en memoire, services obtenus du conteneur)
+│       ├── Dto/                ← FaqWriteDtoTest, UserCreateDtoTest
+│       └── Services/           ← EventServiceTest, RegistrationServiceTest (SQLite en memoire, services obtenus du conteneur)
 │   └── Shared/                 ← YamlTest
 ├── Integration/                ← vraies requetes HTTP
-│   ├── Controller/             ← EventControllerTest, HealthControllerTest, DocsControllerTest
+│   ├── Controller/             ← EventControllerTest, HealthControllerTest, DocsControllerTest, UserControllerTest,
+│   │                             EmailVerificationControllerTest (jeton lu dans mail-*.log), School/CategoryControllerTest
 │   └── Core/                   ← RouterTest, Http/{Kernel,Cors,ExceptionRenderer}Test, Log/AccessLogTest
-├── Support/                    ← doublures partagees (EchoController, AppRouter, TestContainer)
+├── Support/                    ← doublures partagees (EchoController, AppRouter, TestContainer, FakeMailer, FixedClock, ReadsConfirmationMail)
 ├── fixtures/                   ← scripts lances dans un processus a part
 └── TestCase.php, HttpTestCase.php, run.php, run.sh
 ```
@@ -1086,6 +1194,7 @@ composer stan
 tail -f back/storage/logs/error-$(date +%Y-%m-%d).log
 tail -f back/storage/logs/info-$(date +%Y-%m-%d).log
 tail -f back/storage/logs/audit-$(date +%Y-%m-%d).log
+tail -f back/storage/logs/mail-$(date +%Y-%m-%d).log    # mails envoyes (liens de confirmation)
 ```
 
 ---
@@ -1112,12 +1221,19 @@ LOG_LEVEL=info
 LOG_PATH=/var/log/dayout
 LOG_RETENTION_DAYS=30
 AUDIT_RETENTION_DAYS=365
+APP_ENV=prod
+FRONT_URL=https://app.dayout.example
+MAIL_DEMO=false
+TRUSTED_PROXIES=127.0.0.1
+RATE_LIMIT_SECRET=<openssl-rand-hex-32>
 ```
 
 ### Checklist avant mise en prod
 
 - [ ] `.env` genere, **jamais** committer
 - [ ] `DOCS_ENABLED=false` (coupe `/docs` et `/openapi.json`)
+- [ ] `TRUSTED_PROXIES` = adresse du reverse proxy (sinon tous les clients partagent les limites de debit)
+- [ ] `RATE_LIMIT_SECRET` genere (`openssl rand -hex 32`) ; l'API refuse de demarrer sans en prod
 - [ ] `APP_DEBUG=false`
 - [ ] `CORS_ORIGIN` ne contient que les origines prod
 - [ ] `composer install --no-dev --optimize-autoloader`

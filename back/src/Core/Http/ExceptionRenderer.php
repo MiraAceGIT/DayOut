@@ -51,6 +51,7 @@ final class ExceptionRenderer
             ErrorKind::Forbidden => 403,
             ErrorKind::Conflict  => 409,
             ErrorKind::Invalid   => 422,
+            ErrorKind::Gone      => 410,
         };
     }
 }

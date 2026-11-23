@@ -9,4 +9,5 @@ enum ErrorKind
     case Forbidden;
     case Conflict;
     case Invalid;
+    case Gone;
 }

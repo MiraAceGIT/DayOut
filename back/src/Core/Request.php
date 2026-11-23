@@ -9,6 +9,12 @@ use LogicException;
 /** Immuable ; fromGlobals() est le seul endroit qui lit $_SERVER, $_GET et php://input. */
 final class Request
 {
+    /**
+     * Attribut pose par fromGlobals() : adresse de la connexion (REMOTE_ADDR). Derriere un proxy, c'est celle du
+     * proxy ; l'adresse du client se lit avec Http\ClientIp.
+     */
+    public const REMOTE_ADDR = 'remote_addr';
+
     private ?array $json = null;
 
     /**
@@ -51,6 +57,8 @@ final class Request
             $_GET,
             $headers,
             (string) file_get_contents('php://input'),
+            [],
+            [self::REMOTE_ADDR => (string) ($_SERVER['REMOTE_ADDR'] ?? '')],
         );
     }
 

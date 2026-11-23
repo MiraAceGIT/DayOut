@@ -14,6 +14,26 @@ final class Category extends Dao
 
     protected const CASTS = ['id' => 'int'];
 
+    /** @return list<array{slug: string, label: string}> categories actives, par label */
+    public function listActive(): array
+    {
+        $rows = $this->query()->where('active', true)->orderBy('label')->orderBy('id')->get();
+        return array_map(static fn (array $c): array => ['slug' => (string) $c['slug'], 'label' => (string) $c['label']], array_values($rows));
+    }
+
+    /**
+     * @param list<string> $slugs
+     * @return array<string, int> slug => id, pour les seules categories actives (un slug inconnu est absent)
+     */
+    public function idsByActiveSlugs(array $slugs): array
+    {
+        if ($slugs === []) {
+            return [];
+        }
+        $rows = $this->query()->whereIn('slug', array_values(array_unique($slugs)))->where('active', true)->get();
+        return array_column($rows, 'id', 'slug');
+    }
+
     /**
      * Une seule requete pour toute une page d'events (anti N+1).
      *
